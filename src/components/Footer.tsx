@@ -82,7 +82,7 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/refund" className="hover:text-white transition-colors">
+                <Link href="/refund-policy" className="hover:text-white transition-colors">
                   환불 규정
                 </Link>
               </li>
@@ -100,8 +100,8 @@ export default function Footer() {
               <Link href="/privacy" className="hover:text-white transition-colors font-semibold">
                 개인정보처리방침
               </Link>
-              <Link href="/location" className="hover:text-white transition-colors">
-                위치기반서비스약관
+              <Link href="/youth-protection" className="hover:text-white transition-colors">
+                청소년 보호정책
               </Link>
               <Link href="/marketing" className="hover:text-white transition-colors">
                 마케팅 동의

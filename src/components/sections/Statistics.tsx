@@ -109,9 +109,9 @@ export default function Statistics() {
           
           <div className="bg-orange-50 rounded-xl p-6 text-center">
             <div className="text-3xl mb-3">💰</div>
-            <h4 className="font-bold text-gray-900 mb-2">낮은 수수료</h4>
-            <div className="text-2xl font-bold text-orange-600 mb-1">9%</div>
-            <p className="text-sm text-gray-600">업계 최저 수준의 합리적 수수료</p>
+            <h4 className="font-bold text-gray-900 mb-2">수수료 0원</h4>
+            <div className="text-2xl font-bold text-orange-600 mb-1">0%</div>
+            <p className="text-sm text-gray-600">중개 수수료 없는 투명한 거래</p>
           </div>
         </div>
 

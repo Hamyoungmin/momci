@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
-import RequestHero from '@/components/request/RequestHero';
 import RequestBoard from '@/components/request/RequestBoard';
-import CreateRequestGuide from '@/components/request/CreateRequestGuide';
 
 export const metadata: Metadata = {
   title: "선생님께 요청하기 - 더모든 키즈",
@@ -11,14 +9,8 @@ export const metadata: Metadata = {
 export default function RequestPage() {
   return (
     <div>
-      {/* 히어로 섹션 */}
-      <RequestHero />
-      
       {/* 요청 게시판 */}
       <RequestBoard />
-      
-      {/* 작성 가이드 */}
-      <CreateRequestGuide />
     </div>
   );
 }

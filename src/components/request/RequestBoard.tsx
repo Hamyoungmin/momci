@@ -4,280 +4,419 @@ import { useState } from 'react';
 import Link from 'next/link';
 
 export default function RequestBoard() {
-  const [selectedRegion, setSelectedRegion] = useState('전체');
-  const [selectedCategory, setSelectedCategory] = useState('전체');
+  const [selectedSidebarItem, setSelectedSidebarItem] = useState('서울');
+  const [selectedTab, setSelectedTab] = useState('서울');
+  const [selectedLocation, setSelectedLocation] = useState('희망지역을 선택하세요');
+  const [selectedAge, setSelectedAge] = useState('희망연령을 선택하세요');
+  const [selectedTime, setSelectedTime] = useState('희망시간을 입력하세요');
+  const [showTimePopup, setShowTimePopup] = useState(false);
 
-  const regions = ['전체', '서울', '경기', '인천', '대전', '대구', '부산', '광주', '울산', '세종', '강원', '충북', '충남', '전북', '전남', '경북', '경남', '제주'];
-  
-  const categories = [
-    '전체',
-    '홈티치료사 인력매칭',
-    '월급제치료사 인력매칭',
-    '월급치료사 인력매칭',
-    '임시치료사 인력매칭'
+  const sidebarItems = ['홈티매칭', '서울', '인천/경기북부', '경기남부', '충청,강원,대전', '전라,경상,부산'];
+  const tabs = ['서울', '인천/경기북부', '경기남부', '충청,강원,대전', '전라,경상,부산'];
+  const locations = ['희망지역을 선택하세요', '강남구', '강서구', '서초구', '송파구', '마포구', '용산구'];
+  const ages = ['희망연령을 선택하세요', '0-3세', '4-6세', '초등학생', '중학생', '고등학생'];
+  const times = ['희망시간을 입력하세요', '09:00-12:00', '13:00-16:00', '17:00-20:00'];
+
+  const timeSlots = [
+    '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', 
+    '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'
   ];
 
-  // 샘플 게시글 데이터
-  const requestPosts = [
-    {
-      id: 1,
-      title: '0세 3개월 남 주1회 물리/운동치료사 홈티 모집',
-      content: '뇌성마비로 인한 운동발달 지연이 있는 아이입니다. 물리치료 경험이 풍부한 선생님을 찾고 있어요.',
-      author: '김○○',
-      region: '서울 강서구',
-      category: '물리/운동치료',
-      createdAt: '2024.01.20',
-      applicants: 5,
-      status: '모집중',
-      budget: '회당 65,000원',
-      schedule: '토,일 09:00~19:00',
-      age: '0세 3개월',
-      isUrgent: true
-    },
-    {
-      id: 2,
-      title: '4세 여아 언어치료 선생님 구합니다',
-      content: '말이 늦고 발음이 부정확한 아이입니다. 아이와 잘 소통할 수 있는 경험 많은 선생님 부탁드려요.',
-      author: '박○○',
-      region: '경기 수원시',
-      category: '언어치료',
-      createdAt: '2024.01.19',
-      applicants: 8,
-      status: '모집중',
-      budget: '회당 55,000원',
-      schedule: '주 2회, 평일 오후',
-      age: '4세',
-      isUrgent: false
-    },
-    {
-      id: 3,
-      title: '6세 남아 놀이치료 및 사회성 향상 도움 요청',
-      content: '내성적이고 또래 관계에 어려움이 있어요. 놀이를 통해 사회성을 키워줄 선생님을 찾습니다.',
-      author: '이○○',
-      region: '서울 강남구',
-      category: '놀이치료',
-      createdAt: '2024.01.18',
-      applicants: 12,
-      status: '모집중',
-      budget: '회당 60,000원',
-      schedule: '주 1회, 주말',
-      age: '6세',
-      isUrgent: false
-    },
-    {
-      id: 4,
-      title: '5세 쌍둥이 감각통합치료 선생님 모집',
-      content: '감각에 예민한 쌍둥이 아이들입니다. 쌍둥이 지도 경험이 있는 선생님 우대합니다.',
-      author: '최○○',
-      region: '인천 남동구',
-      category: '감각통합치료',
-      createdAt: '2024.01.17',
-      applicants: 3,
-      status: '모집중',
-      budget: '회당 70,000원',
-      schedule: '주 2회, 평일',
-      age: '5세 쌍둥이',
-      isUrgent: true
-    },
-    {
-      id: 5,
-      title: '7세 남아 ABA 치료 전문가 찾습니다',
-      content: '자폐스펙트럼 진단을 받은 아이입니다. ABA 치료 경험이 풍부한 전문가를 찾고 있어요.',
-      author: '정○○',
-      region: '대전 유성구',
-      category: 'ABA 치료',
-      createdAt: '2024.01.16',
-      applicants: 2,
-      status: '모집중',
-      budget: '회당 80,000원',
-      schedule: '주 3회, 평일 오전',
-      age: '7세',
-      isUrgent: false
+  // 지역별 게시글 데이터
+  const allRegionalPosts = {
+    '서울': [
+      {
+        id: 6205,
+        category: '마포구 창전동',
+        title: '초3학년 남 주2회 언어치료 홈티 모집',
+        details: '월,수 5시~6시',
+        applications: 2
+      },
+      {
+        id: 6204,
+        category: '서초구 반포동',
+        title: '초1학년 남 주2회 놀이치료 홈티 모집',
+        details: '화,수,목,금 7시~8시 / 토,일 9시~10시',
+        applications: 4
+      },
+      {
+        id: 6203,
+        category: '성북구 석관동',
+        title: '초1학년 남 주2회 ABA치료 홈티 모집',
+        details: '월,수 7시~8시 / 화,목 4시~6시',
+        applications: 1
+      },
+      {
+        id: 6202,
+        category: '강동구 상일동',
+        title: '5세 2개월 남 주2회 언어치료 홈티 모집',
+        details: '월,수,금 2시~4시',
+        applications: 2
+      },
+      {
+        id: 6201,
+        category: '용산구 이태원동',
+        title: '초2학년 여 주1회 감각통합 홈티 모집',
+        details: '토,일 10시~12시',
+        applications: 3
+      }
+    ],
+    '인천/경기북부': [
+      {
+        id: 6305,
+        category: '인천 부평구',
+        title: '초2학년 여 주3회 물리치료 홈티 모집',
+        details: '월,수,금 4시~5시',
+        applications: 3
+      },
+      {
+        id: 6304,
+        category: '고양시 일산동구',
+        title: '유치원생 남 주1회 놀이치료 홈티 모집',
+        details: '토 10시~12시',
+        applications: 5
+      },
+      {
+        id: 6303,
+        category: '파주시 교하읍',
+        title: '초3학년 남 주2회 언어치료 홈티 모집',
+        details: '화,목 6시~7시',
+        applications: 2
+      },
+      {
+        id: 6302,
+        category: '김포시 장기동',
+        title: '6세 여 주2회 감각통합 홈티 모집',
+        details: '월,금 3시~4시',
+        applications: 1
+      }
+    ],
+    '경기남부': [
+      {
+        id: 6405,
+        category: '수원시 영통구',
+        title: '초1학년 남 주2회 ABA치료 홈티 모집',
+        details: '화,목 5시~6시',
+        applications: 4
+      },
+      {
+        id: 6404,
+        category: '성남시 분당구',
+        title: '초4학년 여 주1회 인지치료 홈티 모집',
+        details: '일 2시~4시',
+        applications: 2
+      },
+      {
+        id: 6403,
+        category: '안양시 만안구',
+        title: '유치원생 남 주3회 언어치료 홈티 모집',
+        details: '월,수,금 4시~5시',
+        applications: 6
+      },
+      {
+        id: 6402,
+        category: '용인시 기흥구',
+        title: '초2학년 남 주2회 놀이치료 홈티 모집',
+        details: '화,목 7시~8시',
+        applications: 3
+      }
+    ],
+    '충청,강원,대전': [
+      {
+        id: 6505,
+        category: '대전 유성구',
+        title: '초3학년 남 주2회 언어치료 홈티 모집',
+        details: '월,수 6시~7시',
+        applications: 2
+      },
+      {
+        id: 6504,
+        category: '천안시 동남구',
+        title: '유치원생 여 주1회 놀이치료 홈티 모집',
+        details: '토 11시~12시',
+        applications: 3
+      },
+      {
+        id: 6503,
+        category: '춘천시 효자동',
+        title: '초1학년 남 주2회 감각통합 홈티 모집',
+        details: '화,목 5시~6시',
+        applications: 1
+      },
+      {
+        id: 6502,
+        category: '청주시 흥덕구',
+        title: '5세 남 주3회 ABA치료 홈티 모집',
+        details: '월,수,금 3시~4시',
+        applications: 4
+      }
+    ],
+    '전라,경상,부산': [
+      {
+        id: 6605,
+        category: '부산 해운대구',
+        title: '초2학년 여 주2회 언어치료 홈티 모집',
+        details: '월,목 4시~5시',
+        applications: 3
+      },
+      {
+        id: 6604,
+        category: '광주 북구',
+        title: '유치원생 남 주1회 놀이치료 홈티 모집',
+        details: '토 9시~11시',
+        applications: 2
+      },
+      {
+        id: 6603,
+        category: '대구 수성구',
+        title: '초3학년 남 주2회 물리치료 홈티 모집',
+        details: '화,금 6시~7시',
+        applications: 5
+      },
+      {
+        id: 6602,
+        category: '울산 남구',
+        title: '6세 여 주3회 감각통합 홈티 모집',
+        details: '월,수,금 2시~3시',
+        applications: 1
+      }
+    ]
+  };
+
+  // 현재 선택된 지역의 게시글 가져오기
+  const getCurrentPosts = () => {
+    if (selectedSidebarItem === '홈티매칭') {
+      // 모든 지역의 게시글을 합쳐서 보여줌
+      return Object.values(allRegionalPosts).flat();
     }
-  ];
+    return allRegionalPosts[selectedSidebarItem as keyof typeof allRegionalPosts] || [];
+  };
 
-  const filteredPosts = requestPosts.filter(post => {
-    const regionMatch = selectedRegion === '전체' || post.region.includes(selectedRegion);
-    const categoryMatch = selectedCategory === '전체' || post.category.includes(selectedCategory.replace('인력매칭', ''));
-    return regionMatch && categoryMatch;
-  });
+  const filteredPosts = getCurrentPosts();
+
+  const handleTimeSelect = () => {
+    setShowTimePopup(true);
+  };
+
+  // 선택된 지역에 따른 제목과 탭 변경
+  const getRegionTitle = () => {
+    if (selectedSidebarItem === '홈티매칭') return '전국 홈티매칭';
+    return `${selectedSidebarItem} 홈티매칭`;
+  };
+
+  const handleSidebarClick = (item: string) => {
+    setSelectedSidebarItem(item);
+    if (item !== '홈티매칭') {
+      setSelectedTab(item);
+    }
+  };
 
   return (
-    <section className="py-20 bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* 브레드크럼 */}
-        <div className="flex items-center space-x-2 text-sm text-gray-600 mb-8">
-          <Link href="/" className="hover:text-blue-600">홈</Link>
-          <span>{'>'}</span>
-          <Link href="/matching" className="hover:text-blue-600">홈티매칭</Link>
-          <span>{'>'}</span>
-          <span className="text-gray-900 font-medium">선생님께 요청하기</span>
-        </div>
-
-        {/* 헤더 */}
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">선생님께 요청하기</h1>
-            <p className="text-gray-600">원하는 조건을 작성하여 적합한 선생님들의 지원을 받아보세요</p>
-          </div>
-          <Link
-            href="/request/create"
-            className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors mt-4 lg:mt-0"
-          >
-            📝 요청글 작성하기
-          </Link>
-        </div>
-
-        {/* 필터 */}
-        <div className="bg-white rounded-xl shadow-sm p-6 mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* 지역 선택 */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">지역</label>
-              <select
-                value={selectedRegion}
-                onChange={(e) => setSelectedRegion(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                {regions.map((region) => (
-                  <option key={region} value={region}>{region}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* 카테고리 선택 */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">카테고리</label>
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                {categories.map((category) => (
-                  <option key={category} value={category}>{category}</option>
-                ))}
-              </select>
-            </div>
+    <section className="bg-gray-50 min-h-screen">
+      <div className="flex">
+        {/* 사이드바 */}
+        <div className="w-64 bg-white shadow-lg">
+          <div className="p-4">
+            {sidebarItems.map((item, index) => (
+              <div key={item} className="mb-1">
+                <button
+                  onClick={() => handleSidebarClick(item)}
+                  className={`w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                    item === '홈티매칭'
+                      ? 'bg-blue-500 text-white'
+                      : selectedSidebarItem === item
+                      ? 'bg-blue-50 text-blue-600'
+                      : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  {item}
+                </button>
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* 게시글 목록 */}
-        <div className="space-y-6">
-          {filteredPosts.map((post) => (
-            <div key={post.id} className="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
-              <div className="p-6">
-                {/* 게시글 헤더 */}
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2 mb-2">
-                      {post.isUrgent && (
-                        <span className="bg-red-500 text-white px-2 py-1 rounded text-xs font-semibold">긴급</span>
-                      )}
-                      <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-medium">
+        {/* 메인 콘텐츠 */}
+        <div className="flex-1 p-8">
+          {/* 브레드크럼 */}
+          <div className="flex items-center text-sm text-gray-600 mb-4">
+            <Link href="/" className="hover:text-blue-600">홈</Link>
+            <span className="mx-2">&gt;</span>
+            <Link href="/matching" className="hover:text-blue-600">홈티매칭</Link>
+            <span className="mx-2">&gt;</span>
+            <span className="text-gray-900 font-medium">{getRegionTitle()}</span>
+          </div>
+
+          {/* 제목 */}
+          <h1 className="text-2xl font-bold text-gray-900 mb-6">{getRegionTitle()}</h1>
+
+          {/* 탭 네비게이션 */}
+          <div className="mb-6">
+            <div className="flex space-x-0 border border-gray-300 rounded-lg overflow-hidden">
+              {tabs.map((tab, index) => (
+                <button
+                  key={tab}
+                  onClick={() => setSelectedTab(tab)}
+                  className={`px-6 py-3 text-sm font-medium border-r border-gray-300 last:border-r-0 ${
+                    selectedTab === tab
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-white text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 검색 폼 */}
+          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
+            <div className="flex gap-4">
+              <select
+                value={selectedLocation}
+                onChange={(e) => setSelectedLocation(e.target.value)}
+                className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {locations.map((location) => (
+                  <option key={location} value={location}>{location}</option>
+                ))}
+              </select>
+              
+              <select
+                value={selectedAge}
+                onChange={(e) => setSelectedAge(e.target.value)}
+                className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {ages.map((age) => (
+                  <option key={age} value={age}>{age}</option>
+                ))}
+              </select>
+              
+              <button
+                onClick={handleTimeSelect}
+                className="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-left text-gray-500 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {selectedTime}
+              </button>
+              
+              <button className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 rounded-lg font-medium transition-colors">
+                홈티검색
+              </button>
+            </div>
+          </div>
+
+          {/* 게시글 테이블 */}
+          <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">번호</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">지역</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">제목</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">진행</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredPosts.map((post, index) => (
+                  <tr key={post.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {post.id}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
                         {post.category}
                       </span>
-                      <span className="text-gray-500 text-sm">{post.region}</span>
-                    </div>
-                    <h3 className="text-xl font-bold text-gray-900 mb-2 hover:text-blue-600 cursor-pointer">
-                      {post.title}
-                    </h3>
-                    <p className="text-gray-600 line-clamp-2">{post.content}</p>
-                  </div>
-                  <div className="ml-4 text-right">
-                    <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                      post.status === '모집중' 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-gray-100 text-gray-800'
-                    }`}>
-                      {post.status}
-                    </div>
-                  </div>
-                </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div>
+                        <div className="text-sm font-medium text-blue-600 hover:text-blue-800 cursor-pointer">
+                          {post.title}
+                        </div>
+                        <div className="text-sm text-gray-500 mt-1">
+                          {post.details}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right">
+                      <button className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium transition-colors">
+                        매칭중
+                      </button>
+                      <div className="text-xs text-blue-600 mt-1">
+                        +{post.applications}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
-                {/* 게시글 정보 */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 text-sm">
-                  <div>
-                    <span className="text-gray-500">대상:</span>
-                    <span className="font-medium ml-1">{post.age}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">예산:</span>
-                    <span className="font-medium ml-1">{post.budget}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">일정:</span>
-                    <span className="font-medium ml-1">{post.schedule}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">지원자:</span>
-                    <span className="font-medium ml-1 text-blue-600">{post.applicants}명</span>
-                  </div>
-                </div>
-
-                {/* 게시글 하단 */}
-                <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                  <div className="flex items-center space-x-4 text-sm text-gray-500">
-                    <span>작성자: {post.author}</span>
-                    <span>작성일: {post.createdAt}</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <button className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-                      상세보기
-                    </button>
-                    <button className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-                      지원하기
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* 페이지네이션 */}
-        <div className="flex justify-center mt-12">
-          <div className="flex items-center space-x-2">
-            <button className="px-3 py-2 rounded-lg border border-gray-300 text-gray-500 hover:bg-gray-50">
-              이전
-            </button>
-            {[1, 2, 3, 4, 5].map((page) => (
-              <button
-                key={page}
-                className={`px-4 py-2 rounded-lg ${
-                  page === 1
-                    ? 'bg-blue-500 text-white'
-                    : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                {page}
+          {/* 페이지네이션 */}
+          <div className="flex justify-center mt-8">
+            <div className="flex items-center space-x-2">
+              <button className="px-3 py-2 text-gray-500 hover:text-gray-700">
+                이전
               </button>
-            ))}
-            <button className="px-3 py-2 rounded-lg border border-gray-300 text-gray-500 hover:bg-gray-50">
-              다음
-            </button>
-          </div>
-        </div>
-
-        {/* 통계 정보 */}
-        <div className="mt-16 grid grid-cols-1 md:grid-cols-4 gap-6">
-          <div className="bg-white rounded-xl shadow-sm p-6 text-center">
-            <div className="text-2xl font-bold text-blue-600 mb-1">1,247</div>
-            <div className="text-gray-600">총 요청글 수</div>
-          </div>
-          <div className="bg-white rounded-xl shadow-sm p-6 text-center">
-            <div className="text-2xl font-bold text-green-600 mb-1">98%</div>
-            <div className="text-gray-600">매칭 성공률</div>
-          </div>
-          <div className="bg-white rounded-xl shadow-sm p-6 text-center">
-            <div className="text-2xl font-bold text-orange-600 mb-1">24시간</div>
-            <div className="text-gray-600">평균 응답 시간</div>
-          </div>
-          <div className="bg-white rounded-xl shadow-sm p-6 text-center">
-            <div className="text-2xl font-bold text-purple-600 mb-1">4.8점</div>
-            <div className="text-gray-600">평균 만족도</div>
+              {[1, 2, 3, 4, 5].map((page) => (
+                <button
+                  key={page}
+                  className={`px-3 py-2 text-sm ${
+                    page === 1
+                      ? 'text-blue-600 font-bold'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
+              <button className="px-3 py-2 text-gray-500 hover:text-gray-700">
+                다음
+              </button>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* 시간 검색 팝업 */}
+      {showTimePopup && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold">시간 선택</h3>
+              <button
+                onClick={() => setShowTimePopup(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="grid grid-cols-4 gap-3">
+              {timeSlots.map((time) => (
+                <button
+                  key={time}
+                  onClick={() => {
+                    setSelectedTime(time);
+                    setShowTimePopup(false);
+                  }}
+                  className="bg-blue-50 hover:bg-blue-100 text-blue-600 px-3 py-2 rounded text-sm font-medium transition-colors"
+                >
+                  {time}
+                </button>
+              ))}
+            </div>
+            
+            <div className="mt-6 flex justify-end space-x-3">
+              <button
+                onClick={() => setShowTimePopup(false)}
+                className="px-4 py-2 text-gray-600 border border-gray-300 rounded hover:bg-gray-50"
+              >
+                취소
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

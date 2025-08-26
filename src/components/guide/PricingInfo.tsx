@@ -5,25 +5,25 @@ export default function PricingInfo() {
     price: "9,900",
     period: "월",
     originalFee: "20%",
-    newFee: "9%",
+    newFee: "0%",
     features: [
       {
         icon: "🔍",
-        title: "걱정된 진료비, 무제한 절약",
-        description: "사실 아무곳 100% 시간 진료로 부담 없이 전문가와 믿을 수 있는 본원 시작"
+        title: "검증된 전문가, 무제한 열람",
+        description: "자격/경력을 100% 사전 검증한 모든 선생님의 프로필을 확인하고 우리 아이에게 꼭 맞는 분을 직접 찾으세요."
       },
       {
         icon: "🔥", 
-        title: "수수료 0%의 비용 절약",
-        description: "진료료를 수수료 없이 모든 비용을 혜택하고, 학부모님은 기존 업체 가격으로 양질의 수업을 들을 수 있음"
+        title: "수수료 0%로 비용 절감",
+        description: "선생님은 수수료 부담 없이 비용을 제안하고, 학부모님은 거품 없는 가격으로 최고의 수업을 받습니다."
       },
       {
         icon: "💬",
         title: "1:1 실시간 채팅으로 직접 소통", 
-        description: "충분한 상담 바로 볼 수 있고, 선생님을 아이에게 가장 타당한 확인의의 신뢰을 결정 수 있음"
+        description: "궁금한 점은 바로 묻고, 인터뷰를 통해 아이와의 합을 미리 확인하며 신뢰를 쌓을 수 있습니다."
       }
     ],
-    savings: "매월 4만원 이상의 비용을 아끼고 우수한 아이의 최고의 프로그램들을 만나보세요",
+    savings: "커피 두 잔 값으로, 매달 4만원 이상의 비용을 아끼고 우리 아이의 최고의 파트너를 만나보세요",
     cta: "지금 바로 이용권 시작하고 최고의 선생님 찾기"
   };
 
@@ -57,7 +57,7 @@ export default function PricingInfo() {
     {
       feature: "수수료",
       existing: "20%",
-      momci: "9%",
+      momci: "0%",
       highlight: true
     },
     {

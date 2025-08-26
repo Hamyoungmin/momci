@@ -22,8 +22,8 @@ export default function GuideHero() {
             </div>
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
               <div className="text-3xl mb-3">💰</div>
-              <h3 className="font-bold mb-2 text-gray-900">합리적 수수료</h3>
-              <p className="text-sm text-gray-600">업계 최저 9% 수수료</p>
+              <h3 className="font-bold mb-2 text-gray-900">수수료 0원</h3>
+              <p className="text-sm text-gray-600">중개 수수료 없는 투명한 거래</p>
             </div>
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
               <div className="text-3xl mb-3">🤝</div>

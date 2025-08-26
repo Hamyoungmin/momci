@@ -1,8 +1,5 @@
 import type { Metadata } from "next";
-import PricingHero from '@/components/pricing/PricingHero';
 import PricingPlans from '@/components/pricing/PricingPlans';
-import ComparisonTable from '@/components/pricing/ComparisonTable';
-import PricingFAQ from '@/components/pricing/PricingFAQ';
 
 export const metadata: Metadata = {
   title: "이용권 구매 - 더모든 키즈",
@@ -12,17 +9,8 @@ export const metadata: Metadata = {
 export default function PricingPage() {
   return (
     <div>
-      {/* 히어로 섹션 */}
-      <PricingHero />
-      
       {/* 요금제 플랜 */}
       <PricingPlans />
-      
-      {/* 비교 테이블 */}
-      <ComparisonTable />
-      
-      {/* FAQ */}
-      <PricingFAQ />
     </div>
   );
 }
