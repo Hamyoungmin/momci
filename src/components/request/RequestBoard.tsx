@@ -218,15 +218,15 @@ export default function RequestBoard() {
         <div className="w-64 bg-white shadow-lg">
           <div className="p-4">
             {sidebarItems.map((item, index) => (
-              <div key={item} className="mb-1">
+              <div key={item} className={item === '홈티매칭' ? 'mb-6' : 'mb-1'}>
                 <button
                   onClick={() => handleSidebarClick(item)}
-                  className={`w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                  className={`w-full transition-colors ${
                     item === '홈티매칭'
-                      ? 'bg-blue-500 text-white'
+                      ? 'bg-blue-500 text-white text-xl font-bold rounded-lg h-[110px] flex items-center justify-center'
                       : selectedSidebarItem === item
-                      ? 'bg-blue-50 text-blue-600'
-                      : 'text-gray-700 hover:bg-gray-50'
+                      ? 'bg-blue-50 text-blue-600 text-left px-4 py-3 rounded-lg text-sm font-medium'
+                      : 'text-gray-700 hover:bg-gray-50 text-left px-4 py-3 rounded-lg text-sm font-medium'
                   }`}
                 >
                   {item}
@@ -238,17 +238,20 @@ export default function RequestBoard() {
 
         {/* 메인 콘텐츠 */}
         <div className="flex-1 p-8">
-          {/* 브레드크럼 */}
-          <div className="flex items-center text-sm text-gray-600 mb-4">
-            <Link href="/" className="hover:text-blue-600">홈</Link>
-            <span className="mx-2">&gt;</span>
-            <Link href="/matching" className="hover:text-blue-600">홈티매칭</Link>
-            <span className="mx-2">&gt;</span>
-            <span className="text-gray-900 font-medium">{getRegionTitle()}</span>
+          {/* 제목과 브레드크럼 */}
+          <div className="flex items-center justify-between mb-6">
+            {/* 제목 */}
+            <h1 className="text-2xl font-bold text-gray-900">{getRegionTitle()}</h1>
+            
+            {/* 브레드크럼 */}
+            <div className="flex items-center text-sm text-gray-600">
+              <Link href="/" className="hover:text-blue-600">홈</Link>
+              <span className="mx-2">&gt;</span>
+              <Link href="/matching" className="hover:text-blue-600">홈티매칭</Link>
+              <span className="mx-2">&gt;</span>
+              <span className="text-gray-900 font-medium">{getRegionTitle()}</span>
+            </div>
           </div>
-
-          {/* 제목 */}
-          <h1 className="text-2xl font-bold text-gray-900 mb-6">{getRegionTitle()}</h1>
 
           {/* 탭 네비게이션 */}
           <div className="mb-6">
