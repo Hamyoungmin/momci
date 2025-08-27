@@ -758,7 +758,7 @@ export default function TeacherSearchBoard() {
             <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-blue-50">
               <div>
                 <h3 className="text-2xl font-bold text-gray-900">더모든 키즈 전문가 프로필 등록</h3>
-                <p className="text-base text-gray-600 mt-2">전문의의 전문성과 경험을 토대로 더욱 높은 수준의 치료사로 성장할 수 있습니다.</p>
+                <p className="text-base text-gray-600 mt-2">검증된 전문 치료사로 등록하여 안정적인 수익과 전문성 향상의 기회를 얻으세요.</p>
               </div>
               <button 
                 onClick={closePopup}
@@ -881,11 +881,11 @@ export default function TeacherSearchBoard() {
                   <div className="mb-4">
                     <label className="block text-sm font-medium text-gray-700 mb-2">치료 활동 및 경력 *</label>
                     <p className="text-sm text-gray-500 mb-3">
-                      현원이 어떤 치료분야에 자직물을 어떻게를 대해서는 다시 치료사로서 차정교사는 자산연의 경정은 우영하는 아자깁새
-                      나다.
+                      어떤 치료 분야에서 어떤 활동을 해왔는지, 어떤 경험과 성과를 가지고 계신지 자세히 작성해주세요. 
+                      학부모님께 공개되는 내용입니다.
                     </p>
                     <textarea 
-                      placeholder=""
+                      placeholder="예: 서울대학교병원 재활의학과에서 5년간 언어치료사로 근무하며 아동 언어발달 지연 전문 치료를 담당했습니다. 총 200명 이상의 아동을 담당하며 평균 80% 이상의 개선율을 보였습니다."
                       rows={4}
                       className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
@@ -895,11 +895,11 @@ export default function TeacherSearchBoard() {
                   <div className="mb-4">
                     <label className="block text-sm font-medium text-gray-700 mb-2">주요 치료 경력/전문 *</label>
                     <p className="text-sm text-gray-500 mb-3">
-                      해상한 할째를 가지 이치값을 경기값드로 치호동이 필용할 신앙예기 자처이 학는강의 윈 지된을 할니다. (제장공화 국
-                      속 치연 이성 직장의 정옥)
+                      보유하신 전문 분야와 특화된 치료 기법, 주요 경력사항을 작성해주세요. 
+                      (예: 병원명, 근무기간, 담당 업무, 보유 자격증 등)
                     </p>
                     <textarea 
-                      placeholder=""
+                      placeholder="예: 언어재활사 1급, 놀이치료사 자격증 보유. 발음교정, 언어발달지연, 자폐스펙트럼 아동 전문. 연세의료원 소아재활의학과 (2019-2024), 삼성서울병원 언어치료실 (2017-2019) 근무 경력."
                       rows={4}
                       className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
@@ -912,10 +912,12 @@ export default function TeacherSearchBoard() {
                   <div className="mb-4">
                     <label className="block text-sm font-medium text-gray-700 mb-2">🎯 경력 *</label>
                     <select className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                      <option>예: 1년 차후회</option>
+                      <option>경력을 선택해주세요</option>
+                      <option>1년 미만</option>
                       <option>1-2년</option>
-                      <option>3-5년</option>
-                      <option>5년 이상</option>
+                      <option>3-4년</option>
+                      <option>5-7년</option>
+                      <option>8년 이상</option>
                     </select>
                   </div>
                   
@@ -958,9 +960,9 @@ export default function TeacherSearchBoard() {
                     <div className="grid grid-cols-3 gap-3">
                       {[
                         '언어치료', 'ABA치료', '놀이치료', '작업치료', 
-                        '행동치료', '특수교육', '롤잉/운동치료', '일반치료',
-                        '독려치료', '옥교치료', '현로네치료', '미술치료',
-                        '음악치료', '모니터링'
+                        '행동치료', '특수교육', '물리치료', '감각통합치료',
+                        '인지치료', '미술치료', '음악치료', '심리치료',
+                        '발달재활', '학습치료'
                       ].map(field => (
                         <label key={field} className="inline-flex items-center">
                           <input type="checkbox" className="form-checkbox text-blue-600 rounded" />
@@ -981,7 +983,7 @@ export default function TeacherSearchBoard() {
                   </div>
                   
                   <p className="text-base text-gray-600 mb-4">
-                    무료한 서류들은 관리 출역아직 서무아직치, 업무성치기치 공개하지 않습니다.
+                    업로드하신 서류들은 관리자 검토 용도로만 사용되며, 학부모님께 공개되지 않습니다.
                   </p>
                   
                   {/* 학력 증빙 서류 */}
@@ -1015,7 +1017,7 @@ export default function TeacherSearchBoard() {
                     <div className="bg-blue-100 rounded-full p-2 mr-3">
                       <span className="text-blue-600 text-lg">📄</span>
                     </div>
-                    <h4 className="text-xl font-bold text-gray-900">자신 정보 (관리자 확인용)</h4>
+                    <h4 className="text-xl font-bold text-gray-900">계좌 정보 (관리자 확인용)</h4>
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -1024,7 +1026,7 @@ export default function TeacherSearchBoard() {
                       <label className="block text-base font-medium text-gray-700 mb-2">은행명 *</label>
                       <input 
                         type="text" 
-                        placeholder="입금은해"
+                        placeholder="예: 국민은행"
                         className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       />
                     </div>
@@ -1034,7 +1036,7 @@ export default function TeacherSearchBoard() {
                       <label className="block text-base font-medium text-gray-700 mb-2">예금주명 *</label>
                       <input 
                         type="text" 
-                        placeholder="예금주"
+                        placeholder="예: 홍길동"
                         className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       />
                     </div>
@@ -1050,15 +1052,12 @@ export default function TeacherSearchBoard() {
                     />
                   </div>
                   
-                  {/* 자심 정통 */}
+                  {/* 통장 사본 업로드 */}
                   <div className="mb-4">
-                    <h5 className="font-medium text-gray-900 mb-3">⭐ 자심 정통</h5>
-                    <select className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 mb-4">
-                      <option>국민은 선택하세요</option>
-                      <option>국민은행</option>
-                      <option>신한은행</option>
-                      <option>우리은행</option>
-                    </select>
+                    <label className="block text-base font-medium text-gray-700 mb-2">통장 사본 *</label>
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                      <p className="text-base text-gray-500">통장 첫 페이지 사본을 업로드해주세요.</p>
+                    </div>
                   </div>
                 </div>
 
@@ -1072,13 +1071,13 @@ export default function TeacherSearchBoard() {
                   </div>
                   
                   <div className="space-y-3 text-base text-gray-700 mb-4">
-                    <p>1. 제헤인 세줄연는 플명젠여 의도 웹교다하력, 정발, 제치력 점눈 서술에서, 치기 지가 시육 동록을 해석합니다.</p>
-                    <p>2. 제헤인 업서보는 회수및 창교작서 순위 정교정 작부 자속정여 결록네다.</p>
-                    <p>3. 지성 세 철치료 지강 우갸 흔족으며 갈 준점자가하 경일 우웨스위 줭목력는 건약 동부합니다.</p>
-                    <p>4. 응방는 지직드를 제고웹 장곤탄 고뷰만연 어시하다, 시정에 한유성과 월역아 히전 새리도드 서질인치 특휸처터 신육짚업성삼세분 창드능정 출련업니다.</p>
-                    <p>5. 흥동음을 참눈지 암앗 양엥 가아하여자, 다길 참발 동도 실망량 창닙하다, 치리 십 갈진 작지은 작취 은 항축을 작 다음의 은 정하면 줄 국업의 송진 만니다.</p>
-                    <p>6. 해부진성확 경서서론 형우믄 사함잰자 서시 점아 당인 점수 부숏기사무 결중력 정량, 서페노 이정의 계혈의 숭 나순대 송익 러니다.</p>
-                    <p>7. 해부진성확 숭 양잔에돌 서능 잔잘가는 체숏변더, 창석더 이절 결입 늚해월도는 건암 항여교가 줄미다.</p>
+                    <p>1. 제공한 개인정보는 플랫폼 내 치료사 활동, 정산, 세금 관련 업무에서만 사용되며, 제3자에게 제공되지 않습니다.</p>
+                    <p>2. 제출한 자격증명서와 경력서류는 관리자 검토 후 승인여부를 결정하며, 허위정보 제공 시 등록이 취소될 수 있습니다.</p>
+                    <p>3. 치료사 활동 중 발생하는 분쟁 또는 갈등에 대해서는 플랫폼의 중재를 받으며, 관련 규정에 따라 해결합니다.</p>
+                    <p>4. 플랫폼은 치료사와 학부모 간의 매칭 서비스를 제공하며, 치료의 질과 효과에 대해서는 치료사가 직접 책임집니다.</p>
+                    <p>5. 첫 수업 수수료를 제외한 모든 수업료는 100% 치료사에게 지급되며, 정산은 매월 말일 기준으로 익월 10일에 지급됩니다.</p>
+                    <p>6. 외부 직거래는 금지되며, 발견 시 계약해지 및 법적 조치가 취해질 수 있습니다. 모든 거래는 플랫폼 내에서만 진행됩니다.</p>
+                    <p>7. 본 약관에 동의함으로써 더모든 키즈의 치료사로서 전문성과 책임감을 가지고 활동할 것을 서약합니다.</p>
                   </div>
                   
                   <div className="flex items-center mb-4">
