@@ -284,33 +284,35 @@ export default function TemplateManagementModal({ isOpen, onClose }: TemplateMan
                   ) : (
                     <>
                       {/* 미리보기 모드 */}
-                      <div className="bg-gray-50 rounded-lg p-4">
-                        <div className="flex items-center space-x-2 mb-3">
-                          <h5 className="font-medium text-gray-900">{selectedTemplate.title}</h5>
-                          {getCategoryBadge(selectedTemplate.category)}
+                      {selectedTemplate && (
+                        <div className="bg-gray-50 rounded-lg p-4">
+                          <div className="flex items-center space-x-2 mb-3">
+                            <h5 className="font-medium text-gray-900">{selectedTemplate.title}</h5>
+                            {getCategoryBadge(selectedTemplate.category)}
+                          </div>
+                          <p className="text-sm text-gray-700 whitespace-pre-wrap mb-4">
+                            {selectedTemplate.content}
+                          </p>
+                          <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
+                            <span>사용 횟수: {selectedTemplate.usageCount}회</span>
+                            <span>작성자: {selectedTemplate.createdBy}</span>
+                          </div>
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => setIsEditing(true)}
+                              className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+                            >
+                              편집
+                            </button>
+                            <button className="px-3 py-1 bg-gray-200 text-gray-700 text-sm rounded hover:bg-gray-300">
+                              복사
+                            </button>
+                            <button className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700">
+                              삭제
+                            </button>
+                          </div>
                         </div>
-                        <p className="text-sm text-gray-700 whitespace-pre-wrap mb-4">
-                          {selectedTemplate.content}
-                        </p>
-                        <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
-                          <span>사용 횟수: {selectedTemplate.usageCount}회</span>
-                          <span>작성자: {selectedTemplate.createdBy}</span>
-                        </div>
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={() => setIsEditing(true)}
-                            className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
-                          >
-                            편집
-                          </button>
-                          <button className="px-3 py-1 bg-gray-200 text-gray-700 text-sm rounded hover:bg-gray-300">
-                            복사
-                          </button>
-                          <button className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700">
-                            삭제
-                          </button>
-                        </div>
-                      </div>
+                      )}
                     </>
                   )}
                 </div>

@@ -173,7 +173,7 @@ export default function InquiryManagement() {
       assignedTo: '정산팀',
       attachments: [],
       tags: ['정산지연', '수업완료', '치료사정산', '일정확인'],
-      responseTime: null
+      responseTime: undefined
     }
   ]);
 

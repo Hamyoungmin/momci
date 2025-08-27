@@ -1,7 +1,7 @@
 'use client';
 
 interface Payment {
-  status: 'pending' | 'completed' | 'failed' | 'cancelled';
+  status: 'pending' | 'completed' | 'failed' | 'cancelled' | 'settlement_pending' | 'settlement_completed';
   amount: number;
   userType?: 'parent' | 'teacher';
 }

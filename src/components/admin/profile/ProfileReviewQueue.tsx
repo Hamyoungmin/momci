@@ -12,6 +12,17 @@ interface ProfileSubmission {
   status: 'pending' | 'approved' | 'rejected' | 'hold';
   specialties: string[];
   experience: number;
+  education: string;
+  certifications: string[];
+  documents: {
+    diploma: string;
+    certificate: string;
+    career: string;
+    license: string;
+  };
+  profilePhoto: string;
+  selfIntroduction: string;
+  teachingPhilosophy: string;
   priority: 'high' | 'medium' | 'low';
 }
 
