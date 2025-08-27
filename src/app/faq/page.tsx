@@ -107,22 +107,18 @@ export default function FAQPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Hero 섹션 */}
-      <section className="bg-blue-500 text-white py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <h1 className="text-4xl font-bold mb-4">자주 묻는 질문</h1>
-            <p className="text-xl text-blue-100">
-              더모든 키즈에 대한 궁금한 점들을 확인해보세요
-            </p>
-          </div>
+    <div className="min-h-screen bg-gray-50 py-12">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* 페이지 제목 */}
+        <div className="text-center mb-12">
+          <h1 className="text-3xl font-bold text-gray-900 mb-4">자주 묻는 질문</h1>
+          <p className="text-gray-600">
+            더모든 키즈에 대한 궁금한 점들을 확인해보세요
+          </p>
         </div>
-      </section>
 
-      {/* 검색 섹션 */}
-      <section className="py-8 bg-white">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* 검색 섹션 */}
+        <div className="mb-12">
           <div className="relative">
             <input
               type="text"
@@ -136,56 +132,44 @@ export default function FAQPage() {
             </div>
           </div>
         </div>
-      </section>
 
-      {/* FAQ 내용 */}
-      <section className="py-16">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* FAQ 내용 */}
+        <div className="space-y-8">
           {faqCategories.map((category, categoryIndex) => (
-            <div key={categoryIndex} className="mb-12">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6 pb-2 border-b border-gray-200">
+            <div key={categoryIndex} className="bg-white border-2 border-blue-500 rounded-xl p-6">
+              <h2 className="text-xl font-bold text-blue-600 mb-6 flex items-center">
+                <span className="mr-3">🔵</span>
                 {category.category}
               </h2>
               
               <div className="space-y-4">
                 {category.items.map((item) => (
-                  <div key={item.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                  <div key={item.id} className="border border-gray-200 rounded-lg">
                     <button
                       onClick={() => toggleItem(item.id)}
-                      className="w-full px-6 py-4 text-left hover:bg-gray-50 transition-colors focus:outline-none focus:bg-gray-50"
+                      className="w-full text-left p-4 hover:bg-gray-50 flex items-center justify-between"
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-start space-x-3">
-                          <span className="bg-blue-500 text-white text-sm px-2 py-1 rounded font-medium flex-shrink-0 mt-0.5">
-                            Q
-                          </span>
-                          <h3 className="text-lg font-medium text-gray-900 text-left">
-                            {item.question}
-                          </h3>
-                        </div>
-                        <svg 
-                          className={`h-5 w-5 text-gray-400 transition-transform duration-200 flex-shrink-0 ${
-                            openItems.includes(item.id) ? 'rotate-180' : ''
-                          }`} 
-                          fill="none" 
-                          viewBox="0 0 24 24" 
-                          stroke="currentColor"
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7 7" />
-                        </svg>
-                      </div>
+                      <span className="font-medium text-gray-900">
+                        Q. {item.question}
+                      </span>
+                      <svg 
+                        className={`w-5 h-5 text-blue-500 transition-transform duration-200 ${
+                          openItems.includes(item.id) ? 'transform rotate-180' : ''
+                        }`} 
+                        fill="none" 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
                     </button>
                     
                     {openItems.includes(item.id) && (
-                      <div className="px-6 pb-4 border-t border-gray-100">
-                        <div className="flex items-start space-x-3 pt-4">
-                          <span className="bg-green-500 text-white text-sm px-2 py-1 rounded font-medium flex-shrink-0">
-                            A
-                          </span>
-                          <p className="text-gray-600 leading-relaxed">
-                            {item.answer}
-                          </p>
-                        </div>
+                      <div className="px-4 pb-4 border-t border-gray-200 bg-blue-50">
+                        <p className="text-gray-700 pt-4 leading-relaxed">
+                          <span className="font-medium text-blue-600">A. </span>
+                          {item.answer}
+                        </p>
                       </div>
                     )}
                   </div>
@@ -194,7 +178,7 @@ export default function FAQPage() {
             </div>
           ))}
         </div>
-      </section>
+      </div>
 
       {/* 추가 문의 */}
       <section className="py-16 bg-blue-50">

@@ -17,21 +17,21 @@ export default function Header() {
   const [isMobileSupportOpen, setIsMobileSupportOpen] = useState(false);
 
   return (
-    <header className="bg-white shadow-sm border-b border-gray-200">
+    <header className="bg-white shadow-md border-b border-gray-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
+        <div className="flex justify-between items-center h-20">
           {/* 로고 */}
           <div className="flex-shrink-0">
-            <Link href="/" className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">더</span>
+            <Link href="/" className="flex items-center space-x-3">
+              <div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center">
+                <span className="text-white font-bold text-lg">더</span>
               </div>
-              <span className="text-xl font-bold text-gray-900">더모든 키즈</span>
+              <span className="text-2xl font-bold text-gray-900">더모든 키즈</span>
             </Link>
           </div>
 
           {/* 네비게이션 메뉴 (데스크톱) */}
-          <nav className="hidden md:flex space-x-8">
+          <nav className="hidden md:flex space-x-10">
             {/* 이용안내 드롭다운 */}
             <div 
               className="relative"
@@ -39,7 +39,7 @@ export default function Header() {
               onMouseLeave={() => setIsGuideDropdownOpen(false)}
             >
               <div 
-                className="text-gray-700 hover:text-blue-500 px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer"
+                className="text-gray-700 hover:text-blue-500 px-4 py-3 rounded-md text-base font-medium transition-colors cursor-pointer"
               >
                 이용안내
               </div>
@@ -84,7 +84,7 @@ export default function Header() {
               onMouseLeave={() => setIsMatchingDropdownOpen(false)}
             >
               <div 
-                className="text-gray-700 hover:text-blue-500 px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer"
+                className="text-gray-700 hover:text-blue-500 px-4 py-3 rounded-md text-base font-medium transition-colors cursor-pointer"
               >
                 홈티매칭
               </div>
@@ -116,7 +116,7 @@ export default function Header() {
               onMouseLeave={() => setIsRegisterDropdownOpen(false)}
             >
               <div 
-                className="text-gray-700 hover:text-blue-500 px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer"
+                className="text-gray-700 hover:text-blue-500 px-4 py-3 rounded-md text-base font-medium transition-colors cursor-pointer"
               >
                 치료사 등록
               </div>
@@ -149,7 +149,7 @@ export default function Header() {
               onMouseLeave={() => setIsCommunityDropdownOpen(false)}
             >
               <div 
-                className="text-gray-700 hover:text-blue-500 px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer"
+                className="text-gray-700 hover:text-blue-500 px-4 py-3 rounded-md text-base font-medium transition-colors cursor-pointer"
               >
                 커뮤니티
               </div>
@@ -176,7 +176,7 @@ export default function Header() {
               onMouseLeave={() => setIsSupportDropdownOpen(false)}
             >
               <div 
-                className="text-gray-700 hover:text-blue-500 px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer"
+                className="text-gray-700 hover:text-blue-500 px-4 py-3 rounded-md text-base font-medium transition-colors cursor-pointer"
               >
                 고객센터
               </div>
@@ -217,10 +217,10 @@ export default function Header() {
 
           {/* 우측 버튼들 */}
           <div className="hidden md:flex items-center space-x-4">
-            <Link href="/auth/login" className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+            <Link href="/auth/login" className="text-gray-700 hover:text-gray-900 px-4 py-2 rounded-md text-base font-medium">
               로그인
             </Link>
-            <Link href="/auth/signup" className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+            <Link href="/auth/signup" className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2.5 rounded-lg text-base font-medium transition-colors">
               회원가입
             </Link>
           </div>
@@ -250,7 +250,7 @@ export default function Header() {
               <div>
                 <button
                   onClick={() => setIsMobileGuideOpen(!isMobileGuideOpen)}
-                  className="text-gray-700 hover:text-blue-500 w-full px-3 py-2 rounded-md text-base font-medium text-left"
+                  className="text-gray-700 hover:text-blue-500 w-full px-4 py-3 rounded-md text-lg font-medium text-left"
                 >
                   이용안내
                 </button>
@@ -306,7 +306,7 @@ export default function Header() {
               <div>
                 <button
                   onClick={() => setIsMobileMatchingOpen(!isMobileMatchingOpen)}
-                  className="text-gray-700 hover:text-blue-500 w-full px-3 py-2 rounded-md text-base font-medium text-left"
+                  className="text-gray-700 hover:text-blue-500 w-full px-4 py-3 rounded-md text-lg font-medium text-left"
                 >
                   홈티매칭
                 </button>
@@ -342,7 +342,7 @@ export default function Header() {
               <div>
                 <button
                   onClick={() => setIsMobileRegisterOpen(!isMobileRegisterOpen)}
-                  className="text-gray-700 hover:text-blue-500 w-full px-3 py-2 rounded-md text-base font-medium text-left"
+                  className="text-gray-700 hover:text-blue-500 w-full px-4 py-3 rounded-md text-lg font-medium text-left"
                 >
                   치료사 등록
                 </button>
@@ -378,7 +378,7 @@ export default function Header() {
               <div>
                 <button
                   onClick={() => setIsMobileCommunityOpen(!isMobileCommunityOpen)}
-                  className="text-gray-700 hover:text-blue-500 w-full px-3 py-2 rounded-md text-base font-medium text-left"
+                  className="text-gray-700 hover:text-blue-500 w-full px-4 py-3 rounded-md text-lg font-medium text-left"
                 >
                   커뮤니티
                 </button>
@@ -404,7 +404,7 @@ export default function Header() {
               <div>
                 <button
                   onClick={() => setIsMobileSupportOpen(!isMobileSupportOpen)}
-                  className="text-gray-700 hover:text-blue-500 w-full px-3 py-2 rounded-md text-base font-medium text-left"
+                  className="text-gray-700 hover:text-blue-500 w-full px-4 py-3 rounded-md text-lg font-medium text-left"
                 >
                   고객센터
                 </button>
@@ -457,10 +457,10 @@ export default function Header() {
               </div>
               <div className="pt-4 pb-3 border-t border-gray-200">
                 <div className="flex flex-col space-y-2">
-                  <Link href="/auth/login" className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium text-center">
+                  <Link href="/auth/login" className="text-gray-700 hover:text-gray-900 px-4 py-3 rounded-md text-base font-medium text-center">
                     로그인
                   </Link>
-                  <Link href="/auth/signup" className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium text-center transition-colors">
+                  <Link href="/auth/signup" className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg text-base font-medium text-center transition-colors">
                     회원가입
                   </Link>
                 </div>
