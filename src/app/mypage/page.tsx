@@ -3,6 +3,7 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import { Timestamp } from 'firebase/firestore';
 
 export default function MyPage() {
   const { currentUser, userData, loading } = useAuth();
@@ -94,9 +95,9 @@ export default function MyPage() {
               <label className="block text-sm font-medium text-gray-700 mb-2">가입일</label>
               <p className="px-4 py-3 border border-gray-300 rounded-2xl bg-gray-50 text-gray-900">
                 {userData?.createdAt ? 
-                  (userData.createdAt.seconds ? 
-                    new Date(userData.createdAt.seconds * 1000).toLocaleDateString('ko-KR') :
-                    new Date(userData.createdAt).toLocaleDateString('ko-KR')
+                  (userData.createdAt instanceof Timestamp ? 
+                    userData.createdAt.toDate().toLocaleDateString('ko-KR') :
+                    new Date(userData.createdAt as any).toLocaleDateString('ko-KR')
                   ) : 
                   currentUser?.metadata?.creationTime ? 
                     new Date(currentUser.metadata.creationTime).toLocaleDateString('ko-KR') : 
