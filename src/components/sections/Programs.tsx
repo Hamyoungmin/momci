@@ -105,7 +105,7 @@ export default function Programs() {
             더모든 키즈에서 매칭하는 다양한 전문 프로그램들과 함께<br />
             아이에게 꼭 필요한 가장 효과적인 도움을 제공합니다.
           </p>
-          <div className="inline-flex items-center bg-orange-100 text-orange-800 px-4 py-2 rounded-full text-sm font-medium">
+          <div className="inline-flex items-center bg-orange-100 text-orange-800 px-4 py-2 rounded-3xl text-sm font-medium">
             <span className="mr-2">💡</span>
             모든 과정을 함께 지원합니다
           </div>
@@ -114,7 +114,7 @@ export default function Programs() {
         {/* 프로그램 카테고리들 */}
         <div className="space-y-12">
           {programCategories.map((category, categoryIndex) => (
-            <div key={categoryIndex} className="bg-white rounded-2xl shadow-lg p-8">
+            <div key={categoryIndex} className="bg-white rounded-3xl shadow-lg p-8">
               {/* 카테고리 제목 */}
               <h3 className="text-2xl font-bold text-center text-gray-900 mb-8 pb-4 border-b border-gray-200">
                 {category.title}
@@ -123,7 +123,7 @@ export default function Programs() {
               {/* 프로그램들 */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {category.programs.map((program, programIndex) => (
-                  <div key={programIndex} className="bg-gray-50 rounded-xl p-6 hover:bg-gray-100 transition-colors">
+                  <div key={programIndex} className="bg-gray-50 rounded-2xl p-6 hover:bg-gray-100 transition-colors">
                     {/* 프로그램 헤더 */}
                     <div className="flex items-center space-x-3 mb-4">
                       <div className="text-3xl">{program.icon}</div>
@@ -150,7 +150,7 @@ export default function Programs() {
 
         {/* 하단 CTA */}
         <div className="text-center mt-16">
-          <div className="bg-gradient-to-r from-blue-600 to-orange-600 rounded-2xl p-8 text-white">
+          <div className="bg-gradient-to-r from-blue-600 to-orange-600 rounded-3xl p-8 text-white">
             <h3 className="text-2xl font-bold mb-4">
               아이에게 맞는 프로그램을 찾고 계신가요?
             </h3>
@@ -160,13 +160,13 @@ export default function Programs() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <a
                 href="/request"
-                className="bg-white text-blue-600 hover:bg-gray-100 px-8 py-3 rounded-lg font-semibold transition-colors"
+                className="bg-white text-blue-600 hover:bg-gray-100 px-8 py-3 rounded-2xl font-semibold transition-colors"
               >
                 선생님께 요청하기
               </a>
               <a
                 href="/browse"
-                className="border-2 border-white text-white hover:bg-white hover:text-blue-600 px-8 py-3 rounded-lg font-semibold transition-colors"
+                className="border-2 border-white text-white hover:bg-white hover:text-blue-600 px-8 py-3 rounded-2xl font-semibold transition-colors"
               >
                 전문가 둘러보기
               </a>

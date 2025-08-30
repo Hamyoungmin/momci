@@ -65,7 +65,7 @@ export default function ServiceProcess() {
 
         {/* 프로세스 스텝들 */}
         <div className="max-w-5xl mx-auto">
-          <div className="bg-white border-2 border-blue-500 rounded-2xl p-8">
+          <div className="bg-white border-2 border-blue-500 rounded-3xl p-8">
             <h3 className="text-2xl font-bold text-center text-gray-900 mb-8">
               더모든 키즈 이용 가이드
             </h3>
@@ -73,7 +73,7 @@ export default function ServiceProcess() {
               {processes.map((process, index) => (
                 <div key={index} className="relative">
                   {/* 프로세스 카드 */}
-                  <div className="bg-gray-50 rounded-xl p-6 hover:bg-gray-100 transition-colors">
+                  <div className="bg-gray-50 rounded-2xl p-6 hover:bg-gray-100 transition-colors">
                 {/* 스텝 헤더 */}
                 <div className="flex items-center mb-4">
                   <div className="text-2xl mr-3">{process.icon}</div>
@@ -99,7 +99,7 @@ export default function ServiceProcess() {
                 
                 {/* 주의사항 */}
                 {process.note && (
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-3">
                     <p className="text-xs text-yellow-800">
                       <span className="font-semibold">💡 참고: </span>
                       {process.note}
@@ -115,7 +115,7 @@ export default function ServiceProcess() {
 
         {/* 하단 CTA */}
         <div className="text-center mt-12">
-          <div className="bg-gray-50 rounded-xl p-8">
+          <div className="bg-gray-50 rounded-3xl p-8">
             <h3 className="text-xl font-bold text-gray-900 mb-2">
               간단한 4단계로 안전하고 편리하게!
             </h3>
@@ -125,13 +125,13 @@ export default function ServiceProcess() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <a
                 href="/pricing"
-                className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+                className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-2xl font-semibold transition-colors"
               >
                 이용권 구매하기
               </a>
               <a
                 href="/browse"
-                className="border border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-900 px-6 py-3 rounded-lg font-semibold transition-colors"
+                className="border border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-900 px-6 py-3 rounded-2xl font-semibold transition-colors"
               >
                 선생님 둘러보기
               </a>

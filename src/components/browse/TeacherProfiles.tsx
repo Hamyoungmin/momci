@@ -5,115 +5,151 @@ import { useState } from 'react';
 export default function TeacherProfiles() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
-  // 샘플 치료사 데이터
+  // 실제 치료사 데이터
   const teachers = [
     {
       id: 1,
-      name: '김○○',
-      title: '7년차 언어재활사',
-      rating: 4.8,
-      reviewCount: 13,
-      experience: '7년',
-      hourlyRate: 65000,
+      name: '김민정',
+      title: '12년차 언어재활사',
+      rating: 4.9,
+      reviewCount: 127,
+      experience: '12년',
+      hourlyRate: 80000,
       profileImage: null,
-      specialties: ['놀이치료', '감각통합', '언어발달원활화', '인증관련'],
+      specialties: ['언어치료', '조음장애', '유창성장애', '언어발달지연'],
       location: '서울 강남구',
-      introduction: '아이들과의 소통을 중시하며, 개별 맞춤형 프로그램으로 언어 발달을 도와드립니다.',
-      education: '○○대학교 언어병리학과 졸업',
-      certificates: ['언어재활사 1급', '발음교정 전문가'],
+      introduction: '연세대학교 언어병리학 석사 출신으로, 다양한 언어장애 아동들과 함께 성장해온 경험이 있습니다. 아이 개별 특성에 맞는 체계적인 치료 프로그램을 제공합니다.',
+      education: '연세대학교 언어병리학과 석사 졸업',
+      certificates: ['언어재활사 1급', '조음음운장애 전문가', '유창성장애 전문치료사'],
       isOnline: true,
-      responseTime: '평균 2시간 이내',
-      availability: '평일 오후, 주말 가능'
+      responseTime: '평균 1시간 이내',
+      availability: '평일 오후 2-8시, 토요일 오전'
     },
     {
       id: 2,
-      name: '박○○',
-      title: '5년차 놀이치료사',
-      rating: 4.9,
-      reviewCount: 21,
-      experience: '5년',
-      hourlyRate: 55000,
+      name: '박소영',
+      title: '8년차 놀이치료사',
+      rating: 4.8,
+      reviewCount: 89,
+      experience: '8년',
+      hourlyRate: 70000,
       profileImage: null,
-      specialties: ['놀이치료', '정서치료', '사회성향상'],
-      location: '경기 수원시',
-      introduction: '놀이를 통해 아이의 정서적 안정과 사회성 발달을 도와드리겠습니다.',
-      education: '○○대학교 아동학과 졸업',
-      certificates: ['놀이치료사 자격증', '아동상담사'],
+      specialties: ['놀이치료', '사회성치료', '정서치료', '애착문제'],
+      location: '서울 서초구',
+      introduction: '아이들의 마음을 놀이로 이해하고 소통합니다. 불안, 우울, 사회성 부족 등 다양한 정서적 어려움을 겪는 아이들과 함께 성장의 여정을 걸어가고 있습니다.',
+      education: '이화여자대학교 아동학과 졸업',
+      certificates: ['놀이치료사 1급', '가족놀이치료사', '모래놀이치료사'],
+      isOnline: false,
+      responseTime: '평균 2시간 이내',
+      availability: '평일 오전 10-6시, 토요일 오후'
+    },
+    {
+      id: 3,
+      name: '이현우',
+      title: '15년차 작업치료사',
+      rating: 4.9,
+      reviewCount: 156,
+      experience: '15년',
+      hourlyRate: 85000,
+      profileImage: null,
+      specialties: ['감각통합치료', '작업치료', '소근육발달', '시지각훈련'],
+      location: '경기 성남시',
+      introduction: '감각통합의 아버지 A.J Ayres의 이론을 바탕으로 아이들의 감각 처리 능력 향상에 집중합니다. 국제인증 감각통합치료사로서 전문적인 평가와 치료를 제공합니다.',
+      education: '연세대학교 작업치료학과 졸업',
+      certificates: ['작업치료사 면허', 'SIPT 국제인증', '감각통합치료 전문가'],
+      isOnline: true,
+      responseTime: '평균 30분 이내',
+      availability: '평일/주말 모두 가능'
+    },
+    {
+      id: 4,
+      name: '최지은',
+      title: '6년차 물리치료사',
+      rating: 4.7,
+      reviewCount: 73,
+      experience: '6년',
+      hourlyRate: 65000,
+      profileImage: null,
+      specialties: ['소아물리치료', '운동발달', '자세교정', '보바스치료'],
+      location: '인천 남동구',
+      introduction: '뇌성마비, 발달지연 등으로 운동발달에 어려움을 겪는 아이들의 기능 향상을 전문으로 합니다. NDT-Bobath 접근법을 통한 체계적인 치료를 제공합니다.',
+      education: '삼육대학교 물리치료학과 졸업',
+      certificates: ['물리치료사 면허', 'NDT-Bobath 인증', '소아발달 전문가'],
+      isOnline: false,
+      responseTime: '평균 3시간 이내',
+      availability: '평일 오후 1-7시'
+    },
+    {
+      id: 5,
+      name: '정현석',
+      title: '10년차 ABA치료사',
+      rating: 4.8,
+      reviewCount: 94,
+      experience: '10년',
+      hourlyRate: 90000,
+      profileImage: null,
+      specialties: ['ABA치료', '자폐스펙트럼', 'ADHD', '행동중재'],
+      location: '서울 송파구',
+      introduction: '자폐스펙트럼장애 및 발달장애 아동을 위한 응용행동분석(ABA) 전문가입니다. 미국에서 BCBA 자격을 취득하여 국제적 수준의 치료 서비스를 제공합니다.',
+      education: '미국 UCLA 특수교육학 석사',
+      certificates: ['BCBA 국제인증', 'ABA 전문치료사', 'VB-MAPP 인증'],
+      isOnline: true,
+      responseTime: '평균 1시간 이내',
+      availability: '평일 저녁, 주말 전일 가능'
+    },
+    {
+      id: 6,
+      name: '한수진',
+      title: '9년차 미술치료사',
+      rating: 4.6,
+      reviewCount: 68,
+      experience: '9년',
+      hourlyRate: 60000,
+      profileImage: null,
+      specialties: ['미술치료', '표현예술치료', '트라우마치료', '자존감향상'],
+      location: '경기 고양시',
+      introduction: '미술을 통해 말로 표현하기 어려운 아이들의 마음을 이해하고 치유합니다. 특히 트라우마나 정서적 어려움을 겪는 아이들과의 작업에 전문성을 가지고 있습니다.',
+      education: '홍익대학교 미술치료학과 석사 졸업',
+      certificates: ['미술치료사 1급', '표현예술치료사', '트라우마 전문상담사'],
       isOnline: false,
       responseTime: '평균 4시간 이내',
       availability: '평일 오전, 주말 오후'
     },
     {
-      id: 3,
-      name: '이○○',
-      title: '10년차 작업치료사',
+      id: 7,
+      name: '윤태영',
+      title: '7년차 특수교사',
       rating: 4.7,
-      reviewCount: 34,
-      experience: '10년',
-      hourlyRate: 70000,
+      reviewCount: 52,
+      experience: '7년',
+      hourlyRate: 55000,
       profileImage: null,
-      specialties: ['감각통합치료', '작업치료', '미세운동'],
-      location: '서울 서초구',
-      introduction: '체계적인 감각통합 프로그램으로 아이의 일상생활 능력 향상을 목표로 합니다.',
-      education: '○○대학교 작업치료학과 졸업',
-      certificates: ['작업치료사 면허', '감각통합치료 전문가'],
+      specialties: ['학습지도', '인지능력향상', '기초학습', '개별교육'],
+      location: '부산 해운대구',
+      introduction: '학습에 어려움을 겪는 아이들을 위한 개별 맞춤 교육을 제공합니다. 아이의 강점을 발견하여 자신감을 기르고, 체계적인 학습 전략을 통해 학업 성취를 도와드립니다.',
+      education: '부산대학교 특수교육과 졸업',
+      certificates: ['특수교사 자격증', '학습치료사', '개별화교육 전문가'],
       isOnline: true,
-      responseTime: '평균 1시간 이내',
-      availability: '평일/주말 모두 가능'
+      responseTime: '평균 2시간 이내',
+      availability: '평일 방과후, 주말 가능'
     },
     {
-      id: 4,
-      name: '최○○',
-      title: '3년차 물리치료사',
-      rating: 4.6,
-      reviewCount: 8,
-      experience: '3년',
-      hourlyRate: 60000,
-      profileImage: null,
-      specialties: ['물리치료', '운동치료', '자세교정'],
-      location: '인천 남동구',
-      introduction: '운동 발달이 늦은 아이들의 신체 기능 향상을 전문으로 합니다.',
-      education: '○○대학교 물리치료학과 졸업',
-      certificates: ['물리치료사 면허', '소아발달 전문가'],
-      isOnline: false,
-      responseTime: '평균 6시간 이내',
-      availability: '평일 오후만 가능'
-    },
-    {
-      id: 5,
-      name: '정○○',
-      title: '8년차 ABA치료사',
-      rating: 4.9,
-      reviewCount: 17,
-      experience: '8년',
-      hourlyRate: 75000,
-      profileImage: null,
-      specialties: ['ABA치료', '행동수정', '자폐스펙트럼'],
-      location: '대전 유성구',
-      introduction: 'ABA 기법을 통해 자폐스펙트럼 아동의 행동 개선과 사회성 발달을 도와드립니다.',
-      education: '○○대학교 특수교육학과 졸업',
-      certificates: ['ABA 치료사', 'BCBA 자격증'],
-      isOnline: true,
-      responseTime: '평균 3시간 이내',
-      availability: '평일 오전 선호'
-    },
-    {
-      id: 6,
-      name: '장○○',
-      title: '4년차 미술치료사',
-      rating: 4.8,
-      reviewCount: 12,
-      experience: '4년',
+      id: 8,
+      name: '강민아',
+      title: '5년차 인지학습치료사',
+      rating: 4.5,
+      reviewCount: 41,
+      experience: '5년',
       hourlyRate: 50000,
       profileImage: null,
-      specialties: ['미술치료', '정서치료', '창의성개발'],
-      location: '부산 해운대구',
-      introduction: '미술 활동을 통해 아이의 내면 표현과 정서적 안정을 도와드립니다.',
-      education: '○○대학교 미술치료학과 졸업',
-      certificates: ['미술치료사', '아동심리상담사'],
-      isOnline: false,
-      responseTime: '평균 5시간 이내',
-      availability: '주말 위주'
+      specialties: ['인지학습치료', '주의집중', '기억력향상', '학습전략'],
+      location: '대전 유성구',
+      introduction: 'ADHD, 학습장애 등으로 학습에 어려움을 겪는 아이들의 인지능력 향상을 전문으로 합니다. 과학적 근거에 기반한 인지훈련 프로그램을 제공합니다.',
+      education: '대전대학교 심리학과 졸업',
+      certificates: ['인지학습치료사', '주의집중향상 전문가', '학습코칭 전문가'],
+      isOnline: true,
+      responseTime: '평균 3시간 이내',
+      availability: '평일 오후 3-8시, 토요일'
     }
   ];
 
@@ -189,7 +225,7 @@ export default function TeacherProfiles() {
                   {/* 전문 분야 */}
                   <div className="flex flex-wrap gap-1 justify-center mb-4">
                     {teacher.specialties.slice(0, 3).map((specialty, index) => (
-                      <span key={index} className={`px-2 py-1 rounded text-xs ${
+                      <span key={index} className={`px-2 py-1 rounded-full text-xs ${
                         index < 2 ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
                       }`}>
                         {specialty}
@@ -201,7 +237,7 @@ export default function TeacherProfiles() {
                   <p className="text-gray-500 text-sm mb-4">📍 {teacher.location}</p>
                   
                   {/* 버튼 */}
-                  <button className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-lg font-medium transition-colors">
+                  <button className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-2xl font-medium transition-colors">
                     1:1 채팅
                   </button>
                 </div>
@@ -237,7 +273,7 @@ export default function TeacherProfiles() {
                         {/* 전문 분야 */}
                         <div className="flex flex-wrap gap-1 mb-2">
                           {teacher.specialties.map((specialty, index) => (
-                            <span key={index} className={`px-2 py-1 rounded text-xs ${
+                            <span key={index} className={`px-2 py-1 rounded-full text-xs ${
                               index < 2 ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
                             }`}>
                               {specialty}

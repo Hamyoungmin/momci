@@ -37,13 +37,13 @@ export default function Hero() {
             <div className="flex flex-col sm:flex-row gap-4">
               <Link
                 href="/pricing"
-                className="bg-orange-500 hover:bg-orange-600 text-white px-8 py-4 rounded-lg font-semibold text-lg transition-colors shadow-lg"
+                className="bg-orange-500 hover:bg-orange-600 text-white px-8 py-4 rounded-2xl font-semibold text-lg transition-colors shadow-lg"
               >
                 이용권 구매하고 시작하기
               </Link>
               <Link
                 href="/guide"
-                className="border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-900 px-8 py-4 rounded-lg font-semibold text-lg transition-colors"
+                className="border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-900 px-8 py-4 rounded-2xl font-semibold text-lg transition-colors"
               >
                 서비스 이용방법 보기
               </Link>
@@ -52,8 +52,8 @@ export default function Hero() {
           
           {/* 이미지/일러스트 영역 */}
           <div className="relative">
-            <div className="relative bg-white rounded-2xl shadow-2xl p-8 transform rotate-2 hover:rotate-0 transition-transform duration-300">
-              <div className="bg-gradient-to-br from-blue-100 to-orange-100 rounded-xl p-8">
+            <div className="relative bg-white rounded-3xl shadow-2xl p-8 transform rotate-2 hover:rotate-0 transition-transform duration-300">
+              <div className="bg-gradient-to-br from-blue-100 to-orange-100 rounded-2xl p-8">
                 <div className="text-center">
                   <div className="w-32 h-32 bg-orange-200 rounded-full mx-auto mb-6 flex items-center justify-center">
                     <span className="text-4xl">👩‍⚕️</span>

@@ -3,38 +3,56 @@ export default function ReviewStats() {
     {
       category: '언어치료',
       rating: 4.9,
-      count: 423,
+      count: 1247,
       color: 'bg-green-100 text-green-800'
     },
     {
       category: '놀이치료',
       rating: 4.8,
-      count: 312,
+      count: 892,
       color: 'bg-blue-100 text-blue-800'
     },
     {
       category: '감각통합치료',
-      rating: 4.7,
-      count: 267,
+      rating: 4.9,
+      count: 756,
       color: 'bg-purple-100 text-purple-800'
     },
     {
-      category: '작업치료',
+      category: 'ABA치료',
       rating: 4.8,
-      count: 189,
-      color: 'bg-pink-100 text-pink-800'
+      count: 534,
+      color: 'bg-indigo-100 text-indigo-800'
     },
     {
-      category: 'ABA치료',
-      rating: 4.9,
-      count: 156,
-      color: 'bg-indigo-100 text-indigo-800'
+      category: '작업치료',
+      rating: 4.7,
+      count: 423,
+      color: 'bg-pink-100 text-pink-800'
     },
     {
       category: '미술치료',
       rating: 4.6,
-      count: 134,
+      count: 378,
       color: 'bg-yellow-100 text-yellow-800'
+    },
+    {
+      category: '물리치료',
+      rating: 4.7,
+      count: 312,
+      color: 'bg-red-100 text-red-800'
+    },
+    {
+      category: '특수교육',
+      rating: 4.6,
+      count: 245,
+      color: 'bg-orange-100 text-orange-800'
+    },
+    {
+      category: '인지학습치료',
+      rating: 4.5,
+      count: 189,
+      color: 'bg-teal-100 text-teal-800'
     }
   ];
 

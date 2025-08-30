@@ -7,8 +7,8 @@ export default function TeacherGuidePage() {
       <section className="py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="bg-white border-4 border-blue-700 rounded-lg p-12">
-            <div className="text-center mb-24 mt-20">
-              <h2 className="text-4xl font-bold text-gray-900">더모든 키즈 치료사 이용 가이드</h2>
+            <div className="text-center mb-20 mt-20">
+              <h2 className="text-5xl font-bold text-gray-900 mb-4">더모든 키즈 치료사 이용 가이드</h2>
             </div>
 
             {/* STEP 1 */}

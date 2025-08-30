@@ -14,3 +14,5 @@ export default function ParentPricingPage() {
     </div>
   );
 }
+
+

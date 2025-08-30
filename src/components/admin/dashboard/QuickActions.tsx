@@ -57,7 +57,7 @@ export default function QuickActions() {
   ];
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold text-gray-900">빠른 작업</h2>
         <span className="text-sm text-gray-500">자주 사용하는 기능</span>
@@ -68,11 +68,11 @@ export default function QuickActions() {
           <Link
             key={index}
             href={action.href}
-            className="group block p-4 rounded-lg border border-gray-200 hover:border-gray-300 transition-all duration-200 hover:shadow-md"
+            className="group block p-4 rounded-2xl border border-gray-200 hover:border-gray-300 transition-all duration-200 hover:shadow-md"
           >
             <div className="flex items-start space-x-3">
               <div
-                className={`w-10 h-10 ${action.color} rounded-lg flex items-center justify-center text-white transition-colors group-hover:scale-105`}
+                className={`w-10 h-10 ${action.color} rounded-2xl flex items-center justify-center text-white transition-colors group-hover:scale-105`}
               >
                 <span className="text-lg">{action.icon}</span>
               </div>
