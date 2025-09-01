@@ -9,6 +9,7 @@ interface MenuItem {
   href?: string;
   icon: string;
   children?: MenuItem[];
+  adminOnly?: boolean; // 관리자 전용 메뉴
 }
 
 const menuItems: MenuItem[] = [
@@ -46,21 +47,24 @@ const menuItems: MenuItem[] = [
   {
     title: '결제 관리',
     icon: '💳',
+    adminOnly: true,
     children: [
-      { title: '이용권 결제', href: '/admin/payments/subscriptions', icon: '💰' },
-      { title: '첫 수업료', href: '/admin/payments/lessons', icon: '💵' },
-      { title: '환불 관리', href: '/admin/payments/refunds', icon: '↩️' }
+      { title: '이용권 결제', href: '/admin/payments/subscriptions', icon: '💰', adminOnly: true },
+      { title: '첫 수업료', href: '/admin/payments/lessons', icon: '💵', adminOnly: true },
+      { title: '환불 관리', href: '/admin/payments/refunds', icon: '↩️', adminOnly: true }
     ]
   },
   {
     title: '채팅 관리',
     href: '/admin/chat',
-    icon: '💬'
+    icon: '💬',
+    adminOnly: true
   },
   {
     title: '신고 관리',
     href: '/admin/reports',
-    icon: '🚨'
+    icon: '🚨',
+    adminOnly: true
   },
   {
     title: '콘텐츠 관리',
@@ -82,7 +86,11 @@ const menuItems: MenuItem[] = [
   }
 ];
 
-export default function AdminSidebar() {
+interface AdminSidebarProps {
+  isAdmin: boolean;
+}
+
+export default function AdminSidebar({ isAdmin }: AdminSidebarProps) {
   const pathname = usePathname();
   const [expandedItems, setExpandedItems] = useState<string[]>(['회원 관리']);
 
@@ -104,36 +112,62 @@ export default function AdminSidebar() {
   const renderMenuItem = (item: MenuItem, level = 0) => {
     const hasChildren = item.children && item.children.length > 0;
     const isExpanded = expandedItems.includes(item.title);
+    const isDisabled = item.adminOnly && !isAdmin;
+
+    // 관리자 전용 메뉴는 표시하되 비활성화 처리
 
     if (hasChildren) {
       return (
         <div key={item.title}>
           <button
-            onClick={() => toggleExpanded(item.title)}
+            onClick={() => !isDisabled && toggleExpanded(item.title)}
+            disabled={isDisabled}
             className={`w-full flex items-center justify-between px-3 py-2.5 text-left text-sm font-medium rounded-lg transition-colors ${
               level > 0 ? 'ml-6' : ''
-            } text-gray-700 hover:bg-blue-50 hover:text-blue-700`}
+            } ${
+              isDisabled 
+                ? 'text-gray-400 cursor-not-allowed'
+                : 'text-gray-700 hover:bg-blue-50 hover:text-blue-700'
+            }`}
           >
             <div className="flex items-center space-x-3">
               <span className="text-base">{item.icon}</span>
               <span>{item.title}</span>
+              {isDisabled && <span className="text-xs text-gray-400 ml-2">(관리자 전용)</span>}
             </div>
-            <svg
-              className={`w-4 h-4 transition-transform ${
-                isExpanded ? 'rotate-90' : ''
-              }`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
+            {!isDisabled && (
+              <svg
+                className={`w-4 h-4 transition-transform ${
+                  isExpanded ? 'rotate-90' : ''
+                }`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            )}
           </button>
-          {isExpanded && (
+          {isExpanded && !isDisabled && (
             <div className="ml-3 mt-1 space-y-1">
               {item.children!.map(child => renderMenuItem(child, level + 1))}
             </div>
           )}
+        </div>
+      );
+    }
+
+    if (isDisabled) {
+      return (
+        <div
+          key={item.title}
+          className={`flex items-center space-x-3 px-3 py-2.5 text-sm font-medium rounded-lg ${
+            level > 0 ? 'ml-6' : ''
+          } text-gray-400 cursor-not-allowed`}
+        >
+          <span className="text-base">{item.icon}</span>
+          <span>{item.title}</span>
+          <span className="text-xs text-gray-400 ml-2">(관리자 전용)</span>
         </div>
       );
     }
