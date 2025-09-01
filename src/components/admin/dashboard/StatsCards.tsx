@@ -68,31 +68,35 @@ export default function StatsCards() {
       {stats.map((stat, index) => (
         <div
           key={index}
-          className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
+          className="bg-white rounded-xl border-2 border-gray-100 p-6 hover:border-blue-200 hover:shadow-lg transition-all duration-300 group"
         >
           <div className="flex items-center justify-between">
             <div className="flex-1">
-              <p className="text-sm font-medium text-gray-600 mb-1">{stat.title}</p>
-              <p className="text-2xl font-bold text-gray-900 mb-2">{stat.value}</p>
-              <div className="flex items-center space-x-1">
-                <span
-                  className={`text-sm font-medium ${
-                    stat.changeType === 'increase'
-                      ? 'text-green-600'
-                      : stat.changeType === 'decrease'
-                      ? 'text-red-600'
-                      : 'text-gray-600'
-                  }`}
-                >
-                  {stat.change}
-                </span>
-                <span className="text-xs text-gray-500">지난 주 대비</span>
+              <p className="text-sm font-semibold text-gray-500 mb-2 uppercase tracking-wide">{stat.title}</p>
+              <p className="text-3xl font-bold text-gray-900 mb-3 group-hover:text-blue-600 transition-colors">{stat.value}</p>
+              <div className="flex items-center space-x-2">
+                <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${
+                  stat.changeType === 'increase'
+                    ? 'bg-green-100 text-green-700'
+                    : stat.changeType === 'decrease'
+                    ? 'bg-red-100 text-red-700'
+                    : 'bg-gray-100 text-gray-700'
+                }`}>
+                  {stat.changeType === 'increase' && '↗'}
+                  {stat.changeType === 'decrease' && '↘'}
+                  {stat.changeType === 'neutral' && '→'}
+                  <span className="ml-1">{stat.change}</span>
+                </div>
+                <span className="text-xs text-gray-400">지난 주 대비</span>
               </div>
             </div>
-            <div
-              className={`w-12 h-12 ${stat.color} rounded-lg flex items-center justify-center text-white text-xl`}
-            >
-              {stat.icon}
+            <div className="relative">
+              <div
+                className={`w-14 h-14 ${stat.color} rounded-xl flex items-center justify-center text-white text-2xl shadow-lg group-hover:scale-110 transition-transform duration-300`}
+              >
+                {stat.icon}
+              </div>
+              <div className={`absolute inset-0 ${stat.color} rounded-xl opacity-20 group-hover:opacity-30 transition-opacity duration-300`}></div>
             </div>
           </div>
         </div>

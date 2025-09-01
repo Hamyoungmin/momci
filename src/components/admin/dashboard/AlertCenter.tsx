@@ -69,10 +69,21 @@ export default function AlertCenter() {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-gray-900">긴급 알림 센터</h2>
-        <span className="text-sm text-gray-500">실시간 업데이트</span>
+    <div className="bg-white rounded-xl border-2 border-blue-100 p-8 shadow-sm">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 bg-gradient-to-r from-red-500 to-orange-500 rounded-xl flex items-center justify-center">
+            <span className="text-white text-xl">🚨</span>
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">긴급 알림 센터</h2>
+            <p className="text-sm text-gray-500">실시간 모니터링 중</p>
+          </div>
+        </div>
+        <div className="flex items-center space-x-2">
+          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+          <span className="text-sm font-medium text-green-600">LIVE</span>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -80,26 +91,45 @@ export default function AlertCenter() {
           <Link
             key={index}
             href={alert.href}
-            className={`block p-4 rounded-lg border-2 transition-colors ${getAlertColor(alert.type)}`}
+            className={`group block p-4 rounded-xl border-2 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 ${getAlertColor(alert.type)}`}
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
-                <span className="text-2xl">{alert.icon}</span>
+                <div className="text-2xl group-hover:scale-110 transition-transform duration-300">
+                  {alert.icon}
+                </div>
                 <div>
-                  <p className="font-medium">{alert.title}</p>
-                  <p className="text-sm opacity-80">처리 필요</p>
+                  <p className="font-semibold group-hover:font-bold transition-all">{alert.title}</p>
+                  <p className="text-xs opacity-70 font-medium">처리 필요</p>
                 </div>
               </div>
-              <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${getCountColor(
-                  alert.type
-                )}`}
-              >
-                {alert.count}
+              <div className="relative">
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shadow-md group-hover:scale-110 transition-transform duration-300 ${getCountColor(
+                    alert.type
+                  )}`}
+                >
+                  {alert.count}
+                </div>
+                {alert.type === 'urgent' && (
+                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-400 rounded-full animate-ping"></div>
+                )}
               </div>
             </div>
           </Link>
         ))}
+      </div>
+      
+      {/* 하단 요약 */}
+      <div className="mt-6 pt-4 border-t border-gray-100">
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-gray-600">
+            총 <span className="font-semibold text-gray-900">{alerts.reduce((sum, alert) => sum + alert.count, 0)}건</span>의 알림이 있습니다
+          </span>
+          <button className="text-blue-600 hover:text-blue-700 font-medium transition-colors">
+            전체 알림 보기 →
+          </button>
+        </div>
       </div>
     </div>
   );

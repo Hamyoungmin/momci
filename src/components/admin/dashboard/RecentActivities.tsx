@@ -86,42 +86,55 @@ export default function RecentActivities() {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-gray-900">최근 활동</h2>
-        <button className="text-sm text-blue-600 hover:text-blue-800 font-medium">
-          전체 보기
+    <div className="bg-white rounded-xl border-2 border-blue-100 p-6 shadow-sm">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl flex items-center justify-center">
+            <span className="text-white text-xl">📊</span>
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">최근 활동</h2>
+            <p className="text-sm text-gray-500">실시간 업데이트</p>
+          </div>
+        </div>
+        <button className="px-4 py-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg font-medium transition-colors text-sm">
+          전체 보기 →
         </button>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-3">
         {activities.map((activity) => (
-          <div key={activity.id} className="flex items-start space-x-3 p-3 hover:bg-gray-50 rounded-lg transition-colors">
+          <div key={activity.id} className="group flex items-start space-x-4 p-4 hover:bg-blue-50 rounded-xl transition-all duration-300 border border-transparent hover:border-blue-200">
             <div className="flex-shrink-0">
-              <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
-                <span className="text-lg">{activity.icon}</span>
+              <div className="w-12 h-12 bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-sm">
+                <span className="text-xl">{activity.icon}</span>
               </div>
             </div>
             <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-medium text-gray-900 truncate">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-semibold text-gray-900 truncate group-hover:text-blue-700 transition-colors">
                   {activity.title}
                 </p>
                 <span
-                  className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(activity.status)}`}
+                  className={`px-3 py-1 text-xs font-semibold rounded-full ${getStatusColor(activity.status)} shadow-sm`}
                 >
                   {getStatusText(activity.status)}
                 </span>
               </div>
-              <p className="text-sm text-gray-600 mt-1">{activity.description}</p>
-              <p className="text-xs text-gray-500 mt-1">{activity.time}</p>
+              <p className="text-sm text-gray-600 leading-relaxed">{activity.description}</p>
+              <div className="flex items-center justify-between mt-2">
+                <p className="text-xs text-gray-500 font-medium">{activity.time}</p>
+                <div className="text-xs text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  자세히 보기 →
+                </div>
+              </div>
             </div>
           </div>
         ))}
       </div>
 
-      <div className="mt-4 pt-4 border-t border-gray-100">
-        <button className="w-full text-center text-sm text-gray-600 hover:text-gray-900 font-medium">
+      <div className="mt-6 pt-4 border-t border-gray-100">
+        <button className="w-full text-center py-3 bg-gray-50 hover:bg-gray-100 rounded-lg text-sm text-gray-600 hover:text-gray-900 font-medium transition-colors">
           더 많은 활동 보기
         </button>
       </div>
