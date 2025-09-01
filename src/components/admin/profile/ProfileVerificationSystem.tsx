@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ProfileReviewQueue from './ProfileReviewQueue';
 import ProfileDetailReview from './ProfileDetailReview';
 
@@ -32,78 +32,25 @@ export default function ProfileVerificationSystem() {
   const [selectedProfile, setSelectedProfile] = useState<ProfileSubmission | null>(null);
   const [isDetailViewOpen, setIsDetailViewOpen] = useState(false);
 
-  // 임시 데이터
-  const [profiles] = useState<ProfileSubmission[]>([
-    {
-      id: '1',
-      teacherId: 'T001',
-      teacherName: '김○○',
-      email: 'teacher1@email.com',
-      phone: '010-1111-2222',
-      submitDate: '2024-01-20 14:30',
-      status: 'pending',
-      specialties: ['언어치료', '놀이치료'],
-      experience: 7,
-      education: '○○대학교 언어치료학과',
-      certifications: ['언어재활사 2급', '놀이치료사 1급'],
-      documents: {
-        diploma: 'diploma_001.pdf',
-        certificate: 'cert_001.pdf',
-        career: 'career_001.pdf',
-        license: 'license_001.pdf'
-      },
-      profilePhoto: 'profile_001.jpg',
-      selfIntroduction: '안녕하세요. 7년 경력의 언어치료사입니다.',
-      teachingPhilosophy: '아이들과 소통하며 개별 맞춤 치료를 진행합니다.',
-      priority: 'high'
-    },
-    {
-      id: '2',
-      teacherId: 'T002',
-      teacherName: '이○○',
-      email: 'teacher2@email.com',
-      phone: '010-2222-3333',
-      submitDate: '2024-01-19 10:15',
-      status: 'pending',
-      specialties: ['감각통합치료'],
-      experience: 3,
-      education: '△△대학교 작업치료학과',
-      certifications: ['작업치료사'],
-      documents: {
-        diploma: 'diploma_002.pdf',
-        certificate: 'cert_002.pdf',
-        career: 'career_002.pdf',
-        license: 'license_002.pdf'
-      },
-      profilePhoto: 'profile_002.jpg',
-      selfIntroduction: '감각통합치료 전문가입니다.',
-      teachingPhilosophy: '감각 발달을 통한 통합적 접근을 합니다.',
-      priority: 'medium'
-    },
-    {
-      id: '3',
-      teacherId: 'T003',
-      teacherName: '박○○',
-      email: 'teacher3@email.com',
-      phone: '010-3333-4444',
-      submitDate: '2024-01-18 16:45',
-      status: 'hold',
-      specialties: ['인지학습치료', 'ABA치료'],
-      experience: 5,
-      education: '□□대학교 특수교육학과',
-      certifications: ['특수교육교사 2급', 'ABA 치료사'],
-      documents: {
-        diploma: 'diploma_003.pdf',
-        certificate: 'cert_003.pdf',
-        career: 'career_003.pdf',
-        license: 'license_003.pdf'
-      },
-      profilePhoto: 'profile_003.jpg',
-      selfIntroduction: 'ABA 치료와 인지학습 전문가입니다.',
-      teachingPhilosophy: '행동분석을 통한 체계적 접근을 추구합니다.',
-      priority: 'low'
-    }
-  ]);
+  const [profiles, setProfiles] = useState<ProfileSubmission[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchProfiles = async () => {
+      try {
+        setLoading(true);
+        // TODO: Firebase에서 실제 프로필 검증 데이터 조회
+        // const profilesData = await getProfileSubmissions();
+        setProfiles([]);
+      } catch (error) {
+        console.error('프로필 검증 데이터 로딩 실패:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfiles();
+  }, []);
 
   const handleProfileSelect = (profile: ProfileSubmission) => {
     setSelectedProfile(profile);
@@ -123,79 +70,141 @@ export default function ProfileVerificationSystem() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+      {/* 헤더 섹션 */}
+      <div className="bg-white rounded-xl border-2 border-blue-100 p-8 shadow-sm">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <div className="w-12 h-12 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-xl flex items-center justify-center shadow-lg">
+              <span className="text-white text-2xl">🔍</span>
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">프로필 검증 시스템</h1>
+              <p className="text-gray-600 mt-1">치료사 프로필을 검토하고 승인 상태를 관리하세요</p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-4">
+            <div className="text-right">
+              <div className="text-2xl font-bold text-orange-600">{profiles.filter(p => p.status === 'pending').length}</div>
+              <div className="text-sm text-gray-500">검토 대기</div>
+            </div>
+            <div className="text-right">
+              <div className="text-2xl font-bold text-green-600">{profiles.filter(p => p.status === 'approved').length}</div>
+              <div className="text-sm text-gray-500">승인 완료</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* 통계 요약 */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="bg-white rounded-xl border-2 border-blue-100 p-6 shadow-sm hover:shadow-lg transition-all duration-300 group">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-yellow-500 rounded-lg flex items-center justify-center">
-                <span className="text-white text-sm">⏳</span>
+              <div className="w-12 h-12 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-xl flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300">
+                <span className="text-white text-xl">⏳</span>
               </div>
             </div>
-            <div className="ml-3">
-              <p className="text-sm font-medium text-gray-500">검토 대기</p>
-              <p className="text-lg font-semibold text-gray-900">
-                {profiles.filter(p => p.status === 'pending').length}건
-              </p>
+            <div className="ml-4">
+              <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide">검토 대기</p>
+              <div className="flex items-baseline space-x-1">
+                <p className="text-2xl font-bold text-orange-600 group-hover:text-orange-700 transition-colors">
+                  {profiles.filter(p => p.status === 'pending').length}
+                </p>
+                <span className="text-sm font-medium text-gray-600">건</span>
+              </div>
+              {profiles.filter(p => p.status === 'pending').length > 0 && (
+                <div className="mt-2">
+                  <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse inline-block mr-2"></div>
+                  <span className="text-xs text-orange-600 font-medium">처리 필요</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <div className="bg-white rounded-xl border-2 border-blue-100 p-6 shadow-sm hover:shadow-lg transition-all duration-300 group">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
-                <span className="text-white text-sm">✅</span>
+              <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300">
+                <span className="text-white text-xl">✅</span>
               </div>
             </div>
-            <div className="ml-3">
-              <p className="text-sm font-medium text-gray-500">승인 완료</p>
-              <p className="text-lg font-semibold text-gray-900">
-                {profiles.filter(p => p.status === 'approved').length}건
-              </p>
+            <div className="ml-4">
+              <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide">승인 완료</p>
+              <div className="flex items-baseline space-x-1">
+                <p className="text-2xl font-bold text-green-600 group-hover:text-green-700 transition-colors">
+                  {profiles.filter(p => p.status === 'approved').length}
+                </p>
+                <span className="text-sm font-medium text-gray-600">건</span>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <div className="bg-white rounded-xl border-2 border-blue-100 p-6 shadow-sm hover:shadow-lg transition-all duration-300 group">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-red-500 rounded-lg flex items-center justify-center">
-                <span className="text-white text-sm">❌</span>
+              <div className="w-12 h-12 bg-gradient-to-r from-red-500 to-pink-500 rounded-xl flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300">
+                <span className="text-white text-xl">❌</span>
               </div>
             </div>
-            <div className="ml-3">
-              <p className="text-sm font-medium text-gray-500">반려</p>
-              <p className="text-lg font-semibold text-gray-900">
-                {profiles.filter(p => p.status === 'rejected').length}건
-              </p>
+            <div className="ml-4">
+              <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide">반려</p>
+              <div className="flex items-baseline space-x-1">
+                <p className="text-2xl font-bold text-red-600 group-hover:text-red-700 transition-colors">
+                  {profiles.filter(p => p.status === 'rejected').length}
+                </p>
+                <span className="text-sm font-medium text-gray-600">건</span>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <div className="bg-white rounded-xl border-2 border-blue-100 p-6 shadow-sm hover:shadow-lg transition-all duration-300 group">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
-                <span className="text-white text-sm">⏸️</span>
+              <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-xl flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300">
+                <span className="text-white text-xl">⏸️</span>
               </div>
             </div>
-            <div className="ml-3">
-              <p className="text-sm font-medium text-gray-500">보류</p>
-              <p className="text-lg font-semibold text-gray-900">
-                {profiles.filter(p => p.status === 'hold').length}건
-              </p>
+            <div className="ml-4">
+              <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide">보류</p>
+              <div className="flex items-baseline space-x-1">
+                <p className="text-2xl font-bold text-blue-600 group-hover:text-blue-700 transition-colors">
+                  {profiles.filter(p => p.status === 'hold').length}
+                </p>
+                <span className="text-sm font-medium text-gray-600">건</span>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       {/* 검토 대기열 */}
-      <ProfileReviewQueue
-        profiles={profiles}
-        onProfileSelect={handleProfileSelect}
-      />
+      <div className="bg-white rounded-xl border-2 border-blue-100 shadow-sm">
+        <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-indigo-50 to-purple-50">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center">
+                <span className="text-indigo-600 text-lg">📋</span>
+              </div>
+              <h2 className="text-xl font-bold text-gray-900">프로필 검토 대기열</h2>
+            </div>
+            <div className="flex items-center space-x-4">
+              <div className="px-4 py-2 bg-white rounded-lg border border-indigo-200 shadow-sm">
+                <span className="text-sm font-semibold text-gray-700">총 </span>
+                <span className="text-lg font-bold text-indigo-600">{profiles.length}</span>
+                <span className="text-sm font-semibold text-gray-700">건</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <ProfileReviewQueue
+          profiles={profiles}
+          onProfileSelect={handleProfileSelect}
+        />
+      </div>
 
       {/* 상세 검토 모달 */}
       {selectedProfile && (

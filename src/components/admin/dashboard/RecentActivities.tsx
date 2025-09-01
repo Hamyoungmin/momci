@@ -1,5 +1,7 @@
 'use client';
 
+import { useState, useEffect } from 'react';
+
 interface Activity {
   id: string;
   type: 'member' | 'matching' | 'payment' | 'report';
@@ -11,53 +13,27 @@ interface Activity {
 }
 
 export default function RecentActivities() {
-  const activities: Activity[] = [
-    {
-      id: '1',
-      type: 'member',
-      title: '새로운 치료사 가입',
-      description: '김○○ 언어치료사가 프로필을 등록했습니다.',
-      time: '5분 전',
-      status: 'pending',
-      icon: '👩‍⚕️'
-    },
-    {
-      id: '2',
-      type: 'matching',
-      title: '매칭 완료',
-      description: '서울 강남구 언어치료 매칭이 성공했습니다.',
-      time: '12분 전',
-      status: 'completed',
-      icon: '🤝'
-    },
-    {
-      id: '3',
-      type: 'payment',
-      title: '이용권 결제',
-      description: '학부모 이용권 결제가 완료되었습니다.',
-      time: '18분 전',
-      status: 'completed',
-      icon: '💳'
-    },
-    {
-      id: '4',
-      type: 'report',
-      title: '직거래 신고 접수',
-      description: '치료사의 직거래 유도 신고가 접수되었습니다.',
-      time: '25분 전',
-      status: 'pending',
-      icon: '🚨'
-    },
-    {
-      id: '5',
-      type: 'member',
-      title: '학부모 회원가입',
-      description: '새로운 학부모가 회원가입을 완료했습니다.',
-      time: '32분 전',
-      status: 'completed',
-      icon: '👨‍👩‍👧‍👦'
-    }
-  ];
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchActivities = async () => {
+      try {
+        setLoading(true);
+        // TODO: Firebase에서 실제 활동 데이터 조회
+        // const activitiesData = await getRecentActivities();
+        
+        // 임시로 빈 배열로 시작
+        setActivities([]);
+      } catch (error) {
+        console.error('활동 데이터 로딩 실패:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchActivities();
+  }, []);
 
   const getStatusColor = (status: Activity['status']) => {
     switch (status) {
@@ -103,7 +79,29 @@ export default function RecentActivities() {
       </div>
 
       <div className="space-y-3">
-        {activities.map((activity) => (
+        {loading ? (
+          // 로딩 상태
+          Array.from({ length: 5 }).map((_, index) => (
+            <div key={index} className="flex items-start space-x-4 p-4 animate-pulse">
+              <div className="w-12 h-12 bg-gray-200 rounded-xl"></div>
+              <div className="flex-1 min-w-0">
+                <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                <div className="h-3 bg-gray-200 rounded w-full mb-2"></div>
+                <div className="h-3 bg-gray-200 rounded w-1/4"></div>
+              </div>
+            </div>
+          ))
+        ) : activities.length === 0 ? (
+          // 빈 상태
+          <div className="text-center py-12">
+            <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+              <span className="text-gray-400 text-2xl">📊</span>
+            </div>
+            <p className="text-gray-500 font-medium">최근 활동이 없습니다</p>
+            <p className="text-gray-400 text-sm mt-1">새로운 활동이 있으면 여기에 표시됩니다</p>
+          </div>
+        ) : (
+          activities.map((activity) => (
           <div key={activity.id} className="group flex items-start space-x-4 p-4 hover:bg-blue-50 rounded-xl transition-all duration-300 border border-transparent hover:border-blue-200">
             <div className="flex-shrink-0">
               <div className="w-12 h-12 bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-sm">
@@ -130,7 +128,8 @@ export default function RecentActivities() {
               </div>
             </div>
           </div>
-        ))}
+        ))
+        )}
       </div>
 
       <div className="mt-6 pt-4 border-t border-gray-100">

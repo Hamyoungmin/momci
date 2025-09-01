@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ChatStatusCards from './ChatStatusCards';
 import ChatRoomList from './ChatRoomList';
 import ChatDetailModal from './ChatDetailModal';
@@ -34,93 +34,25 @@ export default function ChatManagement() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [riskFilter, setRiskFilter] = useState('all');
 
-  // 임시 데이터
-  const [chatRooms] = useState<ChatRoom[]>([
-    {
-      id: 'CR001',
-      matchingId: 'M001',
-      parentId: 'P001',
-      parentName: '김○○',
-      teacherId: 'T001',
-      teacherName: '이○○',
-      startDate: '2024-01-20 10:30',
-      lastMessageDate: '2024-01-20 15:30',
-      messageCount: 47,
-      status: 'active',
-      suspiciousActivity: false,
-      directTradeDetected: false,
-      riskLevel: 'low',
-      lastMessage: {
-        senderId: 'P001',
-        senderName: '김○○',
-        content: '네, 감사합니다. 그럼 내일 오후 2시에 뵙겠습니다.',
-        timestamp: '2024-01-20 15:30'
+  const [chatRooms, setChatRooms] = useState<ChatRoom[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchChatRooms = async () => {
+      try {
+        setLoading(true);
+        // TODO: Firebase에서 실제 채팅방 데이터 조회
+        // const chatRoomsData = await getChatRooms();
+        setChatRooms([]);
+      } catch (error) {
+        console.error('채팅방 데이터 로딩 실패:', error);
+      } finally {
+        setLoading(false);
       }
-    },
-    {
-      id: 'CR002',
-      matchingId: 'M002',
-      parentId: 'P002',
-      parentName: '박○○',
-      teacherId: 'T002',
-      teacherName: '정○○',
-      startDate: '2024-01-19 14:20',
-      lastMessageDate: '2024-01-20 09:15',
-      messageCount: 23,
-      status: 'active',
-      suspiciousActivity: true,
-      directTradeDetected: true,
-      riskLevel: 'high',
-      lastMessage: {
-        senderId: 'T002',
-        senderName: '정○○',
-        content: '직접 거래하시면 수수료도 없고 더 저렴해요. 제 계좌는 ***',
-        timestamp: '2024-01-20 09:15'
-      }
-    },
-    {
-      id: 'CR003',
-      matchingId: 'M003',
-      parentId: 'P003',
-      parentName: '최○○',
-      teacherId: 'T003',
-      teacherName: '김○○',
-      startDate: '2024-01-18 11:00',
-      lastMessageDate: '2024-01-19 18:30',
-      messageCount: 156,
-      status: 'ended',
-      suspiciousActivity: false,
-      directTradeDetected: false,
-      riskLevel: 'low',
-      lastMessage: {
-        senderId: 'P003',
-        senderName: '최○○',
-        content: '수업 잘 부탁드립니다. 연락처 공유해주셔서 감사해요!',
-        timestamp: '2024-01-19 18:30'
-      }
-    },
-    {
-      id: 'CR004',
-      matchingId: 'M004',
-      parentId: 'P004',
-      parentName: '윤○○',
-      teacherId: 'T004',
-      teacherName: '장○○',
-      startDate: '2024-01-17 16:45',
-      lastMessageDate: '2024-01-18 12:20',
-      messageCount: 8,
-      status: 'suspended',
-      suspiciousActivity: true,
-      directTradeDetected: true,
-      riskLevel: 'high',
-      lastMessage: {
-        senderId: 'T004',
-        senderName: '장○○',
-        content: '플랫폼 말고 직접 만나서 얘기해요. 제 번호는 010-****',
-        timestamp: '2024-01-18 12:20'
-      }
-    }
-  ]);
+    };
+
+    fetchChatRooms();
+  }, []);
 
   const handleChatRoomSelect = (chatRoom: ChatRoom) => {
     setSelectedChatRoom(chatRoom);
@@ -148,29 +80,61 @@ export default function ChatManagement() {
   const directTradeRooms = chatRooms.filter(room => room.directTradeDetected);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+      {/* 헤더 섹션 */}
+      <div className="bg-white rounded-xl border-2 border-blue-100 p-8 shadow-sm">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <div className="w-12 h-12 bg-gradient-to-r from-orange-500 to-red-500 rounded-xl flex items-center justify-center shadow-lg">
+              <span className="text-white text-2xl">💬</span>
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">채팅 관리</h1>
+              <p className="text-gray-600 mt-1">실시간 채팅 모니터링과 의심스러운 활동을 관리하세요</p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-4">
+            <div className="text-right">
+              <div className="text-2xl font-bold text-orange-600">{chatRooms.filter(r => r.status === 'active').length}</div>
+              <div className="text-sm text-gray-500">활성 채팅방</div>
+            </div>
+            <div className="text-right">
+              <div className="text-2xl font-bold text-red-600">{suspiciousRooms.length}</div>
+              <div className="text-sm text-gray-500">의심 활동</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* 의심스러운 활동 알림 */}
       {(suspiciousRooms.length > 0 || directTradeRooms.length > 0) && (
-        <SuspiciousActivityAlert
-          suspiciousCount={suspiciousRooms.length}
-          directTradeCount={directTradeRooms.length}
-          onViewDetails={() => setRiskFilter('high')}
-        />
+        <div className="bg-gradient-to-r from-red-50 to-orange-50 border-2 border-red-200 rounded-xl p-6">
+          <SuspiciousActivityAlert
+            suspiciousCount={suspiciousRooms.length}
+            directTradeCount={directTradeRooms.length}
+            onViewDetails={() => setRiskFilter('high')}
+          />
+        </div>
       )}
 
       {/* 상태 카드 */}
       <ChatStatusCards chatRooms={chatRooms} />
 
       {/* 필터 및 검색 */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">채팅방 목록</h2>
+      <div className="bg-white rounded-xl border-2 border-blue-100 p-6 shadow-sm">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
+              <span className="text-orange-600 text-lg">🔍</span>
+            </div>
+            <h2 className="text-xl font-bold text-gray-900">채팅방 목록</h2>
+          </div>
           <div className="flex items-center space-x-4">
             {/* 상태 필터 */}
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-4 py-2 text-sm border border-blue-200 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all font-medium"
             >
               <option value="all">전체 상태</option>
               <option value="active">진행 중</option>
@@ -182,7 +146,7 @@ export default function ChatManagement() {
             <select
               value={riskFilter}
               onChange={(e) => setRiskFilter(e.target.value)}
-              className="px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-4 py-2 text-sm border border-blue-200 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all font-medium"
             >
               <option value="all">전체 위험도</option>
               <option value="high">고위험</option>
@@ -190,17 +154,17 @@ export default function ChatManagement() {
               <option value="low">저위험</option>
             </select>
 
-            <button className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700">
-              의심 활동 보고서
+            <button className="px-6 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white text-sm font-semibold rounded-lg hover:from-red-600 hover:to-red-700 transition-all duration-300 shadow-md hover:shadow-lg">
+              🚨 의심 활동 보고서
             </button>
           </div>
         </div>
 
         {/* 실시간 모니터링 상태 */}
-        <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+        <div className="mb-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl">
           <div className="flex items-center">
-            <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse mr-2"></div>
-            <span className="text-sm font-medium text-green-800">
+            <div className="w-4 h-4 bg-green-500 rounded-full animate-pulse mr-3"></div>
+            <span className="text-sm font-semibold text-green-800">
               실시간 모니터링 활성화 - {chatRooms.filter(r => r.status === 'active').length}개 채팅방 감시 중
             </span>
           </div>
@@ -208,10 +172,29 @@ export default function ChatManagement() {
       </div>
 
       {/* 채팅방 목록 */}
-      <ChatRoomList
-        chatRooms={filteredChatRooms}
-        onChatRoomSelect={handleChatRoomSelect}
-      />
+      <div className="bg-white rounded-xl border-2 border-blue-100 shadow-sm overflow-hidden">
+        <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-orange-50 to-red-50">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
+                <span className="text-orange-600 text-lg">📋</span>
+              </div>
+              <h2 className="text-xl font-bold text-gray-900">채팅방 현황</h2>
+            </div>
+            <div className="flex items-center space-x-4">
+              <div className="px-4 py-2 bg-white rounded-lg border border-orange-200 shadow-sm">
+                <span className="text-sm font-semibold text-gray-700">총 </span>
+                <span className="text-lg font-bold text-orange-600">{filteredChatRooms.length}</span>
+                <span className="text-sm font-semibold text-gray-700">개</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <ChatRoomList
+          chatRooms={filteredChatRooms}
+          onChatRoomSelect={handleChatRoomSelect}
+        />
+      </div>
 
       {/* 채팅 상세 모달 */}
       {selectedChatRoom && (

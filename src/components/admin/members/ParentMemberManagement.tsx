@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import SearchFilters from './SearchFilters';
 import MemberTable from './MemberTable';
 import MemberDetailModal from './MemberDetailModal';
@@ -22,45 +22,25 @@ export default function ParentMemberManagement() {
   const [selectedMember, setSelectedMember] = useState<ParentMember | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
-  // 임시 데이터
-  const [members] = useState<ParentMember[]>([
-    {
-      id: '1',
-      name: '김○○',
-      email: 'parent1@email.com',
-      phone: '010-1234-5678',
-      joinDate: '2024-01-15',
-      region: '서울 강남구',
-      status: 'active',
-      subscriptionStatus: 'active',
-      totalMatches: 3,
-      lastActivity: '2024-01-20 14:30'
-    },
-    {
-      id: '2',
-      name: '이○○',
-      email: 'parent2@email.com',
-      phone: '010-2345-6789',
-      joinDate: '2024-01-10',
-      region: '서울 서초구',
-      status: 'active',
-      subscriptionStatus: 'expired',
-      totalMatches: 1,
-      lastActivity: '2024-01-19 10:15'
-    },
-    {
-      id: '3',
-      name: '박○○',
-      email: 'parent3@email.com',
-      phone: '010-3456-7890',
-      joinDate: '2024-01-08',
-      region: '경기 성남시',
-      status: 'suspended',
-      subscriptionStatus: 'none',
-      totalMatches: 0,
-      lastActivity: '2024-01-18 16:45'
-    }
-  ]);
+  const [members, setMembers] = useState<ParentMember[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchMembers = async () => {
+      try {
+        setLoading(true);
+        // TODO: Firebase에서 실제 학부모 회원 데이터 조회
+        // const membersData = await getParentMembers();
+        setMembers([]);
+      } catch (error) {
+        console.error('학부모 회원 데이터 로딩 실패:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMembers();
+  }, []);
 
   const handleMemberSelect = (member: ParentMember) => {
     setSelectedMember(member);
@@ -111,22 +91,61 @@ export default function ParentMemberManagement() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+      {/* 헤더 섹션 */}
+      <div className="bg-white rounded-xl border-2 border-blue-100 p-8 shadow-sm">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl flex items-center justify-center shadow-lg">
+              <span className="text-white text-2xl">👨‍👩‍👧‍👦</span>
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">학부모 회원 관리</h1>
+              <p className="text-gray-600 mt-1">등록된 학부모 회원들을 관리하고 모니터링하세요</p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-4">
+            <div className="text-right">
+              <div className="text-2xl font-bold text-blue-600">{members.length}</div>
+              <div className="text-sm text-gray-500">총 회원수</div>
+            </div>
+            <div className="text-right">
+              <div className="text-2xl font-bold text-green-600">{members.filter(m => m.status === 'active').length}</div>
+              <div className="text-sm text-gray-500">활성 회원</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* 검색 및 필터 */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">검색 및 필터</h2>
+      <div className="bg-white rounded-xl border-2 border-blue-100 p-6 shadow-sm">
+        <div className="flex items-center space-x-3 mb-4">
+          <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+            <span className="text-blue-600 text-lg">🔍</span>
+          </div>
+          <h2 className="text-xl font-bold text-gray-900">검색 및 필터</h2>
+        </div>
         <SearchFilters memberType="parent" />
       </div>
 
       {/* 회원 목록 */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-        <div className="p-6 border-b border-gray-200">
+      <div className="bg-white rounded-xl border-2 border-blue-100 shadow-sm overflow-hidden">
+        <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-purple-50">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">학부모 회원 목록</h2>
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                <span className="text-blue-600 text-lg">📋</span>
+              </div>
+              <h2 className="text-xl font-bold text-gray-900">학부모 회원 목록</h2>
+            </div>
             <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-600">총 {members.length}명</span>
-              <button className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700">
-                엑셀 다운로드
+              <div className="px-4 py-2 bg-white rounded-lg border border-blue-200 shadow-sm">
+                <span className="text-sm font-semibold text-gray-700">총 </span>
+                <span className="text-lg font-bold text-blue-600">{members.length}</span>
+                <span className="text-sm font-semibold text-gray-700">명</span>
+              </div>
+              <button className="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white text-sm font-semibold rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-300 shadow-md hover:shadow-lg">
+                📊 엑셀 다운로드
               </button>
             </div>
           </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import PaymentStatusCards from './PaymentStatusCards';
 import SubscriptionTable from './SubscriptionTable';
 import VirtualAccountModal from './VirtualAccountModal';
@@ -34,69 +34,25 @@ export default function SubscriptionPaymentManagement() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [userTypeFilter, setUserTypeFilter] = useState('all');
 
-  // 임시 데이터
-  const [payments] = useState<SubscriptionPayment[]>([
-    {
-      id: 'SUB001',
-      userId: 'P001',
-      userName: '김○○',
-      userType: 'parent',
-      planType: 'monthly',
-      amount: 9900,
-      paymentMethod: 'virtual_account',
-      status: 'pending',
-      orderDate: '2024-01-20 14:30',
-      virtualAccount: {
-        bank: 'KB국민은행',
-        accountNumber: '123456-78-901234',
-        accountHolder: '(주)더모든키즈',
-        expireDate: '2024-01-22 23:59'
+  const [payments, setPayments] = useState<SubscriptionPayment[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchPayments = async () => {
+      try {
+        setLoading(true);
+        // TODO: Firebase에서 실제 결제 데이터 조회
+        // const paymentsData = await getSubscriptionPayments();
+        setPayments([]);
+      } catch (error) {
+        console.error('결제 데이터 로딩 실패:', error);
+      } finally {
+        setLoading(false);
       }
-    },
-    {
-      id: 'SUB002',
-      userId: 'T001',
-      userName: '이○○',
-      userType: 'teacher',
-      planType: 'monthly',
-      amount: 19900,
-      paymentMethod: 'virtual_account',
-      status: 'completed',
-      orderDate: '2024-01-19 10:15',
-      paidDate: '2024-01-19 15:30',
-      activePeriod: {
-        startDate: '2024-01-19',
-        endDate: '2024-02-19'
-      }
-    },
-    {
-      id: 'SUB003',
-      userId: 'P002',
-      userName: '박○○',
-      userType: 'parent',
-      planType: 'monthly',
-      amount: 9900,
-      paymentMethod: 'virtual_account',
-      status: 'failed',
-      orderDate: '2024-01-18 16:45'
-    },
-    {
-      id: 'SUB004',
-      userId: 'T002',
-      userName: '정○○',
-      userType: 'teacher',
-      planType: 'yearly',
-      amount: 199000,
-      paymentMethod: 'virtual_account',
-      status: 'completed',
-      orderDate: '2024-01-17 11:20',
-      paidDate: '2024-01-17 14:50',
-      activePeriod: {
-        startDate: '2024-01-17',
-        endDate: '2025-01-17'
-      }
-    }
-  ]);
+    };
+
+    fetchPayments();
+  }, []);
 
   const handlePaymentSelect = (payment: SubscriptionPayment) => {
     setSelectedPayment(payment);
@@ -121,20 +77,50 @@ export default function SubscriptionPaymentManagement() {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+      {/* 헤더 섹션 */}
+      <div className="bg-white rounded-xl border-2 border-blue-100 p-8 shadow-sm">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl flex items-center justify-center shadow-lg">
+              <span className="text-white text-2xl">💳</span>
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">이용권 결제 관리</h1>
+              <p className="text-gray-600 mt-1">학부모와 치료사의 이용권 결제 현황을 관리하세요</p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-4">
+            <div className="text-right">
+              <div className="text-2xl font-bold text-orange-600">{payments.filter(p => p.status === 'pending').length}</div>
+              <div className="text-sm text-gray-500">입금 대기</div>
+            </div>
+            <div className="text-right">
+              <div className="text-2xl font-bold text-green-600">{payments.filter(p => p.status === 'completed').length}</div>
+              <div className="text-sm text-gray-500">결제 완료</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* 통계 카드 */}
       <PaymentStatusCards payments={payments} type="subscription" />
 
       {/* 필터 및 검색 */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">이용권 결제 현황</h2>
+      <div className="bg-white rounded-xl border-2 border-blue-100 p-6 shadow-sm">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+              <span className="text-green-600 text-lg">🔍</span>
+            </div>
+            <h2 className="text-xl font-bold text-gray-900">이용권 결제 현황</h2>
+          </div>
           <div className="flex items-center space-x-4">
             {/* 상태 필터 */}
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-4 py-2 text-sm border border-blue-200 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all font-medium"
             >
               <option value="all">전체 상태</option>
               <option value="pending">결제 대기</option>
@@ -147,28 +133,30 @@ export default function SubscriptionPaymentManagement() {
             <select
               value={userTypeFilter}
               onChange={(e) => setUserTypeFilter(e.target.value)}
-              className="px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-4 py-2 text-sm border border-blue-200 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all font-medium"
             >
               <option value="all">전체 유형</option>
               <option value="parent">학부모</option>
               <option value="teacher">치료사</option>
             </select>
 
-            <button className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700">
-              엑셀 다운로드
+            <button className="px-6 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white text-sm font-semibold rounded-lg hover:from-green-600 hover:to-green-700 transition-all duration-300 shadow-md hover:shadow-lg">
+              📊 엑셀 다운로드
             </button>
           </div>
         </div>
 
         {/* 긴급 처리 필요 알림 */}
         {payments.filter(p => p.status === 'pending').length > 0 && (
-          <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <div className="mb-4 p-4 bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-yellow-200 rounded-xl">
             <div className="flex items-center">
-              <svg className="w-5 h-5 text-yellow-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
-              <span className="text-sm font-medium text-yellow-800">
-                {payments.filter(p => p.status === 'pending').length}건의 입금 확인이 필요합니다.
+              <div className="w-6 h-6 bg-yellow-500 rounded-full flex items-center justify-center mr-3">
+                <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <span className="text-sm font-semibold text-yellow-800">
+                주의! {payments.filter(p => p.status === 'pending').length}건의 입금 확인이 필요합니다.
               </span>
             </div>
           </div>
@@ -176,11 +164,30 @@ export default function SubscriptionPaymentManagement() {
       </div>
 
       {/* 결제 테이블 */}
-      <SubscriptionTable
-        payments={filteredPayments}
-        onPaymentSelect={handlePaymentSelect}
-        onConfirmPayment={handleConfirmPayment}
-      />
+      <div className="bg-white rounded-xl border-2 border-blue-100 shadow-sm overflow-hidden">
+        <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-green-50 to-emerald-50">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                <span className="text-green-600 text-lg">📋</span>
+              </div>
+              <h2 className="text-xl font-bold text-gray-900">결제 내역</h2>
+            </div>
+            <div className="flex items-center space-x-4">
+              <div className="px-4 py-2 bg-white rounded-lg border border-green-200 shadow-sm">
+                <span className="text-sm font-semibold text-gray-700">총 </span>
+                <span className="text-lg font-bold text-green-600">{filteredPayments.length}</span>
+                <span className="text-sm font-semibold text-gray-700">건</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <SubscriptionTable
+          payments={filteredPayments}
+          onPaymentSelect={handlePaymentSelect}
+          onConfirmPayment={handleConfirmPayment}
+        />
+      </div>
 
       {/* 가상계좌 정보 모달 */}
       {selectedPayment && (

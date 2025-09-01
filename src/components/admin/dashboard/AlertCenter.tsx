@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useState, useEffect } from 'react';
 
 interface Alert {
   type: 'urgent' | 'warning' | 'info';
@@ -11,36 +12,56 @@ interface Alert {
 }
 
 export default function AlertCenter() {
-  const alerts: Alert[] = [
-    {
-      type: 'urgent',
-      title: '미승인 프로필',
-      count: 4,
-      href: '/admin/profile-verification',
-      icon: '🔍'
-    },
-    {
-      type: 'urgent',
-      title: '직거래 신고',
-      count: 2,
-      href: '/admin/reports',
-      icon: '🚨'
-    },
-    {
-      type: 'warning',
-      title: '미확인 입금',
-      count: 7,
-      href: '/admin/payments/subscriptions',
-      icon: '💳'
-    },
-    {
-      type: 'info',
-      title: '답변 대기 문의',
-      count: 3,
-      href: '/admin/support/inquiries',
-      icon: '❓'
-    }
-  ];
+  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchAlerts = async () => {
+      try {
+        setLoading(true);
+        // TODO: Firebase에서 실제 알림 데이터 조회
+        // const alertsData = await getAdminAlerts();
+        
+        // 임시로 빈 배열로 시작
+        setAlerts([
+          {
+            type: 'urgent',
+            title: '미승인 프로필',
+            count: 0,
+            href: '/admin/profile-verification',
+            icon: '🔍'
+          },
+          {
+            type: 'urgent',
+            title: '직거래 신고',
+            count: 0,
+            href: '/admin/reports',
+            icon: '🚨'
+          },
+          {
+            type: 'warning',
+            title: '미확인 입금',
+            count: 0,
+            href: '/admin/payments/subscriptions',
+            icon: '💳'
+          },
+          {
+            type: 'info',
+            title: '답변 대기 문의',
+            count: 0,
+            href: '/admin/support/inquiries',
+            icon: '❓'
+          }
+        ]);
+      } catch (error) {
+        console.error('알림 데이터 로딩 실패:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAlerts();
+  }, []);
 
   const getAlertColor = (type: Alert['type']) => {
     switch (type) {

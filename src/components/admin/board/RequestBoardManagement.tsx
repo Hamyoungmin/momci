@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import RequestPostTable from './RequestPostTable';
 import RequestPostDetailModal from './RequestPostDetailModal';
 
@@ -34,78 +34,25 @@ export default function RequestBoardManagement() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [treatmentFilter, setTreatmentFilter] = useState('all');
 
-  // 임시 데이터
-  const [posts] = useState<RequestPost[]>([
-    {
-      id: 'REQ001',
-      parentId: 'P001',
-      parentName: '김○○',
-      title: '5세 남아 언어치료 선생님을 찾습니다',
-      content: '발음이 부정확하고 어휘력이 부족한 것 같아서 전문적인 도움이 필요합니다...',
-      childInfo: {
-        age: '5세',
-        gender: 'male',
-        condition: '언어발달지연'
-      },
-      treatmentTypes: ['언어치료'],
-      location: '서울 강남구',
-      schedule: '주 2회, 오후 2-4시',
-      budget: '회당 6-8만원',
-      status: 'recruiting',
-      applicants: 3,
-      createdAt: '2024-01-20 14:30',
-      updatedAt: '2024-01-20 14:30',
-      views: 24,
-      premium: true,
-      urgent: false
-    },
-    {
-      id: 'REQ002',
-      parentId: 'P002',
-      parentName: '박○○',
-      title: '3세 감각통합치료 + 놀이치료 통합 요청',
-      content: '감각 과민이 심하고 사회성 발달이 늦어서 복합적인 치료가 필요한 상황입니다...',
-      childInfo: {
-        age: '3세',
-        gender: 'female',
-        condition: '감각통합장애'
-      },
-      treatmentTypes: ['감각통합치료', '놀이치료'],
-      location: '경기 성남시',
-      schedule: '주 3회, 오전 10-12시',
-      budget: '회당 7-9만원',
-      status: 'matched',
-      applicants: 5,
-      createdAt: '2024-01-19 10:15',
-      updatedAt: '2024-01-20 09:30',
-      views: 42,
-      premium: false,
-      urgent: true
-    },
-    {
-      id: 'REQ003',
-      parentId: 'P003',
-      parentName: '최○○',
-      title: '7세 인지학습치료 선생님 구합니다 (급구)',
-      content: '학습 집중력이 부족하고 기억력에 문제가 있어서 전문적인 인지치료가 필요합니다...',
-      childInfo: {
-        age: '7세',
-        gender: 'male',
-        condition: 'ADHD'
-      },
-      treatmentTypes: ['인지학습치료'],
-      location: '부산 해운대구',
-      schedule: '주 2회, 방과후',
-      budget: '회당 5-7만원',
-      status: 'closed',
-      applicants: 8,
-      createdAt: '2024-01-18 16:45',
-      updatedAt: '2024-01-19 20:10',
-      views: 67,
-      premium: false,
-      urgent: true
-    }
-  ]);
+  const [posts, setPosts] = useState<RequestPost[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchPosts = async () => {
+      try {
+        setLoading(true);
+        // TODO: Firebase에서 실제 요청글 데이터 조회
+        // const postsData = await getRequestPosts();
+        setPosts([]);
+      } catch (error) {
+        console.error('요청글 데이터 로딩 실패:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPosts();
+  }, []);
 
   const handlePostSelect = (post: RequestPost) => {
     setSelectedPost(post);
@@ -132,84 +79,132 @@ export default function RequestBoardManagement() {
   const treatmentTypes = ['언어치료', '감각통합치료', '놀이치료', '인지학습치료', '음악치료', '미술치료'];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+      {/* 헤더 섹션 */}
+      <div className="bg-white rounded-xl border-2 border-blue-100 p-8 shadow-sm">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <div className="w-12 h-12 bg-gradient-to-r from-emerald-500 to-cyan-500 rounded-xl flex items-center justify-center shadow-lg">
+              <span className="text-white text-2xl">📝</span>
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">요청글 관리</h1>
+              <p className="text-gray-600 mt-1">학부모의 치료 요청글을 관리하고 모니터링하세요</p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-4">
+            <div className="text-right">
+              <div className="text-2xl font-bold text-blue-600">{posts.filter(p => p.status === 'recruiting').length}</div>
+              <div className="text-sm text-gray-500">모집 중</div>
+            </div>
+            <div className="text-right">
+              <div className="text-2xl font-bold text-red-600">{posts.filter(p => p.urgent).length}</div>
+              <div className="text-sm text-gray-500">급구 요청</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* 상태 카드 */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="bg-white rounded-xl border-2 border-blue-100 p-6 shadow-sm hover:shadow-lg transition-all duration-300 group">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
-                <span className="text-white text-sm">📝</span>
+              <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300">
+                <span className="text-white text-xl">📝</span>
               </div>
             </div>
-            <div className="ml-3">
-              <p className="text-sm font-medium text-gray-500">모집 중</p>
-              <p className="text-lg font-semibold text-gray-900">
-                {posts.filter(p => p.status === 'recruiting').length}건
-              </p>
+            <div className="ml-4">
+              <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide">모집 중</p>
+              <div className="flex items-baseline space-x-1">
+                <p className="text-2xl font-bold text-blue-600 group-hover:text-blue-700 transition-colors">
+                  {posts.filter(p => p.status === 'recruiting').length}
+                </p>
+                <span className="text-sm font-medium text-gray-600">건</span>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div className="bg-white rounded-xl border-2 border-blue-100 p-6 shadow-sm hover:shadow-lg transition-all duration-300 group">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
-                <span className="text-white text-sm">✅</span>
+              <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300">
+                <span className="text-white text-xl">✅</span>
               </div>
             </div>
-            <div className="ml-3">
-              <p className="text-sm font-medium text-gray-500">매칭 완료</p>
-              <p className="text-lg font-semibold text-gray-900">
-                {posts.filter(p => p.status === 'matched').length}건
-              </p>
+            <div className="ml-4">
+              <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide">매칭 완료</p>
+              <div className="flex items-baseline space-x-1">
+                <p className="text-2xl font-bold text-green-600 group-hover:text-green-700 transition-colors">
+                  {posts.filter(p => p.status === 'matched').length}
+                </p>
+                <span className="text-sm font-medium text-gray-600">건</span>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div className="bg-white rounded-xl border-2 border-blue-100 p-6 shadow-sm hover:shadow-lg transition-all duration-300 group">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-red-500 rounded-lg flex items-center justify-center">
-                <span className="text-white text-sm">🚨</span>
+              <div className="w-12 h-12 bg-gradient-to-r from-red-500 to-orange-500 rounded-xl flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300">
+                <span className="text-white text-xl">🚨</span>
               </div>
             </div>
-            <div className="ml-3">
-              <p className="text-sm font-medium text-gray-500">급구 요청</p>
-              <p className="text-lg font-semibold text-gray-900">
-                {posts.filter(p => p.urgent).length}건
-              </p>
+            <div className="ml-4">
+              <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide">급구 요청</p>
+              <div className="flex items-baseline space-x-1">
+                <p className="text-2xl font-bold text-red-600 group-hover:text-red-700 transition-colors">
+                  {posts.filter(p => p.urgent).length}
+                </p>
+                <span className="text-sm font-medium text-gray-600">건</span>
+              </div>
+              {posts.filter(p => p.urgent).length > 0 && (
+                <div className="mt-2">
+                  <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse inline-block mr-2"></div>
+                  <span className="text-xs text-red-600 font-medium">즉시 처리 필요</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div className="bg-white rounded-xl border-2 border-blue-100 p-6 shadow-sm hover:shadow-lg transition-all duration-300 group">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center">
-                <span className="text-white text-sm">⭐</span>
+              <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300">
+                <span className="text-white text-xl">⭐</span>
               </div>
             </div>
-            <div className="ml-3">
-              <p className="text-sm font-medium text-gray-500">프리미엄</p>
-              <p className="text-lg font-semibold text-gray-900">
-                {posts.filter(p => p.premium).length}건
-              </p>
+            <div className="ml-4">
+              <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide">프리미엄</p>
+              <div className="flex items-baseline space-x-1">
+                <p className="text-2xl font-bold text-purple-600 group-hover:text-purple-700 transition-colors">
+                  {posts.filter(p => p.premium).length}
+                </p>
+                <span className="text-sm font-medium text-gray-600">건</span>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       {/* 필터 및 검색 */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">요청글 관리</h2>
+      <div className="bg-white rounded-xl border-2 border-blue-100 p-6 shadow-sm">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
+              <span className="text-emerald-600 text-lg">🔍</span>
+            </div>
+            <h2 className="text-xl font-bold text-gray-900">요청글 관리</h2>
+          </div>
           <div className="flex items-center space-x-4">
             {/* 상태 필터 */}
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-4 py-2 text-sm border border-blue-200 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all font-medium"
             >
               <option value="all">전체 상태</option>
               <option value="recruiting">모집 중</option>
@@ -221,7 +216,7 @@ export default function RequestBoardManagement() {
             <select
               value={treatmentFilter}
               onChange={(e) => setTreatmentFilter(e.target.value)}
-              className="px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-4 py-2 text-sm border border-blue-200 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all font-medium"
             >
               <option value="all">전체 치료</option>
               {treatmentTypes.map(type => (
@@ -229,21 +224,23 @@ export default function RequestBoardManagement() {
               ))}
             </select>
 
-            <button className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700">
-              게시글 통계
+            <button className="px-6 py-2 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white text-sm font-semibold rounded-lg hover:from-emerald-600 hover:to-emerald-700 transition-all duration-300 shadow-md hover:shadow-lg">
+              📊 게시글 통계
             </button>
           </div>
         </div>
 
         {/* 급구 요청 알림 */}
         {posts.filter(p => p.urgent && p.status === 'recruiting').length > 0 && (
-          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <div className="mb-4 p-4 bg-gradient-to-r from-red-50 to-orange-50 border-2 border-red-200 rounded-xl">
             <div className="flex items-center">
-              <svg className="w-5 h-5 text-red-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
-              <span className="text-sm font-medium text-red-800">
-                {posts.filter(p => p.urgent && p.status === 'recruiting').length}건의 급구 요청이 있습니다.
+              <div className="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center mr-3">
+                <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <span className="text-sm font-semibold text-red-800">
+                긴급! {posts.filter(p => p.urgent && p.status === 'recruiting').length}건의 급구 요청이 처리를 기다리고 있습니다.
               </span>
             </div>
           </div>
@@ -251,10 +248,29 @@ export default function RequestBoardManagement() {
       </div>
 
       {/* 요청글 테이블 */}
-      <RequestPostTable
-        posts={filteredPosts}
-        onPostSelect={handlePostSelect}
-      />
+      <div className="bg-white rounded-xl border-2 border-blue-100 shadow-sm overflow-hidden">
+        <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-emerald-50 to-cyan-50">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
+                <span className="text-emerald-600 text-lg">📋</span>
+              </div>
+              <h2 className="text-xl font-bold text-gray-900">요청글 목록</h2>
+            </div>
+            <div className="flex items-center space-x-4">
+              <div className="px-4 py-2 bg-white rounded-lg border border-emerald-200 shadow-sm">
+                <span className="text-sm font-semibold text-gray-700">총 </span>
+                <span className="text-lg font-bold text-emerald-600">{filteredPosts.length}</span>
+                <span className="text-sm font-semibold text-gray-700">건</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <RequestPostTable
+          posts={filteredPosts}
+          onPostSelect={handlePostSelect}
+        />
+      </div>
 
       {/* 상세 정보 모달 */}
       {selectedPost && (

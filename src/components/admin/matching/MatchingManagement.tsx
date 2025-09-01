@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import MatchingStatusCards from './MatchingStatusCards';
 import MatchingTable from './MatchingTable';
 import MatchingDetailModal from './MatchingDetailModal';
@@ -28,77 +28,25 @@ export default function MatchingManagement() {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState('all');
 
-  // 임시 데이터
-  const [matchings] = useState<Matching[]>([
-    {
-      id: 'M001',
-      requestId: 'R001',
-      parentId: 'P001',
-      parentName: '김○○',
-      teacherId: 'T001',
-      teacherName: '이○○',
-      childAge: '5세',
-      treatmentType: ['언어치료'],
-      region: '서울 강남구',
-      schedule: '주 2회, 월수 14:00-15:00',
-      hourlyRate: 65000,
-      chatStartDate: '2024-01-20 10:30',
-      status: 'interview',
-      lastActivity: '2024-01-20 15:30',
-      notes: '인터뷰 진행 중'
-    },
-    {
-      id: 'M002',
-      requestId: 'R002',
-      parentId: 'P002',
-      parentName: '박○○',
-      teacherId: 'T002',
-      teacherName: '정○○',
-      childAge: '3세',
-      treatmentType: ['놀이치료', '감각통합'],
-      region: '서울 서초구',
-      schedule: '주 1회, 토 10:00-11:00',
-      hourlyRate: 70000,
-      chatStartDate: '2024-01-19 14:20',
-      status: 'lesson_confirmed',
-      lastActivity: '2024-01-20 09:15',
-      notes: '수업 확정, 결제 대기'
-    },
-    {
-      id: 'M003',
-      requestId: 'R003',
-      parentId: 'P003',
-      parentName: '최○○',
-      teacherId: 'T003',
-      teacherName: '김○○',
-      childAge: '7세',
-      treatmentType: ['인지학습치료'],
-      region: '경기 성남시',
-      schedule: '주 3회, 월화수 16:00-17:00',
-      hourlyRate: 60000,
-      chatStartDate: '2024-01-18 11:00',
-      status: 'payment_completed',
-      lastActivity: '2024-01-19 18:30',
-      notes: '매칭 완료, 연락처 공개 완료'
-    },
-    {
-      id: 'M004',
-      requestId: 'R004',
-      parentId: 'P004',
-      parentName: '윤○○',
-      teacherId: 'T004',
-      teacherName: '장○○',
-      childAge: '4세',
-      treatmentType: ['작업치료'],
-      region: '서울 송파구',
-      schedule: '주 2회, 화목 15:00-16:00',
-      hourlyRate: 75000,
-      chatStartDate: '2024-01-17 16:45',
-      status: 'cancelled',
-      lastActivity: '2024-01-18 12:20',
-      notes: '학부모 사정으로 취소'
-    }
-  ]);
+  const [matchings, setMatchings] = useState<Matching[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchMatchings = async () => {
+      try {
+        setLoading(true);
+        // TODO: Firebase에서 실제 매칭 데이터 조회
+        // const matchingsData = await getMatchings();
+        setMatchings([]);
+      } catch (error) {
+        console.error('매칭 데이터 로딩 실패:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMatchings();
+  }, []);
 
   const handleMatchingSelect = (matching: Matching) => {
     setSelectedMatching(matching);
@@ -122,20 +70,50 @@ export default function MatchingManagement() {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+      {/* 헤더 섹션 */}
+      <div className="bg-white rounded-xl border-2 border-blue-100 p-8 shadow-sm">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <div className="w-12 h-12 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-xl flex items-center justify-center shadow-lg">
+              <span className="text-white text-2xl">🤝</span>
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">매칭 관리</h1>
+              <p className="text-gray-600 mt-1">학부모와 치료사의 매칭 과정을 관리하고 진행 상황을 추적하세요</p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-4">
+            <div className="text-right">
+              <div className="text-2xl font-bold text-cyan-600">{matchings.filter(m => m.status === 'interview' || m.status === 'lesson_confirmed').length}</div>
+              <div className="text-sm text-gray-500">진행 중</div>
+            </div>
+            <div className="text-right">
+              <div className="text-2xl font-bold text-green-600">{matchings.filter(m => m.status === 'payment_completed').length}</div>
+              <div className="text-sm text-gray-500">매칭 완료</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* 상태별 통계 카드 */}
       <MatchingStatusCards matchings={matchings} />
 
       {/* 필터 및 검색 */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900">매칭 현황</h2>
+      <div className="bg-white rounded-xl border-2 border-blue-100 p-6 shadow-sm">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 bg-cyan-100 rounded-lg flex items-center justify-center">
+              <span className="text-cyan-600 text-lg">🔍</span>
+            </div>
+            <h2 className="text-xl font-bold text-gray-900">매칭 현황</h2>
+          </div>
           <div className="flex items-center space-x-4">
             {/* 상태 필터 */}
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-4 py-2 text-sm border border-blue-200 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all font-medium"
             >
               <option value="all">전체</option>
               <option value="interview">인터뷰 중</option>
@@ -145,18 +123,37 @@ export default function MatchingManagement() {
               <option value="cancelled">취소</option>
             </select>
 
-            <button className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700">
-              엑셀 다운로드
+            <button className="px-6 py-2 bg-gradient-to-r from-cyan-500 to-cyan-600 text-white text-sm font-semibold rounded-lg hover:from-cyan-600 hover:to-cyan-700 transition-all duration-300 shadow-md hover:shadow-lg">
+              📊 엑셀 다운로드
             </button>
           </div>
         </div>
       </div>
 
       {/* 매칭 테이블 */}
-      <MatchingTable
-        matchings={filteredMatchings}
-        onMatchingSelect={handleMatchingSelect}
-      />
+      <div className="bg-white rounded-xl border-2 border-blue-100 shadow-sm overflow-hidden">
+        <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-cyan-50 to-blue-50">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-cyan-100 rounded-lg flex items-center justify-center">
+                <span className="text-cyan-600 text-lg">📋</span>
+              </div>
+              <h2 className="text-xl font-bold text-gray-900">매칭 목록</h2>
+            </div>
+            <div className="flex items-center space-x-4">
+              <div className="px-4 py-2 bg-white rounded-lg border border-cyan-200 shadow-sm">
+                <span className="text-sm font-semibold text-gray-700">총 </span>
+                <span className="text-lg font-bold text-cyan-600">{filteredMatchings.length}</span>
+                <span className="text-sm font-semibold text-gray-700">건</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <MatchingTable
+          matchings={filteredMatchings}
+          onMatchingSelect={handleMatchingSelect}
+        />
+      </div>
 
       {/* 상세 정보 모달 */}
       {selectedMatching && (

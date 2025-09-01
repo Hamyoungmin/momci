@@ -12,56 +12,96 @@ interface StatCard {
 }
 
 export default function StatsCards() {
-  const [stats, setStats] = useState<StatCard[]>([
-    {
-      title: '누적 이용자 수',
-      value: '1,247',
-      change: '+12.5%',
-      changeType: 'increase',
-      icon: '👥',
-      color: 'bg-blue-500'
-    },
-    {
-      title: '누적 매칭 수',
-      value: '789',
-      change: '+18.2%',
-      changeType: 'increase',
-      icon: '🤝',
-      color: 'bg-green-500'
-    },
-    {
-      title: '활성 사용자',
-      value: '342',
-      change: '+7.1%',
-      changeType: 'increase',
-      icon: '📈',
-      color: 'bg-purple-500'
-    },
-    {
-      title: '오늘 신규 가입',
-      value: '12',
-      change: '+3',
-      changeType: 'increase',
-      icon: '🆕',
-      color: 'bg-orange-500'
-    },
-    {
-      title: '진행 중인 매칭',
-      value: '45',
-      change: '+8',
-      changeType: 'increase',
-      icon: '💬',
-      color: 'bg-cyan-500'
-    },
-    {
-      title: '오늘 매출',
-      value: '1,890,000원',
-      change: '+22.3%',
-      changeType: 'increase',
-      icon: '💰',
-      color: 'bg-emerald-500'
-    }
-  ]);
+  const [stats, setStats] = useState<StatCard[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // 실제 통계 데이터 불러오기
+    const fetchStats = async () => {
+      try {
+        setLoading(true);
+        // TODO: Firebase에서 실제 통계 데이터 조회
+        // const statsData = await getAdminStats();
+        
+        // 임시로 빈 배열로 시작
+        setStats([
+          {
+            title: '누적 이용자 수',
+            value: '0',
+            change: '0%',
+            changeType: 'neutral',
+            icon: '👥',
+            color: 'bg-blue-500'
+          },
+          {
+            title: '누적 매칭 수',
+            value: '0',
+            change: '0%',
+            changeType: 'neutral',
+            icon: '🤝',
+            color: 'bg-green-500'
+          },
+          {
+            title: '활성 사용자',
+            value: '0',
+            change: '0%',
+            changeType: 'neutral',
+            icon: '📈',
+            color: 'bg-purple-500'
+          },
+          {
+            title: '오늘 신규 가입',
+            value: '0',
+            change: '0',
+            changeType: 'neutral',
+            icon: '🆕',
+            color: 'bg-orange-500'
+          },
+          {
+            title: '진행 중인 매칭',
+            value: '0',
+            change: '0',
+            changeType: 'neutral',
+            icon: '💬',
+            color: 'bg-cyan-500'
+          },
+          {
+            title: '오늘 매출',
+            value: '0원',
+            change: '0%',
+            changeType: 'neutral',
+            icon: '💰',
+            color: 'bg-emerald-500'
+          }
+        ]);
+      } catch (error) {
+        console.error('통계 데이터 로딩 실패:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStats();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {Array.from({ length: 6 }).map((_, index) => (
+          <div key={index} className="bg-white rounded-xl border-2 border-gray-100 p-6 animate-pulse">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                <div className="h-8 bg-gray-200 rounded w-1/2 mb-3"></div>
+                <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+              </div>
+              <div className="w-14 h-14 bg-gray-200 rounded-xl"></div>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

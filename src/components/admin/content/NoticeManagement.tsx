@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import NoticeTable from './NoticeTable';
 import NoticeEditModal from './NoticeEditModal';
 
@@ -27,72 +27,15 @@ export default function NoticeManagement() {
   const [isCreating, setIsCreating] = useState(false);
   const [typeFilter, setTypeFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  
+  // Firebase에서 실제 데이터 가져오기
+  const [notices, setNotices] = useState<Notice[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // 실제 공지사항 데이터
-  const [notices] = useState<Notice[]>([
-    {
-      id: 'NOT001',
-      title: '🎉 더모든 키즈 정식 서비스 오픈 안내',
-      content: '안녕하세요. 더모든 키즈입니다.\n\n드디어 더모든 키즈가 정식 서비스를 시작하게 되었습니다. 발달치료가 필요한 아이들과 전문 치료사를 안전하게 연결하는 플랫폼으로 최선을 다하겠습니다.\n\n🔹 주요 서비스\n- 언어치료, 감각통합치료, 놀이치료, 인지학습치료 전문가 매칭\n- 안전결제 시스템을 통한 신뢰할 수 있는 거래\n- 체계적인 치료사 검증 시스템\n\n앞으로도 아이들의 건강한 발달을 위해 노력하겠습니다.\n감사합니다.',
-      type: 'important',
-      displayLocation: 'main',
-      isActive: true,
-      startDate: '2024-01-20 00:00',
-      endDate: '2024-02-20 23:59',
-      views: 1847,
-      createdAt: '2024-01-20 10:00',
-      updatedAt: '2024-01-20 10:00',
-      createdBy: '관리자',
-      priority: 1,
-      targetAudience: 'all'
-    },
-    {
-      id: 'NOT002',
-      title: '[긴급] 시스템 점검 안내 (1/25 새벽 2-4시)',
-      content: '안녕하세요. 더모든 키즈입니다.\n\n서비스 안정성 향상 및 기능 개선을 위한 시스템 점검을 실시합니다.\n\n📅 점검 일시: 2024년 1월 25일(목) 새벽 2:00 ~ 4:00 (약 2시간)\n🔧 점검 내용: 서버 최적화, 보안 업데이트, 매칭 알고리즘 개선\n\n점검 시간 동안 서비스 이용이 일시 중단됩니다.\n이용에 불편을 드려 죄송합니다.\n\n문의사항은 고객센터로 연락 부탁드립니다.',
-      type: 'urgent',
-      displayLocation: 'popup',
-      isActive: true,
-      startDate: '2024-01-22 00:00',
-      endDate: '2024-01-26 00:00',
-      views: 1293,
-      createdAt: '2024-01-22 14:30',
-      updatedAt: '2024-01-22 14:30',
-      createdBy: '관리자',
-      priority: 1,
-      targetAudience: 'all'
-    },
-    {
-      id: 'NOT003',
-      title: '안전결제 시스템 이용 안내',
-      content: '안녕하세요. 학부모님들의 안전한 거래를 위한 안전결제 시스템 안내를 드립니다.\n\n💳 안전결제 시스템이란?\n첫 수업료를 플랫폼에서 보관하다가 수업 진행 후 치료사에게 정산하는 시스템입니다.\n\n🔒 안전한 이유\n- 수업 전 미리 결제하여 치료사와의 신뢰 관계 구축\n- 만족스럽지 않을 경우 전액 환불 가능\n- 직거래로 인한 사기 위험 방지\n\n⚠️ 직거래 금지 안내\n플랫폼 외부에서의 직접 거래는 안전을 위해 금지되며, 이를 위반할 경우 이용 제재를 받을 수 있습니다.\n\n문의사항은 고객센터로 연락해주세요.',
-      type: 'general',
-      displayLocation: 'main',
-      isActive: true,
-      startDate: '2024-01-15 00:00',
-      views: 742,
-      createdAt: '2024-01-15 09:00',
-      updatedAt: '2024-01-18 16:20',
-      createdBy: '관리자',
-      priority: 3,
-      targetAudience: 'parents'
-    },
-    {
-      id: 'NOT004',
-      title: '치료사 프로필 인증 절차 안내',
-      content: '안녕하세요. 치료사 선생님들을 위한 프로필 인증 절차를 안내드립니다.\n\n📋 필수 제출 서류\n1. 졸업증명서 (학사 이상)\n2. 관련 자격증 (언어재활사, 작업치료사 등)\n3. 경력증명서 (해당 시)\n4. 신분증 사본\n\n✅ 인증 절차\n1. 서류 제출\n2. 관리자 검토 (1-3일 소요)\n3. 승인/반려 알림\n4. 승인 시 \'인증 치료사\' 배지 부여\n\n🏆 인증 혜택\n- 검색 결과 상위 노출\n- 학부모 신뢰도 향상\n- 매칭 성공률 증가\n\n정확한 정보 제공 부탁드리며, 허위 정보 제출 시 영구 이용 제재를 받을 수 있습니다.',
-      type: 'general',
-      displayLocation: 'mypage',
-      isActive: true,
-      startDate: '2024-01-10 00:00',
-      views: 568,
-      createdAt: '2024-01-10 11:00',
-      updatedAt: '2024-01-15 14:45',
-      createdBy: '관리자',
-      priority: 2,
-      targetAudience: 'teachers'
-    }
-  ]);
+  useEffect(() => {
+    // TODO: Firebase에서 실제 공지사항 데이터 가져오기
+    setLoading(false);
+  }, []);
 
   const handleNoticeSelect = (notice: Notice) => {
     setSelectedNotice(notice);
@@ -133,82 +76,124 @@ export default function NoticeManagement() {
 
   const activeNotices = notices.filter(n => n.isActive);
   const urgentNotices = notices.filter(n => n.type === 'urgent' && n.isActive);
+  const totalViews = notices.reduce((sum, n) => sum + n.views, 0);
 
   return (
     <div className="space-y-6">
+      {/* 헤더 섹션 */}
+      <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-100 rounded-xl p-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <div className="p-3 bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg">
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+              </svg>
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">공지사항 관리</h1>
+              <p className="text-gray-600 mt-1">플랫폼 공지사항을 작성하고 관리합니다</p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-6 text-sm">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-green-600">{activeNotices.length}</div>
+              <div className="text-gray-500">활성 공지</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-red-600">{urgentNotices.length}</div>
+              <div className="text-gray-500">긴급 공지</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* 상태 카드 */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div className="bg-white rounded-xl shadow-sm border-2 border-green-100 p-6 hover:border-green-200 transition-all duration-200 group">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
-                <span className="text-white text-sm">📢</span>
+              <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+                </svg>
               </div>
             </div>
-            <div className="ml-3">
+            <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">활성 공지</p>
-              <p className="text-lg font-semibold text-gray-900">{activeNotices.length}건</p>
+              <p className="text-xl font-bold text-gray-900">{activeNotices.length}건</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div className="bg-white rounded-xl shadow-sm border-2 border-red-100 p-6 hover:border-red-200 transition-all duration-200 group">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-red-500 rounded-lg flex items-center justify-center">
-                <span className="text-white text-sm">🚨</span>
+              <div className="w-10 h-10 bg-gradient-to-r from-red-500 to-pink-500 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
               </div>
             </div>
-            <div className="ml-3">
+            <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">긴급 공지</p>
-              <p className="text-lg font-semibold text-gray-900">{urgentNotices.length}건</p>
+              <p className="text-xl font-bold text-gray-900">{urgentNotices.length}건</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div className="bg-white rounded-xl shadow-sm border-2 border-purple-100 p-6 hover:border-purple-200 transition-all duration-200 group">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center">
-                <span className="text-white text-sm">💬</span>
+              <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+                </svg>
               </div>
             </div>
-            <div className="ml-3">
+            <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">팝업 공지</p>
-              <p className="text-lg font-semibold text-gray-900">
+              <p className="text-xl font-bold text-gray-900">
                 {notices.filter(n => n.displayLocation === 'popup' && n.isActive).length}건
               </p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div className="bg-white rounded-xl shadow-sm border-2 border-orange-100 p-6 hover:border-orange-200 transition-all duration-200 group">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
-                <span className="text-white text-sm">👁️</span>
+              <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-red-500 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
               </div>
             </div>
-            <div className="ml-3">
+            <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">총 조회수</p>
-              <p className="text-lg font-semibold text-gray-900">
-                {notices.reduce((sum, n) => sum + n.views, 0).toLocaleString()}
-              </p>
+              <p className="text-xl font-bold text-gray-900">{totalViews.toLocaleString()}</p>
             </div>
           </div>
         </div>
       </div>
 
       {/* 필터 및 검색 */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">공지사항 관리</h2>
+      <div className="bg-white rounded-xl shadow-sm border-2 border-green-100 p-6">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center space-x-3">
+            <div className="p-2 bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg">
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.414A1 1 0 013 6.707V4z" />
+              </svg>
+            </div>
+            <h2 className="text-lg font-semibold text-gray-900">공지사항 필터 및 관리</h2>
+          </div>
           <div className="flex items-center space-x-4">
             {/* 유형 필터 */}
             <select
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value)}
-              className="px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-3 py-2 text-sm border-2 border-green-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
             >
               <option value="all">전체 유형</option>
               <option value="general">일반</option>
@@ -220,7 +205,7 @@ export default function NoticeManagement() {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-3 py-2 text-sm border-2 border-green-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
             >
               <option value="all">전체 상태</option>
               <option value="active">활성</option>
@@ -229,7 +214,7 @@ export default function NoticeManagement() {
 
             <button
               onClick={handleCreateNew}
-              className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700"
+              className="px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white text-sm font-medium rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all duration-200 transform hover:scale-105"
             >
               + 새 공지 작성
             </button>
@@ -238,11 +223,13 @@ export default function NoticeManagement() {
 
         {/* 긴급 공지 알림 */}
         {urgentNotices.length > 0 && (
-          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <div className="mb-4 p-4 bg-gradient-to-r from-red-50 to-orange-50 border-2 border-red-200 rounded-xl">
             <div className="flex items-center">
-              <svg className="w-5 h-5 text-red-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
+              <div className="p-2 bg-gradient-to-r from-red-500 to-orange-500 rounded-lg mr-3">
+                <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+              </div>
               <span className="text-sm font-medium text-red-800">
                 {urgentNotices.length}건의 긴급 공지가 활성화되어 있습니다.
               </span>
@@ -251,11 +238,30 @@ export default function NoticeManagement() {
         )}
       </div>
 
-      {/* 공지사항 테이블 */}
-      <NoticeTable
-        notices={filteredNotices}
-        onNoticeSelect={handleNoticeSelect}
-      />
+      {/* 공지사항 목록 */}
+      <div className="bg-white rounded-xl shadow-sm border-2 border-green-100">
+        <div className="bg-gradient-to-r from-green-50 to-emerald-50 px-6 py-4 border-b border-green-100 rounded-t-xl">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">공지사항 목록</h3>
+              <span className="px-3 py-1 bg-green-100 text-green-700 text-sm font-semibold rounded-full">
+                총 {filteredNotices.length}건
+              </span>
+            </div>
+          </div>
+        </div>
+        <div className="p-6">
+          <NoticeTable
+            notices={filteredNotices}
+            onNoticeSelect={handleNoticeSelect}
+          />
+        </div>
+      </div>
 
       {/* 공지사항 편집 모달 */}
       <NoticeEditModal
