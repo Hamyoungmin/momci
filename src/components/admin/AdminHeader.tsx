@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useAdminStats, useFallbackAdminStats } from '@/hooks/useAdminStats';
 
 interface AdminHeaderProps {
   isAdmin: boolean;
@@ -8,10 +9,13 @@ interface AdminHeaderProps {
 
 export default function AdminHeader({ isAdmin }: AdminHeaderProps) {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  
+  // 실시간 관리자 통계 데이터
+  const stats = useAdminStats();
 
   return (
-    <header className="fixed top-0 left-64 right-0 bg-white/80 backdrop-blur-md border-b border-gray-200 shadow-sm z-40">
-      <div className="flex items-center justify-between px-6 py-4">
+    <header className="bg-white border-b border-gray-200 h-20">
+      <div className="flex items-center justify-between px-6 py-4 h-full">
         {/* 왼쪽: 페이지 정보 */}
         <div className="flex items-center space-x-4">
           <div>
@@ -24,17 +28,25 @@ export default function AdminHeader({ isAdmin }: AdminHeaderProps) {
         <div className="flex items-center space-x-4">
           {isAdmin ? (
             <>
-              {/* 긴급 알림 - 관리자만 */}
-              <div className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-red-50 to-red-100 border border-red-200 rounded-xl shadow-sm">
-                <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
-                <span className="text-sm text-red-700 font-semibold">긴급 신고 2건</span>
-              </div>
+              {/* 긴급 신고 - 관리자만 */}
+              {stats.urgentReports > 0 && (
+                <div className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-red-50 to-red-100 border border-red-200 rounded-xl shadow-sm">
+                  <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+                  <span className="text-sm text-red-700 font-semibold">
+                    긴급 신고 {stats.loading ? '로딩중...' : `${stats.urgentReports}건`}
+                  </span>
+                </div>
+              )}
 
               {/* 처리 대기 - 관리자만 */}
-              <div className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-yellow-50 to-yellow-100 border border-yellow-200 rounded-xl shadow-sm">
-                <span className="w-2 h-2 bg-yellow-500 rounded-full"></span>
-                <span className="text-sm text-yellow-700 font-semibold">처리 대기 11건</span>
-              </div>
+              {stats.pendingTasks > 0 && (
+                <div className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-yellow-50 to-yellow-100 border border-yellow-200 rounded-xl shadow-sm">
+                  <span className="w-2 h-2 bg-yellow-500 rounded-full"></span>
+                  <span className="text-sm text-yellow-700 font-semibold">
+                    처리 대기 {stats.loading ? '로딩중...' : `${stats.pendingTasks}건`}
+                  </span>
+                </div>
+              )}
             </>
           ) : (
             /* 비관리자용 읽기 전용 알림 */
@@ -47,7 +59,9 @@ export default function AdminHeader({ isAdmin }: AdminHeaderProps) {
           {/* 실시간 접속자 - 모든 사용자에게 표시 */}
           <div className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-green-50 to-green-100 border border-green-200 rounded-xl shadow-sm">
             <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-            <span className="text-sm text-green-700 font-semibold">접속자 73명</span>
+            <span className="text-sm text-green-700 font-semibold">
+              접속자 {stats.loading ? '로딩중...' : `${stats.activeUsers}명`}
+            </span>
           </div>
         </div>
 

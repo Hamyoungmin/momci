@@ -176,9 +176,9 @@ export default function AdminSidebar({ isAdmin }: AdminSidebarProps) {
   };
 
   return (
-    <aside className="fixed left-0 top-0 h-full w-64 bg-white border-r border-gray-200 shadow-sm flex flex-col">
+    <aside className="w-64 bg-white border-r border-gray-200 flex flex-col min-h-screen">
       {/* 로고 및 타이틀 */}
-      <div className="flex items-center px-6 py-6 border-b border-gray-200 flex-shrink-0">
+      <div className="flex items-center px-6 py-4 border-b border-gray-200 flex-shrink-0 h-20">
         <div>
           <h2 className="text-lg font-bold text-gray-900">관리자</h2>
           <p className="text-xs text-gray-500">더모든 키즈</p>
@@ -190,8 +190,8 @@ export default function AdminSidebar({ isAdmin }: AdminSidebarProps) {
         {menuItems.map(item => renderMenuItem(item))}
       </nav>
 
-      {/* 하단 정보 - 맨 아래 고정 */}
-      <div className="flex-shrink-0 p-4 border-t border-gray-200 bg-gray-50 mt-auto">
+      {/* 하단 정보 */}
+      <div className="p-4 border-t border-gray-200 bg-gray-50 mt-auto">
         <div className="text-center text-xs text-gray-500">
           <p>© 2024 더모든 키즈</p>
           <p>관리자 v1.0.0</p>

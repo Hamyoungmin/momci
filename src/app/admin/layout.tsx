@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useEffect, useState } from "react";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminHeader from "@/components/admin/AdminHeader";
+import { useUserSession } from "@/hooks/useUserSession";
 
 // 관리자 이메일 목록 (환경변수로 관리 권장)
 const ADMIN_EMAILS = ['dudals7334@naver.com'];
@@ -23,6 +24,9 @@ export default function AdminLayout({
 }>) {
   const { currentUser, loading } = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);
+  
+  // 사용자 세션 추적 활성화
+  useUserSession();
 
   useEffect(() => {
     if (currentUser?.email) {
@@ -45,16 +49,17 @@ export default function AdminLayout({
 
   // 현재는 아무나 접근 가능하되, 관리자 권한에 따라 UI를 다르게 표시
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* 관리자 전용 헤더 */}
-      <AdminHeader isAdmin={isAdmin} />
+    <div className="bg-gray-100 min-h-screen flex">
+      {/* 사이드바 */}
+      <AdminSidebar isAdmin={isAdmin} />
       
-      <div className="flex">
-        {/* 사이드바 */}
-        <AdminSidebar isAdmin={isAdmin} />
+      {/* 메인 영역 */}
+      <div className="flex-1 flex flex-col">
+        {/* 관리자 전용 헤더 */}
+        <AdminHeader isAdmin={isAdmin} />
         
         {/* 메인 콘텐츠 영역 */}
-        <main className="flex-1 ml-64 p-6 pb-20">
+        <main className="flex-1 p-6 pb-20 bg-gray-100">
           <div className="max-w-7xl mx-auto">
             {/* 관리자가 아닌 경우 알림 표시 */}
             {!isAdmin && currentUser && (
