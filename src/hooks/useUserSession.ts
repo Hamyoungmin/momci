@@ -13,6 +13,8 @@ export function useUserSession() {
   const { currentUser } = useAuth();
 
   useEffect(() => {
+    // 클라이언트에서만 실행
+    if (typeof window === 'undefined') return;
     if (!currentUser) return;
 
     const sessionId = `${currentUser.uid}_${Date.now()}`;

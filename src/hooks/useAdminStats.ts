@@ -21,6 +21,11 @@ export function useAdminStats(): AdminStats {
   const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
+    // 클라이언트에서만 실행
+    if (typeof window === 'undefined') {
+      setStats(prev => ({ ...prev, loading: false }));
+      return;
+    }
     const unsubscribers: (() => void)[] = [];
     let loadingTimeout: NodeJS.Timeout;
 
