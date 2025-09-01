@@ -123,7 +123,7 @@ export default function LessonPaymentTable({ payments, onPaymentSelect, onConfir
                   <div className="space-y-1">
                     <div className="font-medium">👨‍👩‍👧‍👦 {payment.parentName}</div>
                     <div className="text-xs text-gray-500">{payment.parentId}</div>
-                    <div className="font-medium">👩‍⚕️ {payment.teacherName}</div>
+                    <div className="font-medium">치료사 {payment.teacherName}</div>
                     <div className="text-xs text-gray-500">{payment.teacherId}</div>
                   </div>
                 </td>
@@ -163,7 +163,7 @@ export default function LessonPaymentTable({ payments, onPaymentSelect, onConfir
                   {payment.status === 'pending' && payment.virtualAccount && 
                    isExpiringSoon(payment.virtualAccount.expireDate) && (
                     <div className="text-xs text-red-600 mt-1">
-                      ⚠️ 입금 마감 임박
+                      입금 마감 임박
                     </div>
                   )}
                 </td>

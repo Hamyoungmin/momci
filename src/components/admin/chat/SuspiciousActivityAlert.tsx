@@ -23,7 +23,7 @@ export default function SuspiciousActivityAlert({
         </div>
         <div className="ml-3 flex-1">
           <h3 className="text-sm font-medium text-red-800">
-            🚨 긴급: 의심스러운 활동 감지
+            긴급: 의심스러운 활동 감지
           </h3>
           <div className="mt-2 text-sm text-red-700">
             <ul className="space-y-1">

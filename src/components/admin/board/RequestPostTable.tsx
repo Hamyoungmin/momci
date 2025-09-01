@@ -180,7 +180,7 @@ export default function RequestPostTable({ posts, onPostSelect }: RequestPostTab
                       <span className="font-medium">{post.applicants}명</span>
                     </div>
                     <div className="flex items-center">
-                      <span className="text-xs text-gray-500 mr-1">👁️</span>
+                      <span className="text-xs text-gray-500 mr-1">조회</span>
                       <span className="text-xs">{post.views}회</span>
                     </div>
                   </div>

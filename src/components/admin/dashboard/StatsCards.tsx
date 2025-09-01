@@ -23,14 +23,14 @@ export default function StatsCards() {
         // TODO: Firebase에서 실제 통계 데이터 조회
         // const statsData = await getAdminStats();
         
-        // 임시로 빈 배열로 시작
+        // 실제 데이터 (Firebase에서 가져올 예정)
         setStats([
           {
             title: '누적 이용자 수',
             value: '0',
             change: '0%',
             changeType: 'neutral',
-            icon: '👥',
+            icon: 'U',
             color: 'bg-blue-500'
           },
           {
@@ -38,7 +38,7 @@ export default function StatsCards() {
             value: '0',
             change: '0%',
             changeType: 'neutral',
-            icon: '🤝',
+            icon: 'M',
             color: 'bg-green-500'
           },
           {
@@ -46,7 +46,7 @@ export default function StatsCards() {
             value: '0',
             change: '0%',
             changeType: 'neutral',
-            icon: '📈',
+            icon: 'A',
             color: 'bg-purple-500'
           },
           {
@@ -54,7 +54,7 @@ export default function StatsCards() {
             value: '0',
             change: '0',
             changeType: 'neutral',
-            icon: '🆕',
+            icon: 'N',
             color: 'bg-orange-500'
           },
           {
@@ -62,7 +62,7 @@ export default function StatsCards() {
             value: '0',
             change: '0',
             changeType: 'neutral',
-            icon: '💬',
+            icon: 'P',
             color: 'bg-cyan-500'
           },
           {
@@ -70,7 +70,7 @@ export default function StatsCards() {
             value: '0원',
             change: '0%',
             changeType: 'neutral',
-            icon: '💰',
+            icon: 'S',
             color: 'bg-emerald-500'
           }
         ]);
@@ -130,14 +130,7 @@ export default function StatsCards() {
                 <span className="text-xs text-gray-400">지난 주 대비</span>
               </div>
             </div>
-            <div className="relative">
-              <div
-                className={`w-14 h-14 ${stat.color} rounded-xl flex items-center justify-center text-white text-2xl shadow-lg group-hover:scale-110 transition-transform duration-300`}
-              >
-                {stat.icon}
-              </div>
-              <div className={`absolute inset-0 ${stat.color} rounded-xl opacity-20 group-hover:opacity-30 transition-opacity duration-300`}></div>
-            </div>
+
           </div>
         </div>
       ))}

@@ -59,13 +59,13 @@ export default function ReportTable({ reports, onReportSelect }: ReportTableProp
       case 'direct_trade':
         return <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">🚫 직거래</span>;
       case 'inappropriate_behavior':
-        return <span className="px-2 py-1 text-xs font-medium bg-orange-100 text-orange-800 rounded-full">🚨 부적절행동</span>;
+        return <span className="px-2 py-1 text-xs font-medium bg-orange-100 text-orange-800 rounded-full">부적절행동</span>;
       case 'false_profile':
-        return <span className="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded-full">📋 허위프로필</span>;
+        return <span className="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded-full">허위프로필</span>;
       case 'service_complaint':
-        return <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">💬 서비스불만</span>;
+        return <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">서비스불만</span>;
       case 'other':
-        return <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">📝 기타</span>;
+        return <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">기타</span>;
       default:
         return <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">알 수 없음</span>;
     }
@@ -74,11 +74,11 @@ export default function ReportTable({ reports, onReportSelect }: ReportTableProp
   const getPriorityBadge = (priority: Report['priority']) => {
     switch (priority) {
       case 'urgent':
-        return <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">🚨 긴급</span>;
+        return <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">긴급</span>;
       case 'high':
-        return <span className="px-2 py-1 text-xs font-medium bg-orange-100 text-orange-800 rounded-full">⚠️ 높음</span>;
+        return <span className="px-2 py-1 text-xs font-medium bg-orange-100 text-orange-800 rounded-full">높음</span>;
       case 'medium':
-        return <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">📋 보통</span>;
+        return <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">보통</span>;
       case 'low':
         return <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">✅ 낮음</span>;
       default:
@@ -168,7 +168,7 @@ export default function ReportTable({ reports, onReportSelect }: ReportTableProp
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
                   {report.id}
                   {isUrgent(report) && (
-                    <div className="text-xs text-red-600 font-medium">⚠️ 긴급</div>
+                    <div className="text-xs text-red-600 font-medium">긴급</div>
                   )}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm">
@@ -222,8 +222,8 @@ export default function ReportTable({ reports, onReportSelect }: ReportTableProp
                             'bg-purple-100 text-purple-700'
                           }`}
                         >
-                          {evidence.type === 'chat' ? '💬' :
-                           evidence.type === 'screenshot' ? '📷' : '📄'}
+                          {evidence.type === 'chat' ? '채팅' :
+                           evidence.type === 'screenshot' ? '스크린샷' : '파일'}
                         </span>
                       ))}
                       {report.evidence.length > 2 && (

@@ -35,13 +35,13 @@ export default function InquiryTable({ inquiries, onInquirySelect }: InquiryTabl
   const getStatusBadge = (status: Inquiry['status']) => {
     switch (status) {
       case 'pending':
-        return <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">📨 접수</span>;
+        return <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">접수</span>;
       case 'assigned':
-        return <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">🔄 처리중</span>;
+        return <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">처리중</span>;
       case 'answered':
-        return <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">✅ 답변완료</span>;
+        return <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">답변완료</span>;
       case 'closed':
-        return <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">🔒 종료</span>;
+        return <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">종료</span>;
       default:
         return <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">알 수 없음</span>;
     }
@@ -50,13 +50,13 @@ export default function InquiryTable({ inquiries, onInquirySelect }: InquiryTabl
   const getPriorityBadge = (priority: Inquiry['priority']) => {
     switch (priority) {
       case 'urgent':
-        return <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">🚨 긴급</span>;
+        return <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">긴급</span>;
       case 'high':
-        return <span className="px-2 py-1 text-xs font-medium bg-orange-100 text-orange-800 rounded-full">⚠️ 높음</span>;
+        return <span className="px-2 py-1 text-xs font-medium bg-orange-100 text-orange-800 rounded-full">높음</span>;
       case 'medium':
-        return <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">📋 보통</span>;
+        return <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">보통</span>;
       case 'low':
-        return <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">✅ 낮음</span>;
+        return <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">낮음</span>;
       default:
         return <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">알 수 없음</span>;
     }
@@ -65,15 +65,15 @@ export default function InquiryTable({ inquiries, onInquirySelect }: InquiryTabl
   const getCategoryBadge = (category: Inquiry['category']) => {
     switch (category) {
       case 'service':
-        return <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">💬 서비스</span>;
+        return <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">서비스</span>;
       case 'payment':
-        return <span className="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded-full">💳 결제</span>;
+        return <span className="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded-full">결제</span>;
       case 'technical':
-        return <span className="px-2 py-1 text-xs font-medium bg-orange-100 text-orange-800 rounded-full">🔧 기술</span>;
+        return <span className="px-2 py-1 text-xs font-medium bg-orange-100 text-orange-800 rounded-full">기술</span>;
       case 'account':
-        return <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">👤 계정</span>;
+        return <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">계정</span>;
       case 'other':
-        return <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">📝 기타</span>;
+        return <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">기타</span>;
       default:
         return <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">알 수 없음</span>;
     }
@@ -186,10 +186,10 @@ export default function InquiryTable({ inquiries, onInquirySelect }: InquiryTabl
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
                   {inquiry.id}
                   {inquiry.priority === 'urgent' && (
-                    <div className="text-xs text-red-600 font-medium">🚨 긴급</div>
+                    <div className="text-xs text-red-600 font-medium">긴급</div>
                   )}
                   {isOverdue(inquiry) && (
-                    <div className="text-xs text-orange-600 font-medium">⏰ 지연</div>
+                    <div className="text-xs text-orange-600 font-medium">지연</div>
                   )}
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-900">
@@ -233,7 +233,7 @@ export default function InquiryTable({ inquiries, onInquirySelect }: InquiryTabl
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   {inquiry.attachments.length > 0 ? (
                     <div className="flex items-center space-x-1">
-                      <span className="text-blue-600">📎</span>
+                      <span className="text-blue-600">첨부</span>
                       <span className="text-xs">{inquiry.attachments.length}개</span>
                     </div>
                   ) : (

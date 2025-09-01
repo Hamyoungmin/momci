@@ -8,7 +8,7 @@ import QuickActions from './dashboard/QuickActions';
 
 export default function AdminDashboard() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-12">
       {/* 통계 카드 영역 */}
       <StatsCards />
 

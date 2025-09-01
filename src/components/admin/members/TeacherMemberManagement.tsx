@@ -122,7 +122,7 @@ export default function TeacherMemberManagement() {
     { 
       key: 'rating', 
       label: '평점', 
-      render: (value: number) => value > 0 ? `⭐ ${value}` : '-' 
+      render: (value: number) => value > 0 ? `${value}` : '-' 
     },
     { key: 'joinDate', label: '가입일' },
     { key: 'status', label: '상태', render: (value: TeacherMember['status']) => getStatusBadge(value) },
@@ -137,14 +137,9 @@ export default function TeacherMemberManagement() {
       {/* 헤더 섹션 */}
       <div className="bg-white rounded-xl border-2 border-blue-100 p-8 shadow-sm">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-blue-500 rounded-xl flex items-center justify-center shadow-lg">
-              <span className="text-white text-2xl">👩‍⚕️</span>
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">치료사 회원 관리</h1>
-              <p className="text-gray-600 mt-1">등록된 치료사 회원들을 관리하고 승인 상태를 모니터링하세요</p>
-            </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">치료사 회원 관리</h1>
+            <p className="text-gray-600 mt-1">등록된 치료사 회원들을 관리하고 승인 상태를 모니터링하세요</p>
           </div>
           <div className="flex items-center space-x-4">
             <div className="text-right">
@@ -162,9 +157,7 @@ export default function TeacherMemberManagement() {
       {/* 검색 및 필터 */}
       <div className="bg-white rounded-xl border-2 border-blue-100 p-6 shadow-sm">
         <div className="flex items-center space-x-3 mb-4">
-          <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-            <span className="text-blue-600 text-lg">🔍</span>
-          </div>
+
           <h2 className="text-xl font-bold text-gray-900">검색 및 필터</h2>
         </div>
         <SearchFilters memberType="teacher" />
@@ -173,64 +166,36 @@ export default function TeacherMemberManagement() {
       {/* 통계 카드 */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="bg-white rounded-xl border-2 border-blue-100 p-6 shadow-sm hover:shadow-lg transition-all duration-300 group">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300">
-                <span className="text-white text-xl">👩‍⚕️</span>
-              </div>
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide">총 치료사</p>
-              <p className="text-2xl font-bold text-blue-600 group-hover:text-blue-700 transition-colors">{members.length}명</p>
-            </div>
+          <div>
+            <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">총 치료사</p>
+            <p className="text-2xl font-bold text-blue-600">{members.length}명</p>
           </div>
         </div>
         
         <div className="bg-white rounded-xl border-2 border-blue-100 p-6 shadow-sm hover:shadow-lg transition-all duration-300 group">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <div className="w-12 h-12 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-xl flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300">
-                <span className="text-white text-xl">⏳</span>
-              </div>
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide">승인 대기</p>
-              <p className="text-2xl font-bold text-orange-600 group-hover:text-orange-700 transition-colors">
-                {members.filter(m => m.profileStatus === 'pending').length}명
-              </p>
-            </div>
+          <div>
+            <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">승인 대기</p>
+            <p className="text-2xl font-bold text-orange-600">
+              {members.filter(m => m.profileStatus === 'pending').length}명
+            </p>
           </div>
         </div>
 
         <div className="bg-white rounded-xl border-2 border-blue-100 p-6 shadow-sm hover:shadow-lg transition-all duration-300 group">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300">
-                <span className="text-white text-xl">✅</span>
-              </div>
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide">승인 완료</p>
-              <p className="text-2xl font-bold text-green-600 group-hover:text-green-700 transition-colors">
-                {members.filter(m => m.profileStatus === 'approved').length}명
-              </p>
-            </div>
+          <div>
+            <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">승인 완료</p>
+            <p className="text-2xl font-bold text-green-600">
+              {members.filter(m => m.profileStatus === 'approved').length}명
+            </p>
           </div>
         </div>
 
         <div className="bg-white rounded-xl border-2 border-blue-100 p-6 shadow-sm hover:shadow-lg transition-all duration-300 group">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-xl flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300">
-                <span className="text-white text-xl">🏆</span>
-              </div>
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide">인증 치료사</p>
-              <p className="text-2xl font-bold text-purple-600 group-hover:text-purple-700 transition-colors">
-                {members.filter(m => m.certificationBadge === 'certified').length}명
-              </p>
-            </div>
+          <div>
+            <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">인증 치료사</p>
+            <p className="text-2xl font-bold text-purple-600">
+              {members.filter(m => m.certificationBadge === 'certified').length}명
+            </p>
           </div>
         </div>
       </div>
@@ -239,10 +204,7 @@ export default function TeacherMemberManagement() {
       <div className="bg-white rounded-xl border-2 border-blue-100 shadow-sm overflow-hidden">
         <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-blue-50">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-                <span className="text-purple-600 text-lg">📋</span>
-              </div>
+            <div>
               <h2 className="text-xl font-bold text-gray-900">치료사 회원 목록</h2>
             </div>
             <div className="flex items-center space-x-4">
@@ -252,7 +214,7 @@ export default function TeacherMemberManagement() {
                 <span className="text-sm font-semibold text-gray-700">명</span>
               </div>
               <button className="px-6 py-3 bg-gradient-to-r from-purple-500 to-purple-600 text-white text-sm font-semibold rounded-lg hover:from-purple-600 hover:to-purple-700 transition-all duration-300 shadow-md hover:shadow-lg">
-                📊 엑셀 다운로드
+                엑셀 다운로드
               </button>
             </div>
           </div>

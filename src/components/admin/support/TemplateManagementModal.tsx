@@ -27,64 +27,8 @@ export default function TemplateManagementModal({ isOpen, onClose }: TemplateMan
   const [category, setCategory] = useState<'service' | 'payment' | 'technical' | 'account' | 'other'>('service');
   const [content, setContent] = useState('');
 
-  // 임시 데이터
-  const [templates] = useState<Template[]>([
-    {
-      id: 'TPL001',
-      title: '이용권 결제 확인',
-      category: 'payment',
-      content: '안녕하세요. 고객님의 이용권 결제 문의에 대해 확인해드렸습니다.\n\n입금 내역을 확인한 결과, 정상적으로 결제가 완료되었으며 이용권이 활성화되었습니다.\n\n추가 문의사항이 있으시면 언제든 연락해주세요.\n\n감사합니다.',
-      isActive: true,
-      usageCount: 25,
-      createdAt: '2024-01-10 10:00',
-      updatedAt: '2024-01-15 14:30',
-      createdBy: '고객지원팀A'
-    },
-    {
-      id: 'TPL002',
-      title: '기술 오류 해결 완료',
-      category: 'technical',
-      content: '안녕하세요. 기술적 문제로 불편을 드려 죄송합니다.\n\n해당 문제는 임시 서버 오류로 인한 것으로 확인되었으며, 현재 정상적으로 복구되었습니다.\n\n향후 동일한 문제가 발생하시면 즉시 연락해주시기 바랍니다.\n\n이용에 불편을 드려 죄송합니다.',
-      isActive: true,
-      usageCount: 18,
-      createdAt: '2024-01-12 09:30',
-      updatedAt: '2024-01-18 16:20',
-      createdBy: '기술팀A'
-    },
-    {
-      id: 'TPL003',
-      title: '매칭 프로세스 안내',
-      category: 'service',
-      content: '안녕하세요. 매칭 프로세스에 대해 안내드리겠습니다.\n\n1) 학부모 요청글 작성\n2) 치료사 지원\n3) 1:1 채팅 진행\n4) 첫 수업료 결제\n5) 연락처 공개 및 매칭 완료\n\n자세한 내용은 이용 가이드를 참고해주세요.\n\n감사합니다.',
-      isActive: true,
-      usageCount: 42,
-      createdAt: '2024-01-08 14:00',
-      updatedAt: '2024-01-20 11:45',
-      createdBy: '고객지원팀B'
-    },
-    {
-      id: 'TPL004',
-      title: '계정 정보 수정 안내',
-      category: 'account',
-      content: '안녕하세요. 계정 정보 수정 방법을 안내드리겠습니다.\n\n마이페이지 > 프로필 설정에서 개인정보를 수정하실 수 있습니다.\n\n프로필 사진, 자기소개, 전문분야 등을 업데이트해주세요.\n\n문의사항이 있으시면 언제든 연락해주세요.\n\n감사합니다.',
-      isActive: true,
-      usageCount: 12,
-      createdAt: '2024-01-15 11:20',
-      updatedAt: '2024-01-15 11:20',
-      createdBy: '고객지원팀A'
-    },
-    {
-      id: 'TPL005',
-      title: '환불 처리 안내',
-      category: 'payment',
-      content: '안녕하세요. 환불 요청에 대해 안내드리겠습니다.\n\n환불 정책에 따라 검토한 결과, 환불 조건에 해당하여 처리해드렸습니다.\n\n환불 금액은 3-5 영업일 내에 원 결제 수단으로 처리됩니다.\n\n추가 문의사항이 있으시면 연락해주세요.\n\n감사합니다.',
-      isActive: false,
-      usageCount: 8,
-      createdAt: '2024-01-05 16:00',
-      updatedAt: '2024-01-19 13:30',
-      createdBy: '고객지원팀B'
-    }
-  ]);
+  // 실제 데이터 (Firebase에서 가져올 예정)
+  const [templates] = useState<Template[]>([]);
 
   if (!isOpen) return null;
 
@@ -122,15 +66,15 @@ export default function TemplateManagementModal({ isOpen, onClose }: TemplateMan
   const getCategoryBadge = (category: Template['category']) => {
     switch (category) {
       case 'service':
-        return <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">💬 서비스</span>;
+        return <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">서비스</span>;
       case 'payment':
-        return <span className="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded-full">💳 결제</span>;
+        return <span className="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded-full">결제</span>;
       case 'technical':
-        return <span className="px-2 py-1 text-xs font-medium bg-orange-100 text-orange-800 rounded-full">🔧 기술</span>;
+        return <span className="px-2 py-1 text-xs font-medium bg-orange-100 text-orange-800 rounded-full">기술</span>;
       case 'account':
-        return <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">👤 계정</span>;
+        return <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">계정</span>;
       case 'other':
-        return <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">📝 기타</span>;
+        return <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">기타</span>;
       default:
         return <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">알 수 없음</span>;
     }

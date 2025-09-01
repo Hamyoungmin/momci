@@ -51,45 +51,8 @@ export default function RequestPostDetailModal({ isOpen, onClose, post, onPostAc
   const [actionType, setActionType] = useState<'hide' | 'show' | 'delete' | 'close' | null>(null);
   const [actionReason, setActionReason] = useState('');
 
-  // 임시 지원자 데이터
-  const [applicants] = useState<TeacherApplicant[]>([
-    {
-      id: 'T001',
-      name: '이○○',
-      profile: {
-        experience: '5년',
-        specialties: ['언어치료', '인지학습치료'],
-        rating: 4.8,
-        reviews: 23
-      },
-      appliedAt: '2024-01-20 15:30',
-      status: 'pending'
-    },
-    {
-      id: 'T002',
-      name: '김○○',
-      profile: {
-        experience: '7년',
-        specialties: ['언어치료', '놀이치료'],
-        rating: 4.9,
-        reviews: 31
-      },
-      appliedAt: '2024-01-20 16:45',
-      status: 'pending'
-    },
-    {
-      id: 'T003',
-      name: '박○○',
-      profile: {
-        experience: '3년',
-        specialties: ['언어치료'],
-        rating: 4.6,
-        reviews: 15
-      },
-      appliedAt: '2024-01-20 17:20',
-      status: 'selected'
-    }
-  ]);
+  // 실제 데이터 (Firebase에서 가져올 예정)
+  const [applicants] = useState<TeacherApplicant[]>([]);
 
   if (!isOpen) return null;
 
@@ -135,12 +98,12 @@ export default function RequestPostDetailModal({ isOpen, onClose, post, onPostAc
             <div className="flex items-center space-x-4">
               {post.urgent && (
                 <span className="px-3 py-1 text-sm font-medium bg-red-100 text-red-800 rounded-full">
-                  🚨 급구
+                  급구
                 </span>
               )}
               {post.premium && (
                 <span className="px-3 py-1 text-sm font-medium bg-purple-100 text-purple-800 rounded-full">
-                  ⭐ 프리미엄
+                  프리미엄
                 </span>
               )}
               <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
@@ -299,7 +262,7 @@ export default function RequestPostDetailModal({ isOpen, onClose, post, onPostAc
                             <div>
                               <span className="text-gray-600">평점:</span>
                               <span className="font-medium ml-2">
-                                ⭐ {applicant.profile.rating} ({applicant.profile.reviews}개 후기)
+                                {applicant.profile.rating} ({applicant.profile.reviews}개 후기)
                               </span>
                             </div>
                           </div>

@@ -144,7 +144,7 @@ export default function ReportDetailModal({ isOpen, onClose, report, onReportAct
             <div className="flex items-center space-x-4">
               {isUrgent && (
                 <span className="px-3 py-1 text-sm font-medium bg-red-100 text-red-800 rounded-full">
-                  🚨 긴급 처리
+                  긴급 처리
                 </span>
               )}
               {report.type === 'direct_trade' && (
@@ -351,8 +351,8 @@ export default function ReportDetailModal({ isOpen, onClose, report, onReportAct
                         <div className="flex-1">
                           <div className="flex items-center space-x-2 mb-2">
                             <span className="text-lg">
-                              {evidence.type === 'chat' ? '💬' :
-                               evidence.type === 'screenshot' ? '📷' : '📄'}
+                              {evidence.type === 'chat' ? '채팅' :
+                               evidence.type === 'screenshot' ? '스크린샷' : '파일'}
                             </span>
                             <span className="font-medium text-gray-900">
                               {evidence.type === 'chat' ? '채팅 내역' :

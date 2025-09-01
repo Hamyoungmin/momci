@@ -30,11 +30,11 @@ export default function PeriodSelector({ selectedPeriod, onPeriodChange }: Perio
       </select>
       
       <button className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700">
-        📊 보고서 생성
+        보고서 생성
       </button>
       
       <button className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700">
-        📤 엑셀 다운로드
+        엑셀 다운로드
       </button>
     </div>
   );

@@ -22,7 +22,9 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             <Link href="/guide" className="group">
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 text-center hover:shadow-lg hover:border-blue-500 transition-all">
-                <div className="text-4xl mb-4">📋</div>
+                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <span className="text-blue-600 font-bold text-lg">가이드</span>
+                </div>
                 <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-blue-600">이용안내</h3>
                 <p className="text-gray-600 text-sm">4단계 간단한 이용 방법을 확인하세요</p>
               </div>
@@ -30,7 +32,9 @@ export default function Home() {
 
             <Link href="/matching" className="group">
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 text-center hover:shadow-lg hover:border-blue-500 transition-all">
-                <div className="text-4xl mb-4">🤝</div>
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <span className="text-green-600 font-bold text-lg">매칭</span>
+                </div>
                 <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-blue-600">홈티매칭</h3>
                 <p className="text-gray-600 text-sm">다양한 치료 프로그램과 전문가 매칭</p>
               </div>
@@ -38,7 +42,9 @@ export default function Home() {
 
             <Link href="/reviews" className="group">
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 text-center hover:shadow-lg hover:border-blue-500 transition-all">
-                <div className="text-4xl mb-4">⭐</div>
+                <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <span className="text-yellow-600 font-bold text-lg">후기</span>
+                </div>
                 <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-blue-600">치료사 후기</h3>
                 <p className="text-gray-600 text-sm">실제 이용자들의 생생한 후기를 확인</p>
               </div>
@@ -46,7 +52,9 @@ export default function Home() {
 
             <Link href="/support" className="group">
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 text-center hover:shadow-lg hover:border-blue-500 transition-all">
-                <div className="text-4xl mb-4">💬</div>
+                <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <span className="text-purple-600 font-bold text-lg">지원</span>
+                </div>
                 <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-blue-600">고객센터</h3>
                 <p className="text-gray-600 text-sm">문의사항과 지원 서비스 이용</p>
               </div>

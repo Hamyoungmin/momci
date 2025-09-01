@@ -54,7 +54,7 @@ export default function AdminLayout({
         <AdminSidebar isAdmin={isAdmin} />
         
         {/* 메인 콘텐츠 영역 */}
-        <main className="flex-1 ml-64 p-6">
+        <main className="flex-1 ml-64 p-6 pb-20">
           <div className="max-w-7xl mx-auto">
             {/* 관리자가 아닌 경우 알림 표시 */}
             {!isAdmin && currentUser && (

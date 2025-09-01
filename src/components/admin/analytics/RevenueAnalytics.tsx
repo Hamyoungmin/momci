@@ -1,62 +1,58 @@
 'use client';
 
+interface PaymentMethod {
+  method: string;
+  percentage: number;
+  amount: number;
+  count: number;
+}
+
+interface Performer {
+  name: string;
+  commission: number;
+  transactions: number;
+}
+
 interface RevenueAnalyticsProps {
   period: string;
 }
 
 export default function RevenueAnalytics({ period }: RevenueAnalyticsProps) {
-  // 임시 데이터
+  // 실제 데이터 (Firebase에서 가져올 예정)
   const revenueStats = {
-    totalRevenue: 42500000, // 4,250만원
-    monthlyGrowth: 8.7,
+    totalRevenue: 0,
+    monthlyGrowth: 0,
     subscriptionRevenue: {
-      parents: 18900000, // 학부모 이용권
-      teachers: 12600000, // 치료사 이용권
-      total: 31500000
+      parents: 0,
+      teachers: 0,
+      total: 0
     },
-    commissionRevenue: 11000000, // 수수료 수익
-    monthlyTrend: [
-      { month: '1월', subscription: 2500000, commission: 800000, total: 3300000 },
-      { month: '2월', subscription: 2800000, commission: 950000, total: 3750000 },
-      { month: '3월', subscription: 3200000, commission: 1100000, total: 4300000 },
-      { month: '4월', subscription: 3600000, commission: 1300000, total: 4900000 },
-      { month: '5월', subscription: 4100000, commission: 1450000, total: 5550000 },
-      { month: '6월', subscription: 4250000, commission: 1650000, total: 5900000 }
-    ]
+    commissionRevenue: 0,
+    monthlyTrend: [] as any[]
   };
 
   const subscriptionStats = {
-    activeSubscriptions: 2847,
-    newSubscriptions: 234,
-    canceledSubscriptions: 32,
-    churnRate: 1.1, // 이탈률
-    avgRevenuePerUser: 14900, // ARPU
-    lifetimeValue: 89400, // LTV
-    paymentMethods: [
-      { method: '가상계좌', count: 2156, percentage: 75.7 },
-      { method: '카드결제', count: 534, percentage: 18.8 },
-      { method: '무통장입금', count: 157, percentage: 5.5 }
-    ]
+    activeSubscriptions: 0,
+    newSubscriptions: 0,
+    canceledSubscriptions: 0,
+    churnRate: 0,
+    avgRevenuePerUser: 0,
+    lifetimeValue: 0,
+    paymentMethods: [] as PaymentMethod[]
   };
 
   const commissionStats = {
-    totalTransactions: 1456,
-    avgCommissionRate: 15.0, // 15%
-    avgTransactionValue: 75500,
-    topPerformers: [
-      { name: '이○○', transactions: 23, commission: 259500 },
-      { name: '김○○', transactions: 19, commission: 214750 },
-      { name: '박○○', transactions: 17, commission: 191850 },
-      { name: '정○○', transactions: 15, commission: 169125 },
-      { name: '최○○', transactions: 14, commission: 158200 }
-    ]
+    totalTransactions: 0,
+    avgCommissionRate: 0,
+    avgTransactionValue: 0,
+    topPerformers: [] as Performer[]
   };
 
   const projections = {
-    nextMonth: 6400000,
-    nextQuarter: 19200000,
-    yearEnd: 76800000,
-    growthFactor: 12.5 // 예상 성장률
+    nextMonth: 0,
+    nextQuarter: 0,
+    yearEnd: 0,
+    growthFactor: 0
   };
 
   const getPeriodLabel = (period: string) => {
@@ -93,7 +89,7 @@ export default function RevenueAnalytics({ period }: RevenueAnalyticsProps) {
               <p className="text-2xl font-bold">{formatCurrency(revenueStats.totalRevenue)}</p>
               <p className="text-green-100 text-xs">전월 대비 +{revenueStats.monthlyGrowth}%</p>
             </div>
-            <div className="text-3xl">💰</div>
+            <div className="text-3xl font-bold">₩</div>
           </div>
         </div>
 
@@ -104,7 +100,7 @@ export default function RevenueAnalytics({ period }: RevenueAnalyticsProps) {
               <p className="text-2xl font-bold">{formatCurrency(revenueStats.subscriptionRevenue.total)}</p>
               <p className="text-blue-100 text-xs">전체 매출의 74.1%</p>
             </div>
-            <div className="text-3xl">📱</div>
+            <div className="text-3xl font-bold">모바일</div>
           </div>
         </div>
 
@@ -134,7 +130,7 @@ export default function RevenueAnalytics({ period }: RevenueAnalyticsProps) {
       {/* 이용권 매출 분석 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white border border-gray-200 rounded-lg p-6">
-          <h4 className="text-base font-medium text-gray-900 mb-4">📱 이용권 매출 현황</h4>
+          <h4 className="text-base font-medium text-gray-900 mb-4">이용권 매출 현황</h4>
           
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -178,7 +174,7 @@ export default function RevenueAnalytics({ period }: RevenueAnalyticsProps) {
         </div>
 
         <div className="bg-white border border-gray-200 rounded-lg p-6">
-          <h4 className="text-base font-medium text-gray-900 mb-4">📊 구독 지표</h4>
+          <h4 className="text-base font-medium text-gray-900 mb-4">구독 지표</h4>
           
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -244,7 +240,7 @@ export default function RevenueAnalytics({ period }: RevenueAnalyticsProps) {
         </div>
 
         <div className="bg-white border border-gray-200 rounded-lg p-6">
-          <h4 className="text-base font-medium text-gray-900 mb-4">🏆 수수료 Top 5 치료사</h4>
+          <h4 className="text-base font-medium text-gray-900 mb-4">수수료 Top 5 치료사</h4>
           
           <div className="space-y-3">
             {commissionStats.topPerformers.map((performer, index) => (
@@ -273,7 +269,7 @@ export default function RevenueAnalytics({ period }: RevenueAnalyticsProps) {
 
       {/* 월별 매출 추이 */}
       <div className="bg-white border border-gray-200 rounded-lg p-6">
-        <h4 className="text-base font-medium text-gray-900 mb-4">📈 월별 매출 추이</h4>
+        <h4 className="text-base font-medium text-gray-900 mb-4">월별 매출 추이</h4>
         
         <div className="overflow-x-auto">
           <div className="flex space-x-4 min-w-max">
@@ -342,11 +338,11 @@ export default function RevenueAnalytics({ period }: RevenueAnalyticsProps) {
 
       {/* 매출 최적화 제안 */}
       <div className="bg-green-50 border border-green-200 rounded-lg p-6">
-        <h4 className="text-base font-medium text-green-900 mb-4">💡 매출 최적화 제안</h4>
+        <h4 className="text-base font-medium text-green-900 mb-4">매출 최적화 제안</h4>
         
         <div className="space-y-3">
           <div className="flex items-start space-x-3">
-            <div className="flex-shrink-0 w-6 h-6 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-sm font-medium">1</div>
+            <span className="font-bold text-green-600">1.</span>
             <div>
               <div className="text-sm font-medium text-green-900">치료사 이용권 가격 최적화</div>
               <div className="text-sm text-green-700">현재 60% 학부모 의존도를 50:50으로 균형 맞추기</div>
@@ -354,7 +350,7 @@ export default function RevenueAnalytics({ period }: RevenueAnalyticsProps) {
           </div>
           
           <div className="flex items-start space-x-3">
-            <div className="flex-shrink-0 w-6 h-6 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-sm font-medium">2</div>
+            <span className="font-bold text-green-600">2.</span>
             <div>
               <div className="text-sm font-medium text-green-900">수수료 구조 개선</div>
               <div className="text-sm text-green-700">첫 수업 외 추가 수업 수수료 모델 검토 (현재 15% → 5-10% 차등)</div>
@@ -362,7 +358,7 @@ export default function RevenueAnalytics({ period }: RevenueAnalyticsProps) {
           </div>
           
           <div className="flex items-start space-x-3">
-            <div className="flex-shrink-0 w-6 h-6 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-sm font-medium">3</div>
+            <span className="font-bold text-green-600">3.</span>
             <div>
               <div className="text-sm font-medium text-green-900">이탈률 개선</div>
               <div className="text-sm text-green-700">1.1% 이탈률을 1% 미만으로 줄여 LTV 10% 증대 목표</div>

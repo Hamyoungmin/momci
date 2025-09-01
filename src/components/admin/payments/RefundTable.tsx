@@ -133,7 +133,7 @@ export default function RefundTable({ refunds, onRefundSelect }: RefundTableProp
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
                   {refund.id}
                   {refund.status === 'pending' && isUrgent(refund.requestDate) && (
-                    <div className="text-xs text-red-600">⚠️ 긴급</div>
+                    <div className="text-xs text-red-600">긴급</div>
                   )}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">

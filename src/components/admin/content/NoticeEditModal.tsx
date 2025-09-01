@@ -297,8 +297,8 @@ export default function NoticeEditModal({
                     type === 'important' ? 'bg-yellow-100 text-yellow-800' :
                     'bg-gray-100 text-gray-800'
                   }`}>
-                    {type === 'urgent' ? '🚨 긴급' :
-                     type === 'important' ? '⭐ 중요' : '일반'}
+                    {type === 'urgent' ? '긴급' :
+                     type === 'important' ? '중요' : '일반'}
                   </span>
                   <span className={`px-2 py-1 text-xs font-medium rounded-full ${
                     displayLocation === 'popup' ? 'bg-purple-100 text-purple-800' :

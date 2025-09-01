@@ -95,7 +95,7 @@ export default function ProfileBoardTable({ profiles, onProfileSelect }: Profile
                     <span className="font-bold text-lg">#{profile.displayOrder}</span>
                     {profile.isFeatured && (
                       <span className="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded-full">
-                        ⭐ 추천
+                        추천
                       </span>
                     )}
                   </div>
@@ -103,9 +103,7 @@ export default function ProfileBoardTable({ profiles, onProfileSelect }: Profile
                 <td className="px-6 py-4 text-sm text-gray-900">
                   <div className="flex items-center space-x-3">
                     <div className="flex-shrink-0">
-                      <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
-                        <span className="text-gray-600 text-xs">👩‍⚕️</span>
-                      </div>
+
                     </div>
                     <div>
                       <div className="flex items-center space-x-2">
@@ -148,7 +146,7 @@ export default function ProfileBoardTable({ profiles, onProfileSelect }: Profile
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   <div className="flex items-center space-x-1">
-                    <span className="text-yellow-400">⭐</span>
+                    <span className="text-yellow-400">★</span>
                     <span className="font-medium">{profile.rating}</span>
                   </div>
                   <div className="text-xs text-gray-500">
@@ -161,7 +159,7 @@ export default function ProfileBoardTable({ profiles, onProfileSelect }: Profile
                   </div>
                   {profile.qualityScore < 80 && (
                     <div className="text-xs text-red-600 mt-1">
-                      ⚠️ 개선 필요
+                      개선 필요
                     </div>
                   )}
                 </td>
@@ -190,7 +188,7 @@ export default function ProfileBoardTable({ profiles, onProfileSelect }: Profile
                         </span>
                       ) : (
                         <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">
-                          👁️‍🗨️ 숨김
+                          숨김
                         </span>
                       )}
                     </div>

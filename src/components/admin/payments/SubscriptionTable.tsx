@@ -162,7 +162,7 @@ export default function SubscriptionTable({ payments, onPaymentSelect, onConfirm
                   {payment.status === 'pending' && payment.virtualAccount && 
                    isExpiringSoon(payment.virtualAccount.expireDate) && (
                     <div className="text-xs text-red-600 mt-1">
-                      ⚠️ 입금 마감 임박
+                      입금 마감 임박
                     </div>
                   )}
                 </td>

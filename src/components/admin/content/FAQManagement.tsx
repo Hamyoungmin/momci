@@ -107,14 +107,7 @@ export default function FAQManagement() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white rounded-xl shadow-sm border-2 border-blue-100 p-6 hover:border-blue-200 transition-all duration-200 group">
           <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-            </div>
-            <div className="ml-4">
+            <div className="">
               <p className="text-sm font-medium text-gray-500">활성 FAQ</p>
               <p className="text-xl font-bold text-gray-900">{activeFAQs.length}개</p>
             </div>
@@ -123,14 +116,7 @@ export default function FAQManagement() {
 
         <div className="bg-white rounded-xl shadow-sm border-2 border-green-100 p-6 hover:border-green-200 transition-all duration-200 group">
           <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" />
-                </svg>
-              </div>
-            </div>
-            <div className="ml-4">
+            <div className="">
               <p className="text-sm font-medium text-gray-500">일반 문의</p>
               <p className="text-xl font-bold text-gray-900">
                 {faqs.filter(f => f.category === 'general').length}개
@@ -141,14 +127,7 @@ export default function FAQManagement() {
 
         <div className="bg-white rounded-xl shadow-sm border-2 border-purple-100 p-6 hover:border-purple-200 transition-all duration-200 group">
           <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                </svg>
-              </div>
-            </div>
-            <div className="ml-4">
+            <div className="">
               <p className="text-sm font-medium text-gray-500">결제 관련</p>
               <p className="text-xl font-bold text-gray-900">
                 {faqs.filter(f => f.category === 'payment').length}개
@@ -159,15 +138,7 @@ export default function FAQManagement() {
 
         <div className="bg-white rounded-xl shadow-sm border-2 border-orange-100 p-6 hover:border-orange-200 transition-all duration-200 group">
           <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-red-500 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                </svg>
-              </div>
-            </div>
-            <div className="ml-4">
+            <div className="">
               <p className="text-sm font-medium text-gray-500">총 조회수</p>
               <p className="text-xl font-bold text-gray-900">{totalViews.toLocaleString()}</p>
             </div>

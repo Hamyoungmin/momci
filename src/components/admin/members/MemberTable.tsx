@@ -61,10 +61,7 @@ export default function MemberTable({ columns, data, onRowClick }: MemberTablePr
       {/* 테이블 설정 */}
       <div className="px-6 py-4 bg-gradient-to-r from-gray-50 to-blue-50 border-b border-gray-200">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
-              <span className="text-blue-600 text-xs font-bold">{currentData.length}</span>
-            </div>
+          <div>
             <span className="text-sm font-medium text-gray-700">
               총 <span className="font-bold text-blue-600">{data.length}</span>개 항목 중 <span className="font-bold">{startIndex + 1}-{Math.min(endIndex, data.length)}</span> 표시
             </span>
@@ -190,9 +187,6 @@ export default function MemberTable({ columns, data, onRowClick }: MemberTablePr
       {/* 데이터가 없는 경우 */}
       {data.length === 0 && (
         <div className="px-6 py-16 text-center bg-gradient-to-b from-gray-50 to-blue-50">
-          <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
-            <span className="text-gray-400 text-2xl">📄</span>
-          </div>
           <p className="text-gray-500 font-medium">표시할 데이터가 없습니다.</p>
           <p className="text-gray-400 text-sm mt-1">검색 조건을 변경해보세요.</p>
         </div>

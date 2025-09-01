@@ -39,21 +39,21 @@ export default function ReportStatusCards({ reports }: ReportStatusCardsProps) {
     {
       title: '접수 대기',
       count: reports.filter(r => r.status === 'pending').length,
-      icon: '📥',
+      icon: '',
       color: 'bg-yellow-500',
       description: '신규 신고'
     },
     {
       title: '조사 중',
       count: reports.filter(r => r.status === 'investigating').length,
-      icon: '🔍',
+      icon: '',
       color: 'bg-blue-500',
       description: '처리 진행'
     },
     {
       title: '처리 완료',
       count: reports.filter(r => r.status === 'completed').length,
-      icon: '✅',
+      icon: '',
       color: 'bg-green-500',
       description: '해결됨'
     },
@@ -61,35 +61,35 @@ export default function ReportStatusCards({ reports }: ReportStatusCardsProps) {
       title: '긴급 신고',
       count: reports.filter(r => r.priority === 'urgent' || 
         (r.type === 'direct_trade' && r.status === 'pending')).length,
-      icon: '🚨',
+      icon: '',
       color: 'bg-red-500',
       description: '즉시 처리 필요'
     },
     {
       title: '직거래 신고',
       count: directTradeReports.length,
-      icon: '🚫',
+      icon: '',
       color: 'bg-orange-500',
       description: `처리율 ${directTradeReports.length > 0 ? Math.round((directTradeProcessed / directTradeReports.length) * 100) : 0}%`
     },
     {
       title: '오늘 신고',
       count: todayReports.length,
-      icon: '📊',
+      icon: '',
       color: 'bg-purple-500',
       description: '당일 접수'
     },
     {
       title: '포상금 지급',
       count: rewardGiven,
-      icon: '🎁',
+      icon: '',
       color: 'bg-pink-500',
       description: '이용권 지급'
     },
     {
       title: '처벌 조치',
       count: penaltiesGiven,
-      icon: '⚖️',
+      icon: '',
       color: 'bg-gray-600',
       description: '경고/정지'
     }
@@ -114,11 +114,7 @@ export default function ReportStatusCards({ reports }: ReportStatusCardsProps) {
               </p>
               <p className="text-xs text-gray-500">{card.description}</p>
             </div>
-            <div
-              className={`w-12 h-12 ${card.color} rounded-lg flex items-center justify-center text-white text-xl`}
-            >
-              {card.icon}
-            </div>
+
           </div>
         </div>
       ))}

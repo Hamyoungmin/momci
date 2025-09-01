@@ -44,9 +44,9 @@ export default function ChatRoomList({ chatRooms, onChatRoomSelect }: ChatRoomLi
   const getRiskLevelBadge = (riskLevel: ChatRoom['riskLevel']) => {
     switch (riskLevel) {
       case 'high':
-        return <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">🔥 고위험</span>;
+        return <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">고위험</span>;
       case 'medium':
-        return <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">⚠️ 중위험</span>;
+        return <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">중위험</span>;
       case 'low':
         return <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">✅ 저위험</span>;
       default:
@@ -128,10 +128,10 @@ export default function ChatRoomList({ chatRooms, onChatRoomSelect }: ChatRoomLi
                   {room.id}
                   <div className="text-xs text-gray-500">매칭: {room.matchingId}</div>
                   {room.directTradeDetected && (
-                    <div className="text-xs text-red-600 font-medium">🚨 직거래 감지</div>
+                    <div className="text-xs text-red-600 font-medium">직거래 감지</div>
                   )}
                   {room.suspiciousActivity && !room.directTradeDetected && (
-                    <div className="text-xs text-yellow-600 font-medium">⚠️ 의심 활동</div>
+                    <div className="text-xs text-yellow-600 font-medium">의심 활동</div>
                   )}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -142,7 +142,7 @@ export default function ChatRoomList({ chatRooms, onChatRoomSelect }: ChatRoomLi
                     </div>
                     <div className="text-xs text-gray-500">{room.parentId}</div>
                     <div className="flex items-center">
-                      <span className="text-xs text-gray-500 mr-1">👩‍⚕️</span>
+                      <span className="text-xs text-gray-500 mr-1">치료사</span>
                       <span className="font-medium">{room.teacherName}</span>
                     </div>
                     <div className="text-xs text-gray-500">{room.teacherId}</div>

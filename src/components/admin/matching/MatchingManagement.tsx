@@ -75,9 +75,7 @@ export default function MatchingManagement() {
       <div className="bg-white rounded-xl border-2 border-blue-100 p-8 shadow-sm">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <div className="w-12 h-12 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-xl flex items-center justify-center shadow-lg">
-              <span className="text-white text-2xl">🤝</span>
-            </div>
+
             <div>
               <h1 className="text-2xl font-bold text-gray-900">매칭 관리</h1>
               <p className="text-gray-600 mt-1">학부모와 치료사의 매칭 과정을 관리하고 진행 상황을 추적하세요</p>
@@ -102,10 +100,7 @@ export default function MatchingManagement() {
       {/* 필터 및 검색 */}
       <div className="bg-white rounded-xl border-2 border-blue-100 p-6 shadow-sm">
         <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-cyan-100 rounded-lg flex items-center justify-center">
-              <span className="text-cyan-600 text-lg">🔍</span>
-            </div>
+          <div>
             <h2 className="text-xl font-bold text-gray-900">매칭 현황</h2>
           </div>
           <div className="flex items-center space-x-4">
@@ -124,7 +119,7 @@ export default function MatchingManagement() {
             </select>
 
             <button className="px-6 py-2 bg-gradient-to-r from-cyan-500 to-cyan-600 text-white text-sm font-semibold rounded-lg hover:from-cyan-600 hover:to-cyan-700 transition-all duration-300 shadow-md hover:shadow-lg">
-              📊 엑셀 다운로드
+              엑셀 다운로드
             </button>
           </div>
         </div>
@@ -135,9 +130,7 @@ export default function MatchingManagement() {
         <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-cyan-50 to-blue-50">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-cyan-100 rounded-lg flex items-center justify-center">
-                <span className="text-cyan-600 text-lg">📋</span>
-              </div>
+
               <h2 className="text-xl font-bold text-gray-900">매칭 목록</h2>
             </div>
             <div className="flex items-center space-x-4">

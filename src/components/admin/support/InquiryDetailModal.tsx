@@ -107,7 +107,7 @@ export default function InquiryDetailModal({ isOpen, onClose, inquiry, onInquiry
     {
       category: 'technical',
       title: '기술 오류 안내',
-      content: '안녕하세요. 기술적 문제로 불편을 드려 죄송합니다.\n\n해당 문제는 임시 서버 오류로 인한 것으로 확인되었으며, 현재 정상적으로 복구되었습니다.\n\n향후 동일한 문제가 발생하시면 즉시 연락해주시기 바랍니다.\n\n이용에 불편을 드려 죄송합니다.'
+      content: '안녕하세요. 기술적 문제로 불편을 드려 죄송합니다.\n\n해당 문제는 서버 오류로 인한 것으로 확인되었으며, 현재 정상적으로 복구되었습니다.\n\n향후 동일한 문제가 발생하시면 즉시 연락해주시기 바랍니다.\n\n이용에 불편을 드려 죄송합니다.'
     },
     {
       category: 'service',
@@ -133,7 +133,7 @@ export default function InquiryDetailModal({ isOpen, onClose, inquiry, onInquiry
             <div className="flex items-center space-x-4">
               {inquiry.priority === 'urgent' && (
                 <span className="px-3 py-1 text-sm font-medium bg-red-100 text-red-800 rounded-full">
-                  🚨 긴급 문의
+                  긴급 문의
                 </span>
               )}
               <span className={`text-sm font-medium ${slaStatus.color}`}>
@@ -340,7 +340,7 @@ export default function InquiryDetailModal({ isOpen, onClose, inquiry, onInquiry
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-3">
                             <span className="text-2xl">
-                              {attachment.type === 'image' ? '🖼️' : '📄'}
+                              {attachment.type === 'image' ? '이미지' : '파일'}
                             </span>
                             <div>
                               <div className="font-medium text-gray-900">{attachment.name}</div>

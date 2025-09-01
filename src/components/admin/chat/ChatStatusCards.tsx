@@ -21,56 +21,56 @@ export default function ChatStatusCards({ chatRooms }: ChatStatusCardsProps) {
     {
       title: '활성 채팅방',
       count: chatRooms.filter(r => r.status === 'active').length,
-      icon: '💬',
+      icon: 'A',
       color: 'bg-green-500',
       description: '현재 진행 중'
     },
     {
       title: '종료된 채팅방',
       count: chatRooms.filter(r => r.status === 'ended').length,
-      icon: '✅',
+      icon: 'E',
       color: 'bg-gray-500',
       description: '정상 종료'
     },
     {
       title: '정지된 채팅방',
       count: chatRooms.filter(r => r.status === 'suspended').length,
-      icon: '🚫',
+      icon: 'S',
       color: 'bg-red-500',
       description: '관리자 정지'
     },
     {
       title: '의심스러운 활동',
       count: chatRooms.filter(r => r.suspiciousActivity).length,
-      icon: '⚠️',
+      icon: '!',
       color: 'bg-yellow-500',
       description: '모니터링 필요'
     },
     {
       title: '직거래 감지',
       count: chatRooms.filter(r => r.directTradeDetected).length,
-      icon: '🚨',
+      icon: 'D',
       color: 'bg-red-600',
       description: '즉시 조치 필요'
     },
     {
       title: '고위험 채팅방',
       count: chatRooms.filter(r => r.riskLevel === 'high').length,
-      icon: '🔥',
+      icon: 'H',
       color: 'bg-orange-500',
       description: '긴급 검토'
     },
     {
       title: '총 메시지 수',
       count: totalMessages.toLocaleString(),
-      icon: '📊',
+      icon: 'T',
       color: 'bg-blue-500',
       description: '누적 메시지'
     },
     {
       title: '평균 메시지 수',
       count: averageMessages,
-      icon: '📈',
+      icon: 'V',
       color: 'bg-purple-500',
       description: '채팅방당 평균'
     }
@@ -91,11 +91,7 @@ export default function ChatStatusCards({ chatRooms }: ChatStatusCardsProps) {
               </p>
               <p className="text-xs text-gray-500">{card.description}</p>
             </div>
-            <div
-              className={`w-12 h-12 ${card.color} rounded-lg flex items-center justify-center text-white text-xl`}
-            >
-              {card.icon}
-            </div>
+
           </div>
         </div>
       ))}

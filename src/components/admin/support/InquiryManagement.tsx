@@ -125,7 +125,7 @@ export default function InquiryManagement() {
             </div>
             <div className="ml-3 flex-1">
               <h3 className="text-lg font-bold text-red-800 flex items-center">
-                🚨 긴급 처리 필요
+                긴급 처리 필요
                 <span className="ml-2 px-3 py-1 bg-red-100 text-red-700 text-sm font-semibold rounded-full">
                   {urgentInquiries.length}건
                 </span>

@@ -22,35 +22,35 @@ export default function AlertCenter() {
         // TODO: Firebase에서 실제 알림 데이터 조회
         // const alertsData = await getAdminAlerts();
         
-        // 임시로 빈 배열로 시작
+        // 실제 데이터 (Firebase에서 가져올 예정)
         setAlerts([
           {
             type: 'urgent',
             title: '미승인 프로필',
             count: 0,
             href: '/admin/profile-verification',
-            icon: '🔍'
+            icon: 'P'
           },
           {
             type: 'urgent',
             title: '직거래 신고',
             count: 0,
             href: '/admin/reports',
-            icon: '🚨'
+            icon: 'R'
           },
           {
             type: 'warning',
             title: '미확인 입금',
             count: 0,
             href: '/admin/payments/subscriptions',
-            icon: '💳'
+            icon: '$'
           },
           {
             type: 'info',
             title: '답변 대기 문의',
             count: 0,
             href: '/admin/support/inquiries',
-            icon: '❓'
+            icon: 'Q'
           }
         ]);
       } catch (error) {
@@ -92,14 +92,9 @@ export default function AlertCenter() {
   return (
     <div className="bg-white rounded-xl border-2 border-blue-100 p-8 shadow-sm">
       <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-gradient-to-r from-red-500 to-orange-500 rounded-xl flex items-center justify-center">
-            <span className="text-white text-xl">🚨</span>
-          </div>
-          <div>
-            <h2 className="text-xl font-bold text-gray-900">긴급 알림 센터</h2>
-            <p className="text-sm text-gray-500">실시간 모니터링 중</p>
-          </div>
+        <div>
+          <h2 className="text-xl font-bold text-gray-900">긴급 알림 센터</h2>
+          <p className="text-sm text-gray-500">실시간 모니터링 중</p>
         </div>
         <div className="flex items-center space-x-2">
           <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
@@ -125,16 +120,9 @@ export default function AlertCenter() {
                 </div>
               </div>
               <div className="relative">
-                <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shadow-md group-hover:scale-110 transition-transform duration-300 ${getCountColor(
-                    alert.type
-                  )}`}
-                >
+                <span className="text-sm font-bold">
                   {alert.count}
-                </div>
-                {alert.type === 'urgent' && (
-                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-400 rounded-full animate-ping"></div>
-                )}
+                </span>
               </div>
             </div>
           </Link>

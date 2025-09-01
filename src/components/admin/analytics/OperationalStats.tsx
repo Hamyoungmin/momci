@@ -1,51 +1,43 @@
 'use client';
 
+interface RegionStat {
+  name: string;
+  count: number;
+  percentage: number;
+}
+
+interface TreatmentStat {
+  name: string;
+  count: number;
+  percentage: number;
+}
+
 interface OperationalStatsProps {
   period: string;
 }
 
 export default function OperationalStats({ period }: OperationalStatsProps) {
-  // 임시 데이터
+  // 실제 데이터 (Firebase에서 가져올 예정)
   const memberStats = {
-    totalMembers: 2847,
+    totalMembers: 0,
     newMembers: {
-      parents: 134,
-      teachers: 78,
-      total: 212
+      parents: 0,
+      teachers: 0,
+      total: 0
     },
     memberRatio: {
-      parents: 68.5,
-      teachers: 31.5
+      parents: 0,
+      teachers: 0
     },
-    regions: [
-      { name: '서울', count: 1124, percentage: 39.5 },
-      { name: '경기', count: 856, percentage: 30.1 },
-      { name: '부산', count: 312, percentage: 11.0 },
-      { name: '대구', count: 198, percentage: 7.0 },
-      { name: '인천', count: 167, percentage: 5.9 },
-      { name: '기타', count: 190, percentage: 6.5 }
-    ]
+    regions: [] as RegionStat[]
   };
 
   const matchingStats = {
-    totalMatches: 1456,
-    successRate: 87.3,
-    avgMatchingTime: 3.2, // 일
-    popularTreatments: [
-      { type: '언어치료', count: 523, percentage: 35.9 },
-      { type: '감각통합치료', count: 387, percentage: 26.6 },
-      { type: '놀이치료', count: 298, percentage: 20.5 },
-      { type: '인지학습치료', count: 156, percentage: 10.7 },
-      { type: '미술치료', count: 92, percentage: 6.3 }
-    ],
-    monthlyTrend: [
-      { month: '1월', matches: 98, success: 85 },
-      { month: '2월', matches: 112, success: 96 },
-      { month: '3월', matches: 134, success: 118 },
-      { month: '4월', matches: 156, success: 136 },
-      { month: '5월', matches: 178, success: 158 },
-      { month: '6월', matches: 189, success: 165 }
-    ]
+    totalMatches: 0,
+    successRate: 0,
+    avgMatchingTime: 0,
+    popularTreatments: [] as TreatmentStat[],
+    monthlyTrend: [] as any[]
   };
 
   const getPeriodLabel = (period: string) => {
@@ -124,7 +116,7 @@ export default function OperationalStats({ period }: OperationalStatsProps) {
 
         {/* 지역별 분포 */}
         <div className="bg-white border border-gray-200 rounded-lg p-6">
-          <h4 className="text-base font-medium text-gray-900 mb-4">🗺️ 지역별 분포</h4>
+          <h4 className="text-base font-medium text-gray-900 mb-4">지역별 분포</h4>
           
           <div className="space-y-3">
             {memberStats.regions.map((region, index) => (
@@ -184,7 +176,7 @@ export default function OperationalStats({ period }: OperationalStatsProps) {
 
         {/* 인기 치료 종목 */}
         <div className="bg-white border border-gray-200 rounded-lg p-6">
-          <h4 className="text-base font-medium text-gray-900 mb-4">🏆 인기 치료 종목</h4>
+          <h4 className="text-base font-medium text-gray-900 mb-4">인기 치료 종목</h4>
           
           <div className="space-y-3">
             {matchingStats.popularTreatments.map((treatment, index) => (
@@ -197,7 +189,7 @@ export default function OperationalStats({ period }: OperationalStatsProps) {
                   }`}>
                     {index + 1}
                   </div>
-                  <span className="text-sm text-gray-900">{treatment.type}</span>
+                  <span className="text-sm text-gray-900">{treatment.name}</span>
                 </div>
                 <div className="flex items-center space-x-2">
                   <div className="w-20 bg-gray-200 rounded-full h-2">
@@ -217,21 +209,21 @@ export default function OperationalStats({ period }: OperationalStatsProps) {
 
       {/* 트렌드 분석 */}
       <div className="bg-white border border-gray-200 rounded-lg p-6">
-        <h4 className="text-base font-medium text-gray-900 mb-4">📈 성장 트렌드</h4>
+        <h4 className="text-base font-medium text-gray-900 mb-4">성장 트렌드</h4>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="text-center">
-            <div className="text-3xl mb-2">📊</div>
+            <div className="text-3xl mb-2 font-bold">데이터</div>
             <div className="text-lg font-semibold text-gray-900">+12.5%</div>
             <div className="text-sm text-gray-600">회원 증가율 (전월 대비)</div>
           </div>
           <div className="text-center">
-            <div className="text-3xl mb-2">🚀</div>
+            <div className="text-3xl mb-2 font-bold">성장</div>
             <div className="text-lg font-semibold text-gray-900">+8.7%</div>
             <div className="text-sm text-gray-600">매칭 성공률 증가</div>
           </div>
           <div className="text-center">
-            <div className="text-3xl mb-2">⭐</div>
+            <div className="text-3xl mb-2 font-bold">사용자</div>
             <div className="text-lg font-semibold text-gray-900">4.8/5.0</div>
             <div className="text-sm text-gray-600">평균 서비스 만족도</div>
           </div>

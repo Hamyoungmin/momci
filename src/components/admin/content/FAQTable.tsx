@@ -23,25 +23,25 @@ export default function FAQTable({ faqs, onFAQSelect }: FAQTableProps) {
   const getCategoryBadge = (category: FAQ['category']) => {
     switch (category) {
       case 'general':
-        return <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">💬 일반 이용</span>;
+        return <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">일반 이용</span>;
       case 'payment':
-        return <span className="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded-full">💳 결제 관련</span>;
+        return <span className="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded-full">결제 관련</span>;
       case 'matching':
-        return <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">🤝 매칭 관련</span>;
+        return <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">매칭 관련</span>;
       case 'technical':
-        return <span className="px-2 py-1 text-xs font-medium bg-orange-100 text-orange-800 rounded-full">🔧 기술 지원</span>;
+        return <span className="px-2 py-1 text-xs font-medium bg-orange-100 text-orange-800 rounded-full">기술 지원</span>;
       case 'other':
-        return <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">📝 기타</span>;
+        return <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">기타</span>;
       default:
         return <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">알 수 없음</span>;
     }
   };
 
   const getPopularityLevel = (views: number) => {
-    if (views >= 1000) return { level: 'high', icon: '🔥', color: 'text-red-600' };
-    if (views >= 500) return { level: 'medium', icon: '📈', color: 'text-orange-600' };
+    if (views >= 1000) return { level: 'high', icon: 'H', color: 'text-red-600' };
+    if (views >= 500) return { level: 'medium', icon: 'M', color: 'text-orange-600' };
     if (views >= 100) return { level: 'low', icon: '👀', color: 'text-blue-600' };
-    return { level: 'none', icon: '👁️', color: 'text-gray-600' };
+    return { level: 'none', icon: 'L', color: 'text-gray-600' };
   };
 
   return (

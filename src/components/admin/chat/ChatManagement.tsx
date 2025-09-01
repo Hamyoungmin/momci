@@ -85,9 +85,7 @@ export default function ChatManagement() {
       <div className="bg-white rounded-xl border-2 border-blue-100 p-8 shadow-sm">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <div className="w-12 h-12 bg-gradient-to-r from-orange-500 to-red-500 rounded-xl flex items-center justify-center shadow-lg">
-              <span className="text-white text-2xl">💬</span>
-            </div>
+
             <div>
               <h1 className="text-2xl font-bold text-gray-900">채팅 관리</h1>
               <p className="text-gray-600 mt-1">실시간 채팅 모니터링과 의심스러운 활동을 관리하세요</p>
@@ -123,10 +121,7 @@ export default function ChatManagement() {
       {/* 필터 및 검색 */}
       <div className="bg-white rounded-xl border-2 border-blue-100 p-6 shadow-sm">
         <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
-              <span className="text-orange-600 text-lg">🔍</span>
-            </div>
+          <div>
             <h2 className="text-xl font-bold text-gray-900">채팅방 목록</h2>
           </div>
           <div className="flex items-center space-x-4">
@@ -155,7 +150,7 @@ export default function ChatManagement() {
             </select>
 
             <button className="px-6 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white text-sm font-semibold rounded-lg hover:from-red-600 hover:to-red-700 transition-all duration-300 shadow-md hover:shadow-lg">
-              🚨 의심 활동 보고서
+              의심 활동 보고서
             </button>
           </div>
         </div>
@@ -175,10 +170,7 @@ export default function ChatManagement() {
       <div className="bg-white rounded-xl border-2 border-blue-100 shadow-sm overflow-hidden">
         <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-orange-50 to-red-50">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
-                <span className="text-orange-600 text-lg">📋</span>
-              </div>
+            <div>
               <h2 className="text-xl font-bold text-gray-900">채팅방 현황</h2>
             </div>
             <div className="flex items-center space-x-4">

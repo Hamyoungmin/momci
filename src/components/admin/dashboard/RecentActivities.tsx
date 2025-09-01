@@ -23,7 +23,7 @@ export default function RecentActivities() {
         // TODO: Firebase에서 실제 활동 데이터 조회
         // const activitiesData = await getRecentActivities();
         
-        // 임시로 빈 배열로 시작
+        // 실제 데이터 (Firebase에서 가져올 예정)
         setActivities([]);
       } catch (error) {
         console.error('활동 데이터 로딩 실패:', error);
@@ -64,14 +64,9 @@ export default function RecentActivities() {
   return (
     <div className="bg-white rounded-xl border-2 border-blue-100 p-6 shadow-sm">
       <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl flex items-center justify-center">
-            <span className="text-white text-xl">📊</span>
-          </div>
-          <div>
-            <h2 className="text-xl font-bold text-gray-900">최근 활동</h2>
-            <p className="text-sm text-gray-500">실시간 업데이트</p>
-          </div>
+        <div>
+          <h2 className="text-xl font-bold text-gray-900">최근 활동</h2>
+          <p className="text-sm text-gray-500">실시간 업데이트</p>
         </div>
         <button className="px-4 py-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg font-medium transition-colors text-sm">
           전체 보기 →
@@ -94,20 +89,12 @@ export default function RecentActivities() {
         ) : activities.length === 0 ? (
           // 빈 상태
           <div className="text-center py-12">
-            <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
-              <span className="text-gray-400 text-2xl">📊</span>
-            </div>
             <p className="text-gray-500 font-medium">최근 활동이 없습니다</p>
             <p className="text-gray-400 text-sm mt-1">새로운 활동이 있으면 여기에 표시됩니다</p>
           </div>
         ) : (
           activities.map((activity) => (
-          <div key={activity.id} className="group flex items-start space-x-4 p-4 hover:bg-blue-50 rounded-xl transition-all duration-300 border border-transparent hover:border-blue-200">
-            <div className="flex-shrink-0">
-              <div className="w-12 h-12 bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-sm">
-                <span className="text-xl">{activity.icon}</span>
-              </div>
-            </div>
+          <div key={activity.id} className="group flex items-start p-4 hover:bg-blue-50 rounded-xl transition-all duration-300 border border-transparent hover:border-blue-200">
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-sm font-semibold text-gray-900 truncate group-hover:text-blue-700 transition-colors">

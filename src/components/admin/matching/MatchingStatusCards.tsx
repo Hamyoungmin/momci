@@ -14,42 +14,42 @@ export default function MatchingStatusCards({ matchings }: MatchingStatusCardsPr
     {
       title: '인터뷰 중',
       count: matchings.filter(m => m.status === 'interview').length,
-      icon: '💬',
+      icon: 'I',
       color: 'bg-blue-500',
       description: '채팅으로 인터뷰 진행 중'
     },
     {
       title: '수업 확정',
       count: matchings.filter(m => m.status === 'lesson_confirmed').length,
-      icon: '✅',
+      icon: 'C',
       color: 'bg-green-500',
       description: '수업 확정, 결제 대기'
     },
     {
       title: '결제 대기',
       count: matchings.filter(m => m.status === 'payment_pending').length,
-      icon: '💳',
+      icon: 'P',
       color: 'bg-yellow-500',
       description: '첫 수업료 결제 진행 중'
     },
     {
       title: '매칭 완료',
       count: matchings.filter(m => m.status === 'payment_completed').length,
-      icon: '🎉',
+      icon: 'S',
       color: 'bg-purple-500',
       description: '매칭 성공, 연락처 공개'
     },
     {
       title: '취소',
       count: matchings.filter(m => m.status === 'cancelled').length,
-      icon: '❌',
+      icon: 'X',
       color: 'bg-red-500',
       description: '매칭 취소'
     },
     {
       title: '전체',
       count: matchings.length,
-      icon: '📊',
+      icon: 'T',
       color: 'bg-gray-500',
       description: '총 매칭 건수'
     }
@@ -68,11 +68,7 @@ export default function MatchingStatusCards({ matchings }: MatchingStatusCardsPr
               <p className="text-2xl font-bold text-gray-900 mb-2">{card.count}건</p>
               <p className="text-xs text-gray-500">{card.description}</p>
             </div>
-            <div
-              className={`w-12 h-12 ${card.color} rounded-lg flex items-center justify-center text-white text-xl`}
-            >
-              {card.icon}
-            </div>
+
           </div>
         </div>
       ))}

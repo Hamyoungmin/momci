@@ -7,7 +7,6 @@ import { useState } from 'react';
 interface MenuItem {
   title: string;
   href?: string;
-  icon: string;
   children?: MenuItem[];
   adminOnly?: boolean; // 관리자 전용 메뉴
 }
@@ -15,74 +14,63 @@ interface MenuItem {
 const menuItems: MenuItem[] = [
   {
     title: '대시보드',
-    href: '/admin',
-    icon: '📊'
+    href: '/admin'
   },
   {
     title: '회원 관리',
-    icon: '👥',
     children: [
-      { title: '학부모 회원', href: '/admin/members/parents', icon: '👨‍👩‍👧‍👦' },
-      { title: '치료사 회원', href: '/admin/members/teachers', icon: '👩‍⚕️' }
+      { title: '학부모 회원', href: '/admin/members/parents' },
+      { title: '치료사 회원', href: '/admin/members/teachers' }
     ]
   },
   {
     title: '프로필 검증',
-    href: '/admin/profile-verification',
-    icon: '✅'
+    href: '/admin/profile-verification'
   },
   {
     title: '게시판 관리',
-    icon: '📝',
     children: [
-      { title: '선생님께 요청하기', href: '/admin/board/requests', icon: '📋' },
-      { title: '선생님 둘러보기', href: '/admin/board/profiles', icon: '🔍' }
+      { title: '선생님께 요청하기', href: '/admin/board/requests' },
+      { title: '선생님 둘러보기', href: '/admin/board/profiles' }
     ]
   },
   {
     title: '매칭 관리',
-    href: '/admin/matching',
-    icon: '🤝'
+    href: '/admin/matching'
   },
   {
     title: '결제 관리',
-    icon: '💳',
     adminOnly: true,
     children: [
-      { title: '이용권 결제', href: '/admin/payments/subscriptions', icon: '💰', adminOnly: true },
-      { title: '첫 수업료', href: '/admin/payments/lessons', icon: '💵', adminOnly: true },
-      { title: '환불 관리', href: '/admin/payments/refunds', icon: '↩️', adminOnly: true }
+      { title: '이용권 결제', href: '/admin/payments/subscriptions', adminOnly: true },
+      { title: '첫 수업료', href: '/admin/payments/lessons', adminOnly: true },
+      { title: '환불 관리', href: '/admin/payments/refunds', adminOnly: true }
     ]
   },
   {
     title: '채팅 관리',
     href: '/admin/chat',
-    icon: '💬',
     adminOnly: true
   },
   {
     title: '신고 관리',
     href: '/admin/reports',
-    icon: '🚨',
     adminOnly: true
   },
   {
     title: '콘텐츠 관리',
-    icon: '📄',
     children: [
-      { title: '공지사항', href: '/admin/content/notices', icon: '📢' },
-      { title: 'FAQ', href: '/admin/content/faq', icon: '❓' }
+      { title: '공지사항', href: '/admin/content/notices' },
+      { title: 'FAQ', href: '/admin/content/faq' }
     ]
   },
   {
     title: '고객 지원',
-    href: '/admin/support/inquiries',
-    icon: '🎧'
+    href: '/admin/support/inquiries'
   },
   {
     title: '통계 및 분석',
-    href: '/admin/analytics/overview',
-    icon: '📈'
+    href: '/admin/analytics/overview'
   }
 ];
 
@@ -130,8 +118,7 @@ export default function AdminSidebar({ isAdmin }: AdminSidebarProps) {
                 : 'text-gray-700 hover:bg-blue-50 hover:text-blue-700'
             }`}
           >
-            <div className="flex items-center space-x-3">
-              <span className="text-base">{item.icon}</span>
+            <div className="flex items-center">
               <span>{item.title}</span>
               {isDisabled && <span className="text-xs text-gray-400 ml-2">(관리자 전용)</span>}
             </div>
@@ -161,11 +148,10 @@ export default function AdminSidebar({ isAdmin }: AdminSidebarProps) {
       return (
         <div
           key={item.title}
-          className={`flex items-center space-x-3 px-3 py-2.5 text-sm font-medium rounded-lg ${
+          className={`flex items-center px-3 py-2.5 text-sm font-medium rounded-lg ${
             level > 0 ? 'ml-6' : ''
           } text-gray-400 cursor-not-allowed`}
         >
-          <span className="text-base">{item.icon}</span>
           <span>{item.title}</span>
           <span className="text-xs text-gray-400 ml-2">(관리자 전용)</span>
         </div>
@@ -176,7 +162,7 @@ export default function AdminSidebar({ isAdmin }: AdminSidebarProps) {
       <Link
         key={item.title}
         href={item.href!}
-        className={`flex items-center space-x-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-colors ${
+        className={`flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors ${
           level > 0 ? 'ml-6' : ''
         } ${
           isActive(item.href!)
@@ -184,7 +170,6 @@ export default function AdminSidebar({ isAdmin }: AdminSidebarProps) {
             : 'text-gray-700 hover:bg-blue-50 hover:text-blue-600'
         }`}
       >
-        <span className="text-base">{item.icon}</span>
         <span>{item.title}</span>
       </Link>
     );
@@ -193,10 +178,7 @@ export default function AdminSidebar({ isAdmin }: AdminSidebarProps) {
   return (
     <aside className="fixed left-0 top-0 h-full w-64 bg-white border-r border-gray-200 shadow-sm flex flex-col">
       {/* 로고 및 타이틀 */}
-      <div className="flex items-center space-x-3 px-6 py-6 border-b border-gray-200 flex-shrink-0">
-        <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-          <span className="text-white font-bold text-sm">관</span>
-        </div>
+      <div className="flex items-center px-6 py-6 border-b border-gray-200 flex-shrink-0">
         <div>
           <h2 className="text-lg font-bold text-gray-900">관리자</h2>
           <p className="text-xs text-gray-500">더모든 키즈</p>

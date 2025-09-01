@@ -61,9 +61,9 @@ export default function AnalyticsOverview() {
   }, [selectedPeriod]);
 
   const tabs = [
-    { id: 'operational', label: '운영 통계', icon: '📊' },
-    { id: 'behavior', label: '사용자 행동', icon: '👥' },
-    { id: 'revenue', label: '매출 분석', icon: '💰' }
+    { id: 'operational', label: '운영 통계' },
+    { id: 'behavior', label: '사용자 행동' },
+    { id: 'revenue', label: '매출 분석' }
   ];
 
   return (
@@ -103,7 +103,7 @@ export default function AnalyticsOverview() {
               <p className="text-blue-100 text-sm font-medium">총 회원수</p>
               <p className="text-3xl font-bold">{overviewStats.totalMembers.toLocaleString()}명</p>
               <p className="text-blue-200 text-sm flex items-center">
-                {overviewStats.memberGrowth.startsWith('+') ? '📈' : '📉'} {overviewStats.memberGrowth}
+                전월 대비 {overviewStats.memberGrowth}
               </p>
             </div>
             <div className="p-3 bg-blue-400 bg-opacity-30 rounded-lg">
@@ -120,7 +120,7 @@ export default function AnalyticsOverview() {
               <p className="text-green-100 text-sm font-medium">이번 달 매칭</p>
               <p className="text-3xl font-bold">{overviewStats.monthlyMatches}건</p>
               <p className="text-green-200 text-sm flex items-center">
-                🎯 성공률 {overviewStats.matchSuccessRate}%
+                성공률 {overviewStats.matchSuccessRate}%
               </p>
             </div>
             <div className="p-3 bg-green-400 bg-opacity-30 rounded-lg">
@@ -137,7 +137,7 @@ export default function AnalyticsOverview() {
               <p className="text-purple-100 text-sm font-medium">이번 달 매출</p>
               <p className="text-3xl font-bold">{overviewStats.monthlyRevenue}</p>
               <p className="text-purple-200 text-sm flex items-center">
-                {overviewStats.revenueGrowth.startsWith('+') ? '📈' : '📉'} {overviewStats.revenueGrowth}
+                전월 대비 {overviewStats.revenueGrowth}
               </p>
             </div>
             <div className="p-3 bg-purple-400 bg-opacity-30 rounded-lg">
@@ -154,7 +154,7 @@ export default function AnalyticsOverview() {
               <p className="text-orange-100 text-sm font-medium">평균 응답시간</p>
               <p className="text-3xl font-bold">{overviewStats.avgResponseTime}</p>
               <p className="text-orange-200 text-sm flex items-center">
-                ✅ {overviewStats.slaStatus}
+                {overviewStats.slaStatus}
               </p>
             </div>
             <div className="p-3 bg-orange-400 bg-opacity-30 rounded-lg">
@@ -183,14 +183,13 @@ export default function AnalyticsOverview() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200 ${
+                  className={`px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200 ${
                     activeTab === tab.id
                       ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-lg transform scale-105'
                       : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50 border-2 border-gray-200 hover:border-indigo-200'
                   }`}
                 >
-                  <span>{tab.icon}</span>
-                  <span>{tab.label}</span>
+                  {tab.label}
                 </button>
               ))}
             </div>
@@ -228,7 +227,7 @@ export default function AnalyticsOverview() {
           </div>
           <div className="ml-4 flex-1">
             <h3 className="text-lg font-bold text-blue-800 flex items-center">
-              📊 실시간 업데이트
+              실시간 업데이트
               <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full animate-pulse">
                 LIVE
               </span>

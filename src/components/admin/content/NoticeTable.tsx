@@ -28,9 +28,9 @@ export default function NoticeTable({ notices, onNoticeSelect }: NoticeTableProp
       case 'general':
         return <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">일반</span>;
       case 'important':
-        return <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">⭐ 중요</span>;
+        return <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">중요</span>;
       case 'urgent':
-        return <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">🚨 긴급</span>;
+        return <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">긴급</span>;
       default:
         return <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">알 수 없음</span>;
     }
@@ -140,7 +140,7 @@ export default function NoticeTable({ notices, onNoticeSelect }: NoticeTableProp
                   <div className="flex items-center space-x-2">
                     <span className="font-bold text-lg">#{notice.priority}</span>
                     {notice.type === 'urgent' && (
-                      <span className="text-red-500">🚨</span>
+                      <span className="text-red-500">긴급</span>
                     )}
                   </div>
                 </td>
@@ -199,7 +199,7 @@ export default function NoticeTable({ notices, onNoticeSelect }: NoticeTableProp
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   <div className="flex items-center">
-                    <span className="text-xs text-gray-500 mr-1">👁️</span>
+                    <span className="text-xs text-gray-500 mr-1">조회</span>
                     <span className="font-medium">{notice.views.toLocaleString()}</span>
                   </div>
                 </td>

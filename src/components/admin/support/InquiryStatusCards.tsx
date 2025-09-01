@@ -30,56 +30,56 @@ export default function InquiryStatusCards({ inquiries }: InquiryStatusCardsProp
     {
       title: '접수 대기',
       count: inquiries.filter(i => i.status === 'pending').length,
-      icon: '📨',
+      icon: '',
       color: 'bg-yellow-500',
       description: '새로운 문의'
     },
     {
       title: '처리 중',
       count: inquiries.filter(i => i.status === 'assigned').length,
-      icon: '🔄',
+      icon: '',
       color: 'bg-blue-500',
       description: '담당자 배정'
     },
     {
       title: '답변 완료',
       count: inquiries.filter(i => i.status === 'answered').length,
-      icon: '✅',
+      icon: '',
       color: 'bg-green-500',
       description: '답변 전송'
     },
     {
       title: '종료',
       count: inquiries.filter(i => i.status === 'closed').length,
-      icon: '🔒',
+      icon: '',
       color: 'bg-gray-500',
       description: '완료된 문의'
     },
     {
       title: '긴급 문의',
       count: inquiries.filter(i => i.priority === 'urgent').length,
-      icon: '🚨',
+      icon: '',
       color: 'bg-red-500',
       description: '즉시 처리 필요'
     },
     {
       title: '오늘 접수',
       count: todayInquiries.length,
-      icon: '📊',
+      icon: '',
       color: 'bg-purple-500',
       description: '당일 문의'
     },
     {
       title: '결제 문의',
       count: inquiries.filter(i => i.category === 'payment').length,
-      icon: '💳',
+      icon: '',
       color: 'bg-indigo-500',
       description: '결제 관련'
     },
     {
       title: '평균 응답시간',
       count: `${avgResponseTime}h`,
-      icon: '⏱️',
+      icon: '',
       color: 'bg-orange-500',
       description: '답변까지 소요시간'
     }
@@ -101,11 +101,7 @@ export default function InquiryStatusCards({ inquiries }: InquiryStatusCardsProp
               </p>
               <p className="text-xs text-gray-500">{card.description}</p>
             </div>
-            <div
-              className={`w-12 h-12 ${card.color} rounded-lg flex items-center justify-center text-white text-xl`}
-            >
-              {card.icon}
-            </div>
+
           </div>
         </div>
       ))}

@@ -35,66 +35,8 @@ export default function LessonPaymentManagement() {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState('all');
 
-  // 임시 데이터
-  const [payments] = useState<LessonPayment[]>([
-    {
-      id: 'LP001',
-      matchingId: 'M001',
-      parentId: 'P001',
-      parentName: '김○○',
-      teacherId: 'T001',
-      teacherName: '이○○',
-      childAge: '5세',
-      treatmentType: ['언어치료'],
-      amount: 65000,
-      paymentMethod: 'virtual_account',
-      status: 'pending',
-      orderDate: '2024-01-20 16:30',
-      virtualAccount: {
-        bank: 'KB국민은행',
-        accountNumber: '987654-32-109876',
-        accountHolder: '(주)더모든키즈',
-        expireDate: '2024-01-22 23:59'
-      },
-      contactShared: false,
-      commission: 6500 // 10%
-    },
-    {
-      id: 'LP002',
-      matchingId: 'M002',
-      parentId: 'P002',
-      parentName: '박○○',
-      teacherId: 'T002',
-      teacherName: '정○○',
-      childAge: '3세',
-      treatmentType: ['놀이치료', '감각통합'],
-      amount: 70000,
-      paymentMethod: 'virtual_account',
-      status: 'completed',
-      orderDate: '2024-01-19 14:20',
-      paidDate: '2024-01-19 18:30',
-      contactShared: true,
-      commission: 7000
-    },
-    {
-      id: 'LP003',
-      matchingId: 'M003',
-      parentId: 'P003',
-      parentName: '최○○',
-      teacherId: 'T003',
-      teacherName: '김○○',
-      childAge: '7세',
-      treatmentType: ['인지학습치료'],
-      amount: 60000,
-      paymentMethod: 'virtual_account',
-      status: 'settlement_completed',
-      orderDate: '2024-01-18 11:00',
-      paidDate: '2024-01-18 15:20',
-      settlementDate: '2024-01-25 10:00',
-      contactShared: true,
-      commission: 6000
-    }
-  ]);
+  // 실제 데이터 (Firebase에서 가져올 예정)
+  const [payments] = useState<LessonPayment[]>([]);
 
   const handlePaymentSelect = (payment: LessonPayment) => {
     setSelectedPayment(payment);

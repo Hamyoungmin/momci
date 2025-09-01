@@ -27,7 +27,7 @@ export default function AdminAlert({
       borderColor: 'border-blue-200',
       textColor: 'text-blue-800',
       titleColor: 'text-blue-900',
-      defaultIcon: 'ℹ️'
+      defaultIcon: 'INFO'
     },
     success: {
       bgColor: 'bg-green-50',
@@ -41,7 +41,7 @@ export default function AdminAlert({
       borderColor: 'border-yellow-200',
       textColor: 'text-yellow-800',
       titleColor: 'text-yellow-900',
-      defaultIcon: '⚠️'
+      defaultIcon: 'WARN'
     },
     error: {
       bgColor: 'bg-red-50',

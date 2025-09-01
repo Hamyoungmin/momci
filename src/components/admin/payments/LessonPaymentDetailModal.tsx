@@ -235,7 +235,7 @@ export default function LessonPaymentDetailModal({
             {/* 입금 확인 및 매칭 완료 */}
             {payment.status === 'pending' && !isExpired && (
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <h4 className="text-sm font-medium text-blue-900 mb-3">🎯 입금 확인 및 매칭 완료</h4>
+                <h4 className="text-sm font-medium text-blue-900 mb-3">입금 확인 및 매칭 완료</h4>
                 <p className="text-sm text-blue-700 mb-4">
                   고객으로부터 입금이 확인되었다면 아래 버튼을 클릭하세요. 
                   <br/>
@@ -261,7 +261,7 @@ export default function LessonPaymentDetailModal({
                     disabled={isConfirming}
                     className="w-full px-4 py-3 bg-blue-600 text-white text-sm font-bold rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {isConfirming ? '처리 중...' : '🎉 입금 확인 및 매칭 완료'}
+                    {isConfirming ? '처리 중...' : '입금 확인 및 매칭 완료'}
                   </button>
                 </div>
               </div>

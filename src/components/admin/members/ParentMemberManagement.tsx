@@ -95,14 +95,9 @@ export default function ParentMemberManagement() {
       {/* 헤더 섹션 */}
       <div className="bg-white rounded-xl border-2 border-blue-100 p-8 shadow-sm">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl flex items-center justify-center shadow-lg">
-              <span className="text-white text-2xl">👨‍👩‍👧‍👦</span>
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">학부모 회원 관리</h1>
-              <p className="text-gray-600 mt-1">등록된 학부모 회원들을 관리하고 모니터링하세요</p>
-            </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">학부모 회원 관리</h1>
+            <p className="text-gray-600 mt-1">등록된 학부모 회원들을 관리하고 모니터링하세요</p>
           </div>
           <div className="flex items-center space-x-4">
             <div className="text-right">
@@ -120,9 +115,7 @@ export default function ParentMemberManagement() {
       {/* 검색 및 필터 */}
       <div className="bg-white rounded-xl border-2 border-blue-100 p-6 shadow-sm">
         <div className="flex items-center space-x-3 mb-4">
-          <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-            <span className="text-blue-600 text-lg">🔍</span>
-          </div>
+
           <h2 className="text-xl font-bold text-gray-900">검색 및 필터</h2>
         </div>
         <SearchFilters memberType="parent" />
@@ -132,10 +125,7 @@ export default function ParentMemberManagement() {
       <div className="bg-white rounded-xl border-2 border-blue-100 shadow-sm overflow-hidden">
         <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-purple-50">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                <span className="text-blue-600 text-lg">📋</span>
-              </div>
+            <div>
               <h2 className="text-xl font-bold text-gray-900">학부모 회원 목록</h2>
             </div>
             <div className="flex items-center space-x-4">
@@ -145,7 +135,7 @@ export default function ParentMemberManagement() {
                 <span className="text-sm font-semibold text-gray-700">명</span>
               </div>
               <button className="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white text-sm font-semibold rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-300 shadow-md hover:shadow-lg">
-                📊 엑셀 다운로드
+                엑셀 다운로드
               </button>
             </div>
           </div>

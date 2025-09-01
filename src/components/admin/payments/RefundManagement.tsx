@@ -32,85 +32,8 @@ export default function RefundManagement() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
 
-  // 임시 데이터
-  const [refunds] = useState<RefundRequest[]>([
-    {
-      id: 'RF001',
-      userId: 'P001',
-      userName: '김○○',
-      userType: 'parent',
-      refundType: 'subscription',
-      originalPaymentId: 'SUB001',
-      originalAmount: 9900,
-      refundAmount: 6600, // 3일 사용 후 환불
-      reason: '개인 사정으로 인한 환불 요청',
-      requestDate: '2024-01-20 14:30',
-      status: 'pending',
-      refundMethod: 'bank_transfer',
-      bankInfo: {
-        bank: 'KB국민은행',
-        accountNumber: '123456-78-901234',
-        accountHolder: '김○○'
-      }
-    },
-    {
-      id: 'RF002',
-      userId: 'T001',
-      userName: '이○○',
-      userType: 'teacher',
-      refundType: 'lesson',
-      originalPaymentId: 'LP001',
-      originalAmount: 65000,
-      refundAmount: 65000,
-      reason: '학부모 취소로 인한 첫 수업료 환불',
-      requestDate: '2024-01-19 10:15',
-      status: 'approved',
-      adminNote: '정당한 환불 사유 확인',
-      refundMethod: 'bank_transfer',
-      bankInfo: {
-        bank: '신한은행',
-        accountNumber: '987654-32-109876',
-        accountHolder: '이○○'
-      }
-    },
-    {
-      id: 'RF003',
-      userId: 'P002',
-      userName: '박○○',
-      userType: 'parent',
-      refundType: 'subscription',
-      originalPaymentId: 'SUB002',
-      originalAmount: 9900,
-      refundAmount: 0,
-      reason: '환불 규정 위반 (이용기간 초과)',
-      requestDate: '2024-01-18 16:45',
-      status: 'rejected',
-      adminNote: '이용기간 20일 초과로 환불 불가',
-      processedDate: '2024-01-19 09:00',
-      refundMethod: 'bank_transfer'
-    },
-    {
-      id: 'RF004',
-      userId: 'T002',
-      userName: '정○○',
-      userType: 'teacher',
-      refundType: 'subscription',
-      originalPaymentId: 'SUB003',
-      originalAmount: 19900,
-      refundAmount: 15920, // 80% 환불
-      reason: '서비스 불만족',
-      requestDate: '2024-01-17 11:20',
-      status: 'completed',
-      adminNote: '환불 처리 완료',
-      processedDate: '2024-01-18 14:30',
-      refundMethod: 'bank_transfer',
-      bankInfo: {
-        bank: '우리은행',
-        accountNumber: '456789-12-345678',
-        accountHolder: '정○○'
-      }
-    }
-  ]);
+  // 실제 데이터 (Firebase에서 가져올 예정)
+  const [refunds] = useState<RefundRequest[]>([]);
 
   const handleRefundSelect = (refund: RefundRequest) => {
     setSelectedRefund(refund);
@@ -148,62 +71,34 @@ export default function RefundManagement() {
       {/* 통계 카드 */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-yellow-500 rounded-lg flex items-center justify-center">
-                <span className="text-white text-sm">⏳</span>
-              </div>
-            </div>
-            <div className="ml-3">
-              <p className="text-sm font-medium text-gray-500">처리 대기</p>
-              <p className="text-lg font-semibold text-gray-900">{pendingCount}건</p>
-            </div>
+          <div>
+            <p className="text-sm font-medium text-gray-500">처리 대기</p>
+            <p className="text-lg font-semibold text-gray-900">{pendingCount}건</p>
           </div>
         </div>
 
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
-                <span className="text-white text-sm">✅</span>
-              </div>
-            </div>
-            <div className="ml-3">
-              <p className="text-sm font-medium text-gray-500">승인</p>
-              <p className="text-lg font-semibold text-gray-900">
-                {refunds.filter(r => r.status === 'approved').length}건
-              </p>
-            </div>
+          <div>
+            <p className="text-sm font-medium text-gray-500">승인</p>
+            <p className="text-lg font-semibold text-gray-900">
+              {refunds.filter(r => r.status === 'approved').length}건
+            </p>
           </div>
         </div>
 
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-red-500 rounded-lg flex items-center justify-center">
-                <span className="text-white text-sm">❌</span>
-              </div>
-            </div>
-            <div className="ml-3">
-              <p className="text-sm font-medium text-gray-500">반려</p>
-              <p className="text-lg font-semibold text-gray-900">
-                {refunds.filter(r => r.status === 'rejected').length}건
-              </p>
-            </div>
+          <div>
+            <p className="text-sm font-medium text-gray-500">반려</p>
+            <p className="text-lg font-semibold text-gray-900">
+              {refunds.filter(r => r.status === 'rejected').length}건
+            </p>
           </div>
         </div>
 
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center">
-                <span className="text-white text-sm">💰</span>
-              </div>
-            </div>
-            <div className="ml-3">
-              <p className="text-sm font-medium text-gray-500">총 환불액</p>
-              <p className="text-lg font-semibold text-gray-900">{formatCurrency(totalRefundAmount)}</p>
-            </div>
+          <div>
+            <p className="text-sm font-medium text-gray-500">총 환불액</p>
+            <p className="text-lg font-semibold text-gray-900">{formatCurrency(totalRefundAmount)}</p>
           </div>
         </div>
       </div>

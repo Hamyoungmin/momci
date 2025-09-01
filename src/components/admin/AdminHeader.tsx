@@ -14,14 +14,9 @@ export default function AdminHeader({ isAdmin }: AdminHeaderProps) {
       <div className="flex items-center justify-between px-6 py-4">
         {/* 왼쪽: 페이지 정보 */}
         <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-sm">
-              <span className="text-white font-bold text-sm">키</span>
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-gray-900">더모든 키즈 관리자</h1>
-              <p className="text-sm text-gray-600">안전한 매칭 플랫폼 운영 관리</p>
-            </div>
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">더모든 키즈 관리자</h1>
+            <p className="text-sm text-gray-600">안전한 매칭 플랫폼 운영 관리</p>
           </div>
         </div>
 
@@ -95,20 +90,16 @@ export default function AdminHeader({ isAdmin }: AdminHeaderProps) {
               <div className="absolute right-0 mt-3 w-52 bg-white border border-gray-200 rounded-xl shadow-lg z-50">
                 <div className="py-2">
                   <a href="#" className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                    <span className="text-base mr-3">👤</span>
                     프로필 설정
                   </a>
                   <a href="#" className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                    <span className="text-base mr-3">🔐</span>
                     비밀번호 변경
                   </a>
                   <a href="#" className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                    <span className="text-base mr-3">📋</span>
                     활동 로그
                   </a>
                   <div className="border-t border-gray-100 my-1"></div>
                   <a href="#" className="flex items-center px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors">
-                    <span className="text-base mr-3">🚪</span>
                     로그아웃
                   </a>
                 </div>

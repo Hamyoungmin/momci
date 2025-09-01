@@ -72,7 +72,7 @@ export default function ProfileDisplayModal({ isOpen, onClose, profile, onProfil
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'good': return '✅';
-      case 'warning': return '⚠️';
+      case 'warning': return '경고';
       case 'bad': return '❌';
       default: return '❓';
     }
@@ -111,7 +111,7 @@ export default function ProfileDisplayModal({ isOpen, onClose, profile, onProfil
               )}
               {profile.isFeatured && (
                 <span className="px-3 py-1 text-sm font-medium bg-purple-100 text-purple-800 rounded-full">
-                  ⭐ 추천 프로필
+                  추천 프로필
                 </span>
               )}
               <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
@@ -322,7 +322,7 @@ export default function ProfileDisplayModal({ isOpen, onClose, profile, onProfil
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-blue-50 rounded-lg p-4">
                     <h6 className="text-sm font-medium text-blue-900 mb-2">평점 & 후기</h6>
-                    <div className="text-2xl font-bold text-blue-600">⭐ {profile.rating}</div>
+                    <div className="text-2xl font-bold text-blue-600">{profile.rating}</div>
                     <div className="text-sm text-blue-700">{profile.reviewCount}개 후기</div>
                   </div>
                   <div className="bg-green-50 rounded-lg p-4">
@@ -343,12 +343,7 @@ export default function ProfileDisplayModal({ isOpen, onClose, profile, onProfil
                 
                 {/* 프로필 카드 미리보기 */}
                 <div className="border border-gray-200 rounded-lg p-6 bg-white">
-                  <div className="flex items-start space-x-4">
-                    <div className="flex-shrink-0">
-                      <div className="w-16 h-16 bg-gray-300 rounded-full flex items-center justify-center">
-                        <span className="text-gray-600 text-2xl">👩‍⚕️</span>
-                      </div>
-                    </div>
+                  <div className="flex items-start">
                     <div className="flex-1">
                       <div className="flex items-center space-x-2 mb-2">
                         <h5 className="text-lg font-medium text-gray-900">{profile.teacherName}</h5>
@@ -370,7 +365,7 @@ export default function ProfileDisplayModal({ isOpen, onClose, profile, onProfil
                       
                       <div className="flex items-center justify-between text-sm text-gray-600">
                         <div>
-                          <span className="font-medium">⭐ {profile.rating}</span>
+                          <span className="font-medium">{profile.rating}</span>
                           <span className="ml-1">({profile.reviewCount})</span>
                         </div>
                         <div>{profile.location}</div>
@@ -385,7 +380,7 @@ export default function ProfileDisplayModal({ isOpen, onClose, profile, onProfil
                   <h5 className="text-sm font-medium text-gray-900 mb-3">노출 위치</h5>
                   <div className="text-sm text-gray-600">
                     <div className="flex items-center space-x-2 mb-1">
-                      <span>🏆 노출 순서:</span>
+                      <span>노출 순서:</span>
                       <span className="font-bold">#{profile.displayOrder}</span>
                     </div>
                     <div className="flex items-center space-x-2 mb-1">
@@ -396,7 +391,7 @@ export default function ProfileDisplayModal({ isOpen, onClose, profile, onProfil
                     </div>
                     {profile.isFeatured && (
                       <div className="flex items-center space-x-2">
-                        <span>⭐ 추천 프로필:</span>
+                        <span>추천 프로필:</span>
                         <span className="text-purple-600 font-medium">상단 우선 노출</span>
                       </div>
                     )}
@@ -406,7 +401,7 @@ export default function ProfileDisplayModal({ isOpen, onClose, profile, onProfil
                 {/* 개선 필요 사항 */}
                 {profile.qualityScore < 80 && (
                   <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                    <h5 className="text-sm font-medium text-red-900 mb-2">⚠️ 주의</h5>
+                    <h5 className="text-sm font-medium text-red-900 mb-2">주의</h5>
                     <p className="text-sm text-red-700">
                       품질 점수가 {profile.qualityScore}점으로 낮습니다. 
                       프로필 개선을 요청하거나 노출을 제한하는 것을 고려해보세요.

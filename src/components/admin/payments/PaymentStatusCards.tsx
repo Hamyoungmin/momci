@@ -19,7 +19,7 @@ export default function PaymentStatusCards({ payments, type }: PaymentStatusCard
   const todayAmount = payments
     .filter(p => p.status === 'completed')
     // 실제로는 오늘 날짜로 필터링
-    .reduce((sum, p) => sum + p.amount, 0) * 0.3; // 임시로 30% 계산
+    .reduce((sum, p) => sum + p.amount, 0) * 0; // 실제 계산 로직 적용 예정
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ko-KR').format(amount) + '원';
@@ -29,35 +29,35 @@ export default function PaymentStatusCards({ payments, type }: PaymentStatusCard
     {
       title: '결제 대기',
       count: payments.filter(p => p.status === 'pending').length,
-      icon: '⏳',
+      icon: 'W',
       color: 'bg-yellow-500',
       description: '입금 확인 필요'
     },
     {
       title: '결제 완료',
       count: payments.filter(p => p.status === 'completed').length,
-      icon: '✅',
+      icon: 'C',
       color: 'bg-green-500',
       description: '정상 결제'
     },
     {
       title: '결제 실패',
       count: payments.filter(p => p.status === 'failed').length,
-      icon: '❌',
+      icon: 'F',
       color: 'bg-red-500',
       description: '미입금/만료'
     },
     {
       title: '총 매출',
       count: formatCurrency(totalAmount),
-      icon: '💰',
+      icon: 'T',
       color: 'bg-purple-500',
       description: '누적 매출액'
     },
     {
       title: '오늘 매출',
       count: formatCurrency(todayAmount),
-      icon: '📈',
+      icon: 'D',
       color: 'bg-blue-500',
       description: '당일 매출액'
     }
@@ -71,7 +71,7 @@ export default function PaymentStatusCards({ payments, type }: PaymentStatusCard
     statusCards.push({
       title: '학부모 이용권',
       count: parentCount,
-      icon: '👨‍👩‍👧‍👦',
+      icon: 'P',
       color: 'bg-pink-500',
       description: '활성 이용권'
     });
@@ -92,11 +92,7 @@ export default function PaymentStatusCards({ payments, type }: PaymentStatusCard
               </p>
               <p className="text-xs text-gray-500">{card.description}</p>
             </div>
-            <div
-              className={`w-12 h-12 ${card.color} rounded-lg flex items-center justify-center text-white text-xl`}
-            >
-              {card.icon}
-            </div>
+
           </div>
         </div>
       ))}

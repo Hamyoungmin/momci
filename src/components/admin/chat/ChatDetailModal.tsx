@@ -47,56 +47,8 @@ export default function ChatDetailModal({ isOpen, onClose, chatRoom, onChatActio
   const [actionType, setActionType] = useState<'suspend' | 'resume' | 'end' | null>(null);
   const [actionReason, setActionReason] = useState('');
 
-  // 임시 채팅 메시지 데이터
-  const [messages] = useState<ChatMessage[]>([
-    {
-      id: 'MSG001',
-      senderId: chatRoom.parentId,
-      senderName: chatRoom.parentName,
-      senderType: 'parent',
-      content: '안녕하세요! 아이 언어치료에 대해 문의드리고 싶습니다.',
-      timestamp: '2024-01-20 10:30',
-      flagged: false
-    },
-    {
-      id: 'MSG002',
-      senderId: chatRoom.teacherId,
-      senderName: chatRoom.teacherName,
-      senderType: 'teacher',
-      content: '안녕하세요. 언어치료 경력 7년의 이○○ 치료사입니다. 아이의 현재 상태에 대해 알려주시겠어요?',
-      timestamp: '2024-01-20 10:35',
-      flagged: false
-    },
-    {
-      id: 'MSG003',
-      senderId: chatRoom.parentId,
-      senderName: chatRoom.parentName,
-      senderType: 'parent',
-      content: '5세 남아이고 발음이 부정확한 편입니다. 수업료는 어떻게 되나요?',
-      timestamp: '2024-01-20 10:40',
-      flagged: false
-    },
-    {
-      id: 'MSG004',
-      senderId: chatRoom.teacherId,
-      senderName: chatRoom.teacherName,
-      senderType: 'teacher',
-      content: '시간당 65,000원입니다. 그런데 플랫폼 말고 직접 거래하시면 수수료 없이 더 저렴하게 해드릴 수 있어요. 제 계좌번호는 123-456-789012입니다.',
-      timestamp: '2024-01-20 10:45',
-      flagged: true,
-      flagReason: '직거래 유도 + 계좌번호 공유'
-    },
-    {
-      id: 'MSG005',
-      senderId: chatRoom.parentId,
-      senderName: chatRoom.parentName,
-      senderType: 'parent',
-      content: '아, 그런 방법도 있군요. 제 번호는 010-1234-5678입니다.',
-      timestamp: '2024-01-20 10:50',
-      flagged: true,
-      flagReason: '개인 연락처 공유'
-    }
-  ]);
+  // 실제 데이터 (Firebase에서 가져올 예정)
+  const [messages] = useState<ChatMessage[]>([]);
 
   if (!isOpen) return null;
 
@@ -152,12 +104,12 @@ export default function ChatDetailModal({ isOpen, onClose, chatRoom, onChatActio
             <div className="flex items-center space-x-4">
               {chatRoom.directTradeDetected && (
                 <span className="px-3 py-1 text-sm font-medium bg-red-100 text-red-800 rounded-full">
-                  🚨 직거래 감지
+                  직거래 감지
                 </span>
               )}
               {chatRoom.suspiciousActivity && (
                 <span className="px-3 py-1 text-sm font-medium bg-yellow-100 text-yellow-800 rounded-full">
-                  ⚠️ 의심 활동
+                  의심 활동
                 </span>
               )}
               <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
@@ -253,14 +205,14 @@ export default function ChatDetailModal({ isOpen, onClose, chatRoom, onChatActio
                           {message.flagged && (
                             <div className="mt-2 p-2 bg-red-100 rounded border-l-2 border-red-400">
                               <span className="text-xs text-red-700 font-medium">
-                                🚨 위험 감지: {message.flagReason}
+                                위험 감지: {message.flagReason}
                               </span>
                             </div>
                           )}
                         </div>
                         {message.flagged && (
                           <div className="ml-4">
-                            <span className="text-red-500">⚠️</span>
+                            <span className="text-red-500">위험</span>
                           </div>
                         )}
                       </div>

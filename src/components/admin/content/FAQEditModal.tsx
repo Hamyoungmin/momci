@@ -271,10 +271,10 @@ export default function FAQEditModal({
                     category === 'technical' ? 'bg-orange-100 text-orange-800' :
                     'bg-gray-100 text-gray-800'
                   }`}>
-                    {category === 'general' ? '💬 일반 이용' :
-                     category === 'payment' ? '💳 결제 관련' :
+                    {category === 'general' ? '일반 이용' :
+                     category === 'payment' ? '결제 관련' :
                      category === 'matching' ? '🤝 매칭 관련' :
-                     category === 'technical' ? '🔧 기술 지원' : '📝 기타'}
+                     category === 'technical' ? '기술 지원' : '기타'}
                   </span>
                   <span className="text-xs text-gray-500">순서: #{order}</span>
                 </div>
