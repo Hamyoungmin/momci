@@ -212,16 +212,16 @@ service firebase.storage {
     }
     
     // 임시 업로드 폴더 (강화된 임시 저장소)
-    match /temp/{userId}/{timestamp}/{filename} {
+    match /temp/{userId}/{ts}/{filename} {
       // 임시 파일 업로드 - 본인만, 엄격한 검증
       allow create: if isOwner(userId) && 
                        (isValidImageType() || isValidDocumentType() || isValidVideoType()) &&
                        hasRecentActivity() &&
                        // 파일 크기를 임시 폴더용으로 제한
                        request.resource.size < 100 * 1024 * 1024 && // 100MB 제한
-                       // 업로드 시간 검증 (현재 시간과 경로의 timestamp가 일치해야 함)
-                       int(timestamp) > (request.time.toMillis() - 60000) && // 1분 이내
-                       int(timestamp) <= request.time.toMillis();
+                       // 업로드 시간 검증 (현재 시간과 경로의 ts가 일치해야 함)
+                       int(ts) > (request.time.toMillis() - 60000) && // 1분 이내
+                       int(ts) <= request.time.toMillis();
       
       // 임시 파일 읽기 - 본인만
       allow read: if isOwner(userId);
@@ -230,7 +230,7 @@ service firebase.storage {
       allow delete: if isOwner(userId) || 
                        (isAdmin() && 
                         // 24시간 지난 파일만 관리자가 삭제 가능
-                        request.time > timestamp.value(int(timestamp)) + duration.value(24, 'h'));
+                        request.time.toMillis() > int(ts) + 86400000);
     }
     
     // 기본적으로 모든 다른 경로는 거부
