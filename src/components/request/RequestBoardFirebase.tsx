@@ -86,6 +86,10 @@ export default function RequestBoardFirebase() {
   const [postsData, setPostsData] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // 페이지네이션 상태
+  const [currentPage, setCurrentPage] = useState(1);
+  const postsPerPage = 5; // 페이지당 게시글 수
+
   // Firebase에서 게시글 데이터 실시간으로 가져오기
   useEffect(() => {
     const q = query(
@@ -181,6 +185,7 @@ export default function RequestBoardFirebase() {
       const docRef = await addDoc(collection(db, 'posts'), postDataToSend);
       
       console.log('Document written with ID: ', docRef.id);
+      setCurrentPage(1); // 새 게시글 저장 후 1페이지로 이동
       closeCreatePostModal();
     } catch (error) {
       console.error('Error adding document: ', error);
@@ -228,6 +233,22 @@ export default function RequestBoardFirebase() {
   
   console.log('🎯 필터링된 최종 게시글 수:', filteredPosts.length);
 
+  // 페이지네이션 계산
+  const totalPages = Math.ceil(filteredPosts.length / postsPerPage);
+  const startIndex = (currentPage - 1) * postsPerPage;
+  const endIndex = startIndex + postsPerPage;
+  const currentPosts = filteredPosts.slice(startIndex, endIndex);
+
+  console.log('📄 페이지네이션 정보:', {
+    totalPosts: filteredPosts.length,
+    currentPage,
+    totalPages,
+    postsPerPage,
+    startIndex,
+    endIndex,
+    currentPagePosts: currentPosts.length
+  });
+
   // 선택된 지역에 따른 제목과 탭 변경
   const getRegionTitle = () => {
     if (selectedSidebarItem === '홈티매칭') return '전국 홈티매칭';
@@ -236,6 +257,7 @@ export default function RequestBoardFirebase() {
 
   const handleSidebarClick = (item: string) => {
     setSelectedSidebarItem(item);
+    setCurrentPage(1); // 지역 변경 시 1페이지로 리셋
     if (item !== '홈티매칭') {
       setSelectedTab(item);
     }
@@ -321,6 +343,7 @@ export default function RequestBoardFirebase() {
                   onClick={() => {
                     setSelectedTab(tab);
                     setSelectedSidebarItem(tab);
+                    setCurrentPage(1); // 탭 변경 시 1페이지로 리셋
                   }}
                   className={`flex-1 py-3 text-sm font-medium rounded-2xl transition-colors text-center ${
                     selectedTab === tab
@@ -369,6 +392,7 @@ export default function RequestBoardFirebase() {
                         onClick={() => {
                           setSelectedTreatment(treatment);
                           setShowTreatmentModal(false);
+                          setCurrentPage(1); // 치료법 변경 시 1페이지로 리셋
                         }}
                         className={`p-3 text-sm rounded-2xl border transition-colors ${
                           selectedTreatment === treatment
@@ -433,6 +457,7 @@ export default function RequestBoardFirebase() {
                         onClick={() => {
                           setSelectedLocation(location);
                           setShowLocationModal(false);
+                          setCurrentPage(1); // 지역 선택 시 1페이지로 리셋
                         }}
                         className={`p-3 text-sm rounded-2xl border transition-colors ${
                           selectedLocation === location
@@ -510,7 +535,7 @@ export default function RequestBoardFirebase() {
                   등록된 게시글이 없습니다.
                 </div>
               ) : (
-                filteredPosts.map((post, index) => (
+                currentPosts.map((post, index) => (
                   <div key={post.id} className="bg-white rounded-2xl border border-gray-200 p-6 hover:shadow-md transition-shadow">
                     <div className="flex items-center justify-between">
                       {/* 왼쪽: 프로필 정보 */}
@@ -518,7 +543,7 @@ export default function RequestBoardFirebase() {
                         {/* 번호와 프로필 */}
                         <div className="flex flex-col items-center space-y-2">
                           <div className="text-sm text-gray-500 font-medium">
-                            #{(index + 1).toString().padStart(3, '0')}
+                            #{(startIndex + index + 1).toString().padStart(3, '0')}
                           </div>
                           {/* 프로필 이미지 */}
                           <div className="w-16 h-16 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-md">
@@ -624,27 +649,54 @@ export default function RequestBoardFirebase() {
           )}
 
           {/* 페이지네이션 */}
-          {!loading && filteredPosts.length > 0 && (
+          {!loading && filteredPosts.length > 0 && totalPages > 1 && (
             <div className="flex justify-center mt-8">
               <div className="flex items-center space-x-2">
-                <button className="px-3 py-2 text-gray-500 hover:text-gray-700">
+                {/* 이전 버튼 */}
+                <button 
+                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                  disabled={currentPage === 1}
+                  className={`px-4 py-2 rounded-lg transition-colors ${
+                    currentPage === 1
+                      ? 'text-gray-400 cursor-not-allowed'
+                      : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
+                  }`}
+                >
                   이전
                 </button>
-                {[1, 2, 3, 4, 5].map((page) => (
+                
+                {/* 페이지 번호 버튼들 */}
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                   <button
                     key={page}
-                    className={`px-3 py-2 text-sm ${
-                      page === 1
-                        ? 'text-blue-600 font-bold'
-                        : 'text-gray-500 hover:text-gray-700'
+                    onClick={() => setCurrentPage(page)}
+                    className={`px-4 py-2 rounded-lg text-sm transition-colors ${
+                      page === currentPage
+                        ? 'bg-blue-500 text-white font-bold'
+                        : 'text-gray-500 hover:text-blue-600 hover:bg-blue-50'
                     }`}
                   >
                     {page}
                   </button>
                 ))}
-                <button className="px-3 py-2 text-gray-500 hover:text-gray-700">
+                
+                {/* 다음 버튼 */}
+                <button 
+                  onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                  disabled={currentPage === totalPages}
+                  className={`px-4 py-2 rounded-lg transition-colors ${
+                    currentPage === totalPages
+                      ? 'text-gray-400 cursor-not-allowed'
+                      : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
+                  }`}
+                >
                   다음
                 </button>
+              </div>
+              
+              {/* 페이지 정보 표시 */}
+              <div className="ml-6 text-sm text-gray-500 flex items-center">
+                총 {filteredPosts.length}개 게시글 | {currentPage}/{totalPages} 페이지
               </div>
             </div>
           )}
