@@ -165,7 +165,8 @@ export default function RequestBoardFirebase() {
       closeCreatePostModal();
     } catch (error) {
       console.error('Error adding document: ', error);
-      alert('게시글 저장 중 오류가 발생했습니다: ' + error.message);
+      const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다';
+      alert('게시글 저장 중 오류가 발생했습니다: ' + errorMessage);
     }
   };
 
