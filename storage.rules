@@ -414,6 +414,129 @@ service firebase.storage {
       allow read, write: if isAdmin();
     }
     
+    // 게시글 첨부파일 (선생님 요청하기)
+    match /posts/{postId}/attachments/{filename} {
+      // 게시글 작성자만 업로드 가능
+      allow create: if isAuthenticated() && 
+                       firestore.exists(/databases/(default)/documents/posts/$(postId)) &&
+                       firestore.get(/databases/(default)/documents/posts/$(postId)).data.authorId == request.auth.uid &&
+                       (isValidImageType() || isValidDocumentType()) &&
+                       hasRecentActivity() &&
+                       // 게시글당 파일 크기 제한 (각 파일 10MB, 총 5개까지)
+                       request.resource.size < 10 * 1024 * 1024;
+      
+      // 모든 인증된 사용자가 읽기 가능 (공개 게시글)
+      allow read: if isAuthenticated();
+      
+      // 게시글 작성자와 관리자만 삭제 가능
+      allow delete: if isAuthenticated() && 
+                       firestore.exists(/databases/(default)/documents/posts/$(postId)) &&
+                       (firestore.get(/databases/(default)/documents/posts/$(postId)).data.authorId == request.auth.uid ||
+                        isAdmin());
+    }
+    
+    // 게시글 댓글 첨부파일 (치료사 포트폴리오)
+    match /posts/{postId}/comments/{commentId}/attachments/{filename} {
+      // 댓글 작성자만 업로드 가능 (치료사 포트폴리오)
+      allow create: if isAuthenticated() && 
+                       firestore.exists(/databases/(default)/documents/posts/$(postId)/comments/$(commentId)) &&
+                       firestore.get(/databases/(default)/documents/posts/$(postId)/comments/$(commentId)).data.authorId == request.auth.uid &&
+                       exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
+                       get(/databases/(default)/documents/users/$(request.auth.uid)).data.userType == 'therapist' &&
+                       (isValidImageType() || isValidDocumentType()) &&
+                       hasRecentActivity() &&
+                       // 댓글당 파일 크기 제한 (각 파일 5MB)
+                       request.resource.size < 5 * 1024 * 1024;
+      
+      // 게시글 작성자, 댓글 작성자, 관리자만 읽기 가능
+      allow read: if isAuthenticated() && 
+                     firestore.exists(/databases/(default)/documents/posts/$(postId)) &&
+                     (firestore.get(/databases/(default)/documents/posts/$(postId)).data.authorId == request.auth.uid ||
+                      firestore.get(/databases/(default)/documents/posts/$(postId)/comments/$(commentId)).data.authorId == request.auth.uid ||
+                      isAdmin());
+      
+      // 댓글 작성자와 관리자만 삭제 가능
+      allow delete: if isAuthenticated() && 
+                       firestore.exists(/databases/(default)/documents/posts/$(postId)/comments/$(commentId)) &&
+                       (firestore.get(/databases/(default)/documents/posts/$(postId)/comments/$(commentId)).data.authorId == request.auth.uid ||
+                        isAdmin());
+    }
+    
+    // 지원서 첨부파일 (치료사 자격증/경력증명)
+    match /applications/{applicationId}/attachments/{filename} {
+      // 지원자(치료사)만 업로드 가능
+      allow create: if isAuthenticated() && 
+                       firestore.exists(/databases/(default)/documents/applications/$(applicationId)) &&
+                       firestore.get(/databases/(default)/documents/applications/$(applicationId)).data.applicantId == request.auth.uid &&
+                       exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
+                       get(/databases/(default)/documents/users/$(request.auth.uid)).data.userType == 'therapist' &&
+                       isValidDocumentType() &&
+                       hasRecentActivity() &&
+                       // 지원서당 파일 크기 제한 (각 파일 10MB)
+                       request.resource.size < 10 * 1024 * 1024;
+      
+      // 지원자와 게시글 작성자, 관리자만 읽기 가능
+      allow read: if isAuthenticated() && 
+                     firestore.exists(/databases/(default)/documents/applications/$(applicationId)) &&
+                     (firestore.get(/databases/(default)/documents/applications/$(applicationId)).data.applicantId == request.auth.uid ||
+                      firestore.get(/databases/(default)/documents/applications/$(applicationId)).data.postAuthorId == request.auth.uid ||
+                      isAdmin());
+      
+      // 관리자만 삭제 가능 (기록 보관)
+      allow delete: if isAdmin();
+    }
+    
+    // 임시저장 첨부파일 (게시글 작성 중)
+    match /drafts/{userId}/attachments/{filename} {
+      // 본인만 업로드/읽기/삭제 가능
+      allow create, read, delete: if isOwner(userId) && 
+                                      (isValidImageType() || isValidDocumentType()) &&
+                                      hasRecentActivity() &&
+                                      // 임시 파일 크기 제한 (각 파일 15MB)
+                                      request.resource.size < 15 * 1024 * 1024;
+    }
+    
+    // 게시글 증빙자료 (진단서, 처방전 등 민감한 의료정보)
+    match /posts/{postId}/medical-documents/{filename} {
+      // 게시글 작성자만 업로드 가능 (민감한 의료정보)
+      allow create: if isAuthenticated() && 
+                       firestore.exists(/databases/(default)/documents/posts/$(postId)) &&
+                       firestore.get(/databases/(default)/documents/posts/$(postId)).data.authorId == request.auth.uid &&
+                       isValidDocumentType() &&
+                       hasRecentActivity() &&
+                       // 업무시간에만 업로드 가능 (보안 강화)
+                       isBusinessHours() &&
+                       request.resource.size < 20 * 1024 * 1024; // 20MB 제한
+      
+      // 게시글 작성자와 관리자만 읽기 가능 (민감한 의료정보)
+      allow read: if isAuthenticated() && 
+                     firestore.exists(/databases/(default)/documents/posts/$(postId)) &&
+                     (firestore.get(/databases/(default)/documents/posts/$(postId)).data.authorId == request.auth.uid ||
+                      isAdmin());
+      
+      // 게시글 작성자와 관리자만 삭제 가능
+      allow delete: if isAuthenticated() && 
+                       firestore.exists(/databases/(default)/documents/posts/$(postId)) &&
+                       (firestore.get(/databases/(default)/documents/posts/$(postId)).data.authorId == request.auth.uid ||
+                        isAdmin());
+    }
+    
+    // 치료사 포트폴리오 샘플 (공개용)
+    match /therapist-portfolio/{userId}/samples/{filename} {
+      // 치료사 본인만 업로드/수정/삭제 가능
+      allow create, update, delete: if isAuthenticated() && 
+                                       isOwner(userId) &&
+                                       exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
+                                       get(/databases/(default)/documents/users/$(request.auth.uid)).data.userType == 'therapist' &&
+                                       (isValidImageType() || isValidVideoType()) &&
+                                       hasRecentActivity() &&
+                                       // 포트폴리오 파일 크기 제한 (각 파일 25MB)
+                                       request.resource.size < 25 * 1024 * 1024;
+      
+      // 모든 인증된 사용자가 읽기 가능 (공개 포트폴리오)
+      allow read: if isAuthenticated();
+    }
+    
     // 기본적으로 모든 다른 경로는 거부
     match /{allPaths=**} {
       allow read, write: if false;
