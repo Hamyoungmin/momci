@@ -143,22 +143,24 @@ export default function RequestBoardFirebase() {
 
       const newTitle = `${postData.age} ${postData.gender} ${postData.frequency} 홈티`;
       
+      // Rules에서 요구하는 정확한 필드들만 전송
       const docRef = await addDoc(collection(db, 'posts'), {
         treatment: postData.treatment,
-        category: postData.detailLocation || postData.region,
-        title: newTitle,
-        details: postData.timeDetails,
         region: postData.region || selectedTab,
         age: postData.age,
         gender: postData.gender,
         frequency: postData.frequency,
         timeDetails: postData.timeDetails,
         price: postData.price,
-        additionalInfo: postData.additionalInfo,
+        authorId: auth.currentUser.uid,
+        createdAt: serverTimestamp(),
+        status: 'active',
         applications: 0,
-        authorId: auth.currentUser.uid, // Rules에서 요구하는 필수 필드
-        status: 'active', // Rules에서 요구하는 필수 필드
-        createdAt: serverTimestamp()
+        // 추가 정보들 (Rules에서 허용되는 추가 필드)
+        title: newTitle,
+        category: postData.detailLocation || postData.region,
+        details: postData.timeDetails,
+        additionalInfo: postData.additionalInfo || ''
       });
       
       console.log('Document written with ID: ', docRef.id);
