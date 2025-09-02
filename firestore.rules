@@ -897,6 +897,128 @@ service cloud.firestore {
       // 삭제 불가 (성공률 통계 보존)
       allow delete: if false;
     }
+    
+    // 게시글 댓글/응답 시스템 (posts용)
+    match /posts/{postId}/comments/{commentId} {
+      // 모든 인증된 사용자가 읽기 가능
+      allow read: if isAuthenticated();
+      
+      // 치료사만 댓글 작성 가능 (지원 의사 표현)
+      allow create: if isAuthenticated() && 
+                       request.resource.data.authorId == request.auth.uid &&
+                       exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+                       get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType == 'therapist' &&
+                       exists(/databases/$(database)/documents/posts/$(postId)) &&
+                       request.resource.data.keys().hasAll(['authorId', 'content', 'createdAt', 'postId']) &&
+                       request.resource.data.postId == postId &&
+                       request.resource.data.content is string &&
+                       request.resource.data.content.size() >= 5 &&
+                       request.resource.data.content.size() <= 500 &&
+                       hasRecentActivity() &&
+                       rateLimitCheck(10); // 분당 10개 제한
+      
+      // 작성자와 게시글 작성자만 수정 가능
+      allow update: if isAuthenticated() && 
+                       (resource.data.authorId == request.auth.uid || 
+                        get(/databases/$(database)/documents/posts/$(postId)).data.authorId == request.auth.uid ||
+                        isAdmin()) &&
+                       !request.resource.data.diff(resource.data).affectedKeys().hasAny(['authorId', 'createdAt', 'postId']);
+      
+      // 작성자, 게시글 작성자, 관리자만 삭제 가능
+      allow delete: if isAuthenticated() && 
+                       (resource.data.authorId == request.auth.uid || 
+                        get(/databases/$(database)/documents/posts/$(postId)).data.authorId == request.auth.uid ||
+                        isAdmin());
+    }
+    
+    // 게시글 임시저장 (작성 중 임시 보관)
+    match /drafts/{userId} {
+      // 본인만 접근 가능
+      allow read, write: if isOwner(userId) && 
+                            hasRecentActivity();
+    }
+    
+    // 게시글 수정 이력 (감사 추적)
+    match /post-edit-history/{historyId} {
+      // 게시글 작성자와 관리자만 읽기 가능
+      allow read: if isAuthenticated() && 
+                     (resource.data.postAuthorId == request.auth.uid || 
+                      isAdmin());
+      
+      // 시스템/관리자만 생성 가능 (자동 기록)
+      allow create: if isAdmin() &&
+                       request.resource.data.keys().hasAll(['postId', 'postAuthorId', 'editedBy', 'changes', 'editedAt']);
+      
+      // 수정/삭제 불가 (감사 추적 보존)
+      allow update, delete: if false;
+    }
+    
+    // 지역별 인기 통계 (실시간 트렌드)
+    match /region-stats/{region} {
+      // 모든 인증된 사용자가 읽기 가능
+      allow read: if isAuthenticated();
+      
+      // 시스템/관리자만 업데이트 가능
+      allow write: if isAdmin();
+    }
+    
+    // 치료별 인기 통계 (실시간 트렌드)
+    match /treatment-stats/{treatment} {
+      // 모든 인증된 사용자가 읽기 가능
+      allow read: if isAuthenticated();
+      
+      // 시스템/관리자만 업데이트 가능
+      allow write: if isAdmin();
+    }
+    
+    // 알림 구독 설정 (새 게시글 알림)
+    match /notification-subscriptions/{subscriptionId} {
+      // 본인과 관리자만 읽기 가능
+      allow read: if isOwnerOrAdmin(resource.data.userId);
+      
+      // 치료사만 구독 설정 가능 (관심 지역/치료 알림)
+      allow create: if isAuthenticated() && 
+                       request.resource.data.userId == request.auth.uid &&
+                       exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+                       get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType == 'therapist' &&
+                       request.resource.data.keys().hasAll(['userId', 'regions', 'treatments', 'isActive', 'createdAt']) &&
+                       request.resource.data.regions is list &&
+                       request.resource.data.treatments is list &&
+                       request.resource.data.isActive == true &&
+                       hasRecentActivity();
+      
+      // 본인만 수정/삭제 가능
+      allow update, delete: if isOwner(resource.data.userId);
+    }
+    
+    // 인기 검색어 추적 (트렌드 분석)
+    match /popular-searches/{searchId} {
+      // 관리자만 읽기 가능
+      allow read: if isAdmin();
+      
+      // 시스템/관리자만 생성/수정 가능
+      allow create, update: if isAdmin() &&
+                               request.resource.data.keys().hasAll(['searchTerm', 'count', 'lastSearched']);
+      
+      // 삭제 불가 (트렌드 데이터 보존)
+      allow delete: if false;
+    }
+    
+    // 게시글 만료 관리 (자동 만료 시스템)
+    match /post-expiry/{postId} {
+      // 게시글 작성자와 관리자만 읽기 가능
+      allow read: if isAuthenticated() && 
+                     (resource.data.authorId == request.auth.uid || 
+                      isAdmin());
+      
+      // 시스템/관리자만 생성/수정 가능 (자동 만료 설정)
+      allow create, update: if isAdmin() &&
+                               request.resource.data.keys().hasAll(['postId', 'authorId', 'expiryDate', 'isExpired']) &&
+                               exists(/databases/$(database)/documents/posts/$(postId));
+      
+      // 관리자만 삭제 가능
+      allow delete: if isAdmin();
+    }
   }
 }
 
