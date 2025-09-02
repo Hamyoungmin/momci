@@ -1,10 +1,21 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
+// 치료사 타입 정의
+interface Teacher {
+  id: number;
+  category: string;
+  name: string;
+  details: string;
+  hourlyRate: string;
+  status: string;
+  applications: number;
+}
+
 export default function TeacherSearchBoard() {
-  const [selectedSidebarItem, setSelectedSidebarItem] = useState('치료사 등록안내');
+  const [selectedSidebarItem, setSelectedSidebarItem] = useState('치료사등록');
   const [selectedTab, setSelectedTab] = useState('서울');
   const [selectedPriceRange, setSelectedPriceRange] = useState('치료비');
   const [selectedStatus, setSelectedStatus] = useState('상태');
@@ -13,6 +24,66 @@ export default function TeacherSearchBoard() {
   const [showFilterPopup, setShowFilterPopup] = useState(false);
   const [showRegistrationPopup, setShowRegistrationPopup] = useState(false);
   const [isPopupClosing, setIsPopupClosing] = useState(false);
+
+  // 등록된 치료사 목록 상태
+  const [registeredTeachers, setRegisteredTeachers] = useState<Teacher[]>([]);
+
+  // localStorage에서 데이터 불러오기
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedTeachers = localStorage.getItem('registeredTeachers');
+      if (savedTeachers) {
+        try {
+          const parsedTeachers = JSON.parse(savedTeachers);
+          setRegisteredTeachers(parsedTeachers);
+        } catch (error) {
+          console.error('저장된 치료사 데이터를 불러오는데 실패했습니다:', error);
+        }
+      }
+    }
+  }, []);
+
+  // localStorage에 데이터 저장하는 함수
+  const saveToLocalStorage = (teachers: Teacher[]) => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('registeredTeachers', JSON.stringify(teachers));
+      } catch (error) {
+        console.error('치료사 데이터 저장에 실패했습니다:', error);
+      }
+    }
+  };
+
+  // 파일 업로드 상태
+  const [profileImage, setProfileImage] = useState<File | null>(null);
+  const [profileImagePreview, setProfileImagePreview] = useState<string>('');
+  const [educationFiles, setEducationFiles] = useState<File[]>([]);
+  const [experienceFiles, setExperienceFiles] = useState<File[]>([]);
+  const [certificateFiles, setCertificateFiles] = useState<File[]>([]);
+  const [bankBookFile, setBankBookFile] = useState<File | null>(null);
+
+  // 등록 폼 데이터
+  const [formData, setFormData] = useState({
+    name: '',
+    birthDate: '',
+    gender: '여성',
+    phone: '',
+    email: '',
+    address: '',
+    qualification: '',
+    therapyActivity: '',
+    mainSpecialty: '',
+    experience: '',
+    region: '',
+    availableDays: [] as string[],
+    availableTime: '',
+    specialties: [] as string[],
+    bankName: '',
+    accountHolder: '',
+    accountNumber: '',
+    hourlyRate: '',
+    agreeTerms: false
+  });
 
   // 팝업 닫기 함수 (애니메이션 포함)
   const closePopup = () => {
@@ -23,7 +94,140 @@ export default function TeacherSearchBoard() {
     }, 300);
   };
 
-  const sidebarItems = ['치료사등록', '치료사 등록안내', '정식(경력)치료사 등록'];
+  // 파일 업로드 핸들러
+  const handleProfileImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setProfileImage(file);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setProfileImagePreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleFileUpload = (
+    e: React.ChangeEvent<HTMLInputElement>, 
+    setFiles: React.Dispatch<React.SetStateAction<File[]>>
+  ) => {
+    const files = Array.from(e.target.files || []);
+    setFiles(prev => [...prev, ...files]);
+  };
+
+  const handleSingleFileUpload = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    setFile: React.Dispatch<React.SetStateAction<File | null>>
+  ) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setFile(file);
+    }
+  };
+
+  // 파일 제거 핸들러
+  const removeFile = (
+    index: number,
+    files: File[],
+    setFiles: React.Dispatch<React.SetStateAction<File[]>>
+  ) => {
+    const newFiles = files.filter((_, i) => i !== index);
+    setFiles(newFiles);
+  };
+
+  // 폼 데이터 핸들러
+  const handleFormChange = (field: string, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  // 치료사 등록 처리
+  const handleTeacherRegistration = () => {
+    // 필수 항목 검증
+    if (!formData.name || !formData.phone || !formData.email || !formData.agreeTerms) {
+      alert('필수 항목을 모두 입력해주세요.');
+      return;
+    }
+
+    if (!profileImage) {
+      alert('프로필 사진을 업로드해주세요.');
+      return;
+    }
+
+    if (formData.availableDays.length === 0) {
+      alert('치료 가능 요일을 선택해주세요.');
+      return;
+    }
+
+    // 카테고리 매핑
+    const getCategoryFromSpecialties = () => {
+      const specialty = formData.specialties[0];
+      if (['언어치료', '인지치료', '학습치료'].includes(specialty)) return '언어/인지치료';
+      if (['놀이치료', '감각통합치료'].includes(specialty)) return '놀이/감각통합치료';
+      if (['물리치료', '작업치료'].includes(specialty)) return '물리/작업치료';
+      if (['ABA치료', '행동치료'].includes(specialty)) return 'ABA/행동치료';
+      if (['미술치료', '음악치료'].includes(specialty)) return '미술/음악치료';
+      return '기타';
+    };
+
+    // 새로운 치료사 생성
+    const newTeacher: Teacher = {
+      id: Date.now(), // 임시 ID (실제로는 서버에서 생성)
+      category: getCategoryFromSpecialties(),
+      name: `${formData.name} ${formData.specialties[0]?.replace('치료', '치료사') || '치료사'}`,
+      details: `${formData.experience} 경력 / ${formData.specialties.join(', ')} 전문 / ${formData.region || '지역 협의'}`,
+      hourlyRate: formData.hourlyRate || '협의',
+      status: '등록완료',
+      applications: 0
+    };
+
+    // 치료사 목록에 추가
+    const updatedTeachers = [...registeredTeachers, newTeacher];
+    setRegisteredTeachers(updatedTeachers);
+    
+    // localStorage에 저장
+    saveToLocalStorage(updatedTeachers);
+
+    // 폼 초기화
+    setFormData({
+      name: '',
+      birthDate: '',
+      gender: '여성',
+      phone: '',
+      email: '',
+      address: '',
+      qualification: '',
+      therapyActivity: '',
+      mainSpecialty: '',
+      experience: '',
+      region: '',
+      availableDays: [],
+      availableTime: '',
+      specialties: [],
+      bankName: '',
+      accountHolder: '',
+      accountNumber: '',
+      hourlyRate: '',
+      agreeTerms: false
+    });
+
+    // 파일 상태 초기화
+    setProfileImage(null);
+    setProfileImagePreview('');
+    setEducationFiles([]);
+    setExperienceFiles([]);
+    setCertificateFiles([]);
+    setBankBookFile(null);
+
+    // 팝업 닫기
+    closePopup();
+
+    alert('치료사 등록이 완료되었습니다!');
+  };
+
+  const sidebarItems = ['치료사등록', '정식(경력)치료사 등록'];
   const priceRanges = ['치료비', '5만원 이하', '5-6만원', '6-7만원', '7-8만원', '8만원 이상'];
   const statusOptions = ['상태', '등록완료', '추천중', '검토중', '보류'];
   const therapyCheckboxes = [
@@ -43,234 +247,22 @@ export default function TeacherSearchBoard() {
     { id: 'etc', label: '기타' }
   ];
 
-  // 지역별 치료사 데이터
-  const allRegionalTeachers = {
-    '서울': [
-      {
-        id: 5015,
-        category: '언어/인지치료',
-        name: '김민* 언어재활사',
-        details: '서울대병원 재활의학과 5년 근무 / 언어재활사 1급 / 아동언어발달지연 전문',
-        hourlyRate: '7만원',
-        status: '등록완료',
-        applications: 12
-      },
-      {
-        id: 5014,
-        category: '놀이/감각통합치료',
-        name: '박소* 놀이치료사',
-        details: '연세의료원 소아정신과 3년 근무 / 놀이치료사 자격증 / 자폐스펙트럼 전문',
-        hourlyRate: '6만원',
-        status: '추천중',
-        applications: 8
-      },
-      {
-        id: 5013,
-        category: '언어/인지치료',
-        name: '이정* 언어재활사',
-        details: '강남세브란스병원 재활의학과 4년 근무 / 언어재활사 1급 / 말더듬 교정 전문',
-        hourlyRate: '6만 5천원',
-        status: '등록완료',
-        applications: 15
-      },
-      {
-        id: 5012,
-        category: '물리/작업치료',
-        name: '최현* 작업치료사',
-        details: '삼성서울병원 재활의학과 6년 근무 / 작업치료사 면허 / 감각통합치료 전문',
-        hourlyRate: '7만 5천원',
-        status: '추천중',
-        applications: 6
-      },
-      {
-        id: 5011,
-        category: 'ABA/행동치료',
-        name: '장미* ABA치료사',
-        details: '서울아동병원 발달센터 4년 근무 / BCBA 국제자격 / 자폐행동치료 전문',
-        hourlyRate: '8만원',
-        status: '등록완료',
-        applications: 18
-      },
-      {
-        id: 5010,
-        category: '미술/음악치료',
-        name: '한예* 미술치료사',
-        details: '서울시립아동병원 정신건강의학과 3년 근무 / 미술치료사 1급 / 정서치료 전문',
-        hourlyRate: '5만 5천원',
-        status: '추천중',
-        applications: 9
-      },
-      {
-        id: 5009,
-        category: '언어/인지치료',
-        name: '윤서* 언어재활사',
-        details: '서울대어린이병원 재활의학과 7년 근무 / 언어재활사 1급 / 뇌성마비 언어치료 전문',
-        hourlyRate: '8만 5천원',
-        status: '등록완료',
-        applications: 22
-      },
-      {
-        id: 5008,
-        category: '물리/작업치료',
-        name: '김태* 물리치료사',
-        details: '서울재활병원 소아재활과 5년 근무 / 물리치료사 면허 / 운동발달치료 전문',
-        hourlyRate: '6만 8천원',
-        status: '추천중',
-        applications: 11
-      }
-    ],
-    '인천/경기북부': [
-      {
-        id: 5107,
-        category: '언어/인지치료',
-        name: '정은* 언어재활사',
-        details: '인하대병원 재활의학과 4년 근무 / 언어재활사 1급 / 조음장애 교정 전문',
-        hourlyRate: '6만원',
-        status: '추천중',
-        applications: 7
-      },
-      {
-        id: 5106,
-        category: '놀이/감각통합치료',
-        name: '강수* 놀이치료사',
-        details: '고양시 아동발달센터 3년 근무 / 놀이치료사 자격증 / ADHD 치료 전문',
-        hourlyRate: '5만 5천원',
-        status: '등록완료',
-        applications: 10
-      },
-      {
-        id: 5105,
-        category: '물리/작업치료',
-        name: '윤지* 물리치료사',
-        details: '명지병원 소아재활과 5년 근무 / 물리치료사 면허 / 뇌성마비 운동치료 전문',
-        hourlyRate: '6만 8천원',
-        status: '추천중',
-        applications: 8
-      },
-      {
-        id: 5104,
-        category: 'ABA/행동치료',
-        name: '조민* ABA치료사',
-        details: '킨더하임 발달센터 2년 근무 / ABA 자격증 / 문제행동 수정 전문',
-        hourlyRate: '7만원',
-        status: '등록완료',
-        applications: 5
-      }
-    ],
-    '경기남부': [
-      {
-        id: 5205,
-        category: '언어/인지치료',
-        name: '송혜* 언어재활사',
-        details: '분당서울대병원 재활의학과 6년 근무 / 언어재활사 1급 / 발음교정 전문',
-        hourlyRate: '7만 2천원',
-        status: '등록완료',
-        applications: 14
-      },
-      {
-        id: 5204,
-        category: '물리/작업치료',
-        name: '안성* 작업치료사',
-        details: '용인세브란스병원 재활의학과 4년 근무 / 작업치료사 면허 / 손기능 훈련 전문',
-        hourlyRate: '6만 5천원',
-        status: '추천중',
-        applications: 9
-      },
-      {
-        id: 5203,
-        category: 'ABA/행동치료',
-        name: '임지* ABA치료사',
-        details: '수원시 발달장애인센터 3년 근무 / BCBA 국제자격 / 사회성 훈련 전문',
-        hourlyRate: '7만 8천원',
-        status: '등록완료',
-        applications: 12
-      },
-      {
-        id: 5202,
-        category: '미술/음악치료',
-        name: '홍다* 음악치료사',
-        details: '성남시 복지관 음악치료실 5년 근무 / 음악치료사 1급 / 정서안정 전문',
-        hourlyRate: '5만 8천원',
-        status: '추천중',
-        applications: 6
-      }
-    ],
-    '충청,강원,대전': [
-      {
-        id: 5305,
-        category: '놀이/감각통합치료',
-        name: '문소* 놀이치료사',
-        details: '충남대병원 정신건강의학과 4년 근무 / 놀이치료사 자격증 / 트라우마 치료 전문',
-        hourlyRate: '5만 5천원',
-        status: '등록완료',
-        applications: 8
-      },
-      {
-        id: 5304,
-        category: '언어/인지치료',
-        name: '백민* 언어재활사',
-        details: '대전을지대병원 재활의학과 3년 근무 / 언어재활사 1급 / 실어증 치료 전문',
-        hourlyRate: '6만원',
-        status: '추천중',
-        applications: 5
-      },
-      {
-        id: 5303,
-        category: '물리/작업치료',
-        name: '강희* 물리치료사',
-        details: '춘천한림대병원 재활의학과 6년 근무 / 물리치료사 면허 / 보행훈련 전문',
-        hourlyRate: '6만 3천원',
-        status: '등록완료',
-        applications: 11
-      }
-    ],
-    '전라,경상,부산': [
-      {
-        id: 5405,
-        category: '언어/인지치료',
-        name: '장예* 언어재활사',
-        details: '부산대병원 재활의학과 7년 근무 / 언어재활사 1급 / 삼킴장애 치료 전문',
-        hourlyRate: '7만원',
-        status: '등록완료',
-        applications: 16
-      },
-      {
-        id: 5404,
-        category: '놀이/감각통합치료',
-        name: '김다* 놀이치료사',
-        details: '광주북구 아동발달센터 4년 근무 / 놀이치료사 자격증 / 발달지연 치료 전문',
-        hourlyRate: '5만 7천원',
-        status: '추천중',
-        applications: 9
-      },
-      {
-        id: 5403,
-        category: '물리/작업치료',
-        name: '이상* 작업치료사',
-        details: '대구가톨릭대병원 재활의학과 5년 근무 / 작업치료사 면허 / 인지재활 전문',
-        hourlyRate: '6만 8천원',
-        status: '등록완료',
-        applications: 13
-      },
-      {
-        id: 5402,
-        category: 'ABA/행동치료',
-        name: '박지* ABA치료사',
-        details: '울산시 장애인복지관 3년 근무 / ABA 자격증 / 자폐스펙트럼 치료 전문',
-        hourlyRate: '7만 5천원',
-        status: '추천중',
-        applications: 7
-      }
-    ]
+  // 지역별 치료사 데이터 (현재 등록된 치료사 없음)
+  const allRegionalTeachers: Record<string, Teacher[]> = {
+    '서울': [],
+    '인천/경기북부': [],
+    '경기남부': [],
+    '충청,강원,대전': [],
+    '전라,경상,부산': []
   };
 
   // 현재 선택된 지역의 치료사 가져오기
   const getCurrentTeachers = () => {
     if (selectedSidebarItem === '치료사등록') {
-      // 모든 지역의 치료사를 합쳐서 보여줌
-      return Object.values(allRegionalTeachers).flat();
+      // 모든 지역의 치료사와 등록된 치료사를 합쳐서 보여줌
+      return [...Object.values(allRegionalTeachers).flat(), ...registeredTeachers];
     }
-    return allRegionalTeachers[selectedSidebarItem as keyof typeof allRegionalTeachers] || [];
+    return [...(allRegionalTeachers[selectedSidebarItem as keyof typeof allRegionalTeachers] || []), ...registeredTeachers];
   };
 
   const filteredTeachers = getCurrentTeachers();
@@ -292,7 +284,6 @@ export default function TeacherSearchBoard() {
     if (selectedSidebarItem === '치료사등록') return '정식(경력)치료사 등록';
     if (selectedSidebarItem === '정식(경력)치료사 등록') return '정식(경력)치료사 등록';
     if (selectedSidebarItem === '예비(학생)치료사 등록') return '예비(학생)치료사 등록';
-    if (selectedSidebarItem === '치료사 등록안내') return '치료사 등록안내';
     return `${selectedSidebarItem}`;
   };
 
@@ -390,8 +381,8 @@ export default function TeacherSearchBoard() {
             </div>
           )}
 
-          {/* 검색 폼 - 치료사 등록안내가 아닌 경우에만 표시 */}
-          {selectedSidebarItem !== '치료사 등록안내' && (
+          {/* 검색 폼 - 항상 표시 */}
+          {(
             <>
               <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-4">
                 <div className="flex gap-4 mb-4">
@@ -472,214 +463,88 @@ export default function TeacherSearchBoard() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredTeachers.map((teacher, index) => (
-                      <tr key={teacher.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {teacher.id}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
-                            {teacher.category}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div>
-                            <div className="text-sm font-medium text-blue-600 hover:text-blue-800 cursor-pointer">
-                              {teacher.name}
+                    {filteredTeachers.length > 0 ? (
+                      filteredTeachers.map((teacher, index) => (
+                        <tr key={teacher.id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {teacher.id}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
+                              {teacher.category}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div>
+                              <div className="text-sm font-medium text-blue-600 hover:text-blue-800 cursor-pointer">
+                                {teacher.name}
+                              </div>
+                              <div className="text-sm text-gray-500 mt-1">
+                                {teacher.details}
+                              </div>
                             </div>
-                            <div className="text-sm text-gray-500 mt-1">
-                              {teacher.details}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {teacher.hourlyRate}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right">
+                            <button className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
+                              teacher.status === '추천중' 
+                                ? 'bg-green-500 hover:bg-green-600 text-white'
+                                : 'bg-blue-500 hover:bg-blue-600 text-white'
+                            }`}>
+                              {teacher.status}
+                            </button>
+                            <div className="text-xs text-blue-600 mt-1">
+                              +{teacher.applications}
                             </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {teacher.hourlyRate}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right">
-                          <button className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
-                            teacher.status === '추천중' 
-                              ? 'bg-green-500 hover:bg-green-600 text-white'
-                              : 'bg-blue-500 hover:bg-blue-600 text-white'
-                          }`}>
-                            {teacher.status}
-                          </button>
-                          <div className="text-xs text-blue-600 mt-1">
-                            +{teacher.applications}
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={5} className="px-6 py-12 text-center">
+                          <div className="flex flex-col items-center justify-center">
+                            <div className="text-6xl text-gray-300 mb-4">👩‍⚕️</div>
+                            <div className="text-lg font-medium text-gray-500 mb-2">등록된 치료사가 없습니다</div>
+                            <div className="text-sm text-gray-400">치료사 등록을 기다리고 있습니다</div>
                           </div>
                         </td>
                       </tr>
-                    ))}
+                    )}
                   </tbody>
                 </table>
               </div>
 
-              {/* 페이지네이션 */}
-              <div className="flex justify-center mt-8">
-                <div className="flex items-center space-x-2">
-                  <button className="px-3 py-2 text-gray-500 hover:text-gray-700">
-                    이전
-                  </button>
-                  {[1, 2, 3, 4, 5].map((page) => (
-                    <button
-                      key={page}
-                      className={`px-3 py-2 text-sm ${
-                        page === 1
-                          ? 'text-blue-600 font-bold'
-                          : 'text-gray-500 hover:text-gray-700'
-                      }`}
-                    >
-                      {page}
+              {/* 페이지네이션 - 데이터가 있을 때만 표시 */}
+              {filteredTeachers.length > 0 && (
+                <div className="flex justify-center mt-8">
+                  <div className="flex items-center space-x-2">
+                    <button className="px-3 py-2 text-gray-500 hover:text-gray-700">
+                      이전
                     </button>
-                  ))}
-                  <button className="px-3 py-2 text-gray-500 hover:text-gray-700">
-                    다음
-                  </button>
+                    {[1, 2, 3, 4, 5].map((page) => (
+                      <button
+                        key={page}
+                        className={`px-3 py-2 text-sm ${
+                          page === 1
+                            ? 'text-blue-600 font-bold'
+                            : 'text-gray-500 hover:text-gray-700'
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    ))}
+                    <button className="px-3 py-2 text-gray-500 hover:text-gray-700">
+                      다음
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
             </>
           )}
 
-          {/* 치료사 등록안내 페이지 콘텐츠 */}
-          {selectedSidebarItem === '치료사 등록안내' && (
-            <div className="space-y-8">
-              {/* 메인 안내 */}
-              <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-200">
-                <div className="text-center mb-8">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-4">더모든 키즈 치료사 등록 안내</h2>
-                  <p className="text-gray-600 text-lg">전문 치료사로서 아이들의 성장을 도우며 안정적인 수입을 얻으세요</p>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="bg-blue-50 p-6 rounded-lg">
-                    <h3 className="text-lg font-bold text-blue-900 mb-4">🩺 정식(경력) 치료사</h3>
-                    <ul className="space-y-3 text-gray-700">
-                      <li>• 언어재활사, 작업치료사, 물리치료사 등 국가자격증 보유</li>
-                      <li>• 병원 또는 센터에서 2년 이상 임상경험</li>
-                      <li>• 시간당 5만원~10만원 수익</li>
-                      <li>• 검증된 전문가로 우선 매칭</li>
-                      <li>• 월 평균 80시간 이상 수업 보장</li>
-                    </ul>
-                  </div>
-                  
-                  <div className="bg-green-50 p-6 rounded-lg">
-                    <h3 className="text-lg font-bold text-green-900 mb-4">🎓 예비(학생) 치료사</h3>
-                    <ul className="space-y-3 text-gray-700">
-                      <li>• 관련 학과 3학년 이상 재학생</li>
-                      <li>• 실습 과정 이수 또는 진행 중</li>
-                      <li>• 시간당 3만원~5만원 수익</li>
-                      <li>• 전문 멘토링 프로그램 제공</li>
-                      <li>• 졸업 후 정식 등록 우선권</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
 
-              {/* 등록 절차 */}
-              <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-200">
-                <h3 className="text-xl font-bold text-gray-900 mb-4">📋 등록 절차</h3>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                  <div className="text-center">
-                    <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <span className="text-2xl">📝</span>
-                    </div>
-                    <h4 className="font-bold text-gray-900 mb-2">1. 온라인 신청</h4>
-                    <p className="text-sm text-gray-600">기본정보 및 자격증 업로드</p>
-                  </div>
-                  <div className="text-center">
-                    <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <span className="text-2xl">🔍</span>
-                    </div>
-                    <h4 className="font-bold text-gray-900 mb-2">2. 서류 검토</h4>
-                    <p className="text-sm text-gray-600">3-5일 내 자격 검증</p>
-                  </div>
-                  <div className="text-center">
-                    <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <span className="text-2xl">💬</span>
-                    </div>
-                    <h4 className="font-bold text-gray-900 mb-2">3. 화상 면접</h4>
-                    <p className="text-sm text-gray-600">전문성 및 소통능력 확인</p>
-                  </div>
-                  <div className="text-center">
-                    <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <span className="text-2xl">✅</span>
-                    </div>
-                    <h4 className="font-bold text-gray-900 mb-2">4. 활동 시작</h4>
-                    <p className="text-sm text-gray-600">매칭 및 수업 진행</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* 필요 서류 */}
-              <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-200">
-                <h3 className="text-xl font-bold text-gray-900 mb-4">📎 필요 서류</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div>
-                    <h4 className="font-bold text-blue-900 mb-4">✅ 공통 서류</h4>
-                    <ul className="space-y-2 text-gray-700">
-                      <li>• 신분증 사본</li>
-                      <li>• 최종학력 증명서</li>
-                      <li>• 경력증명서 (해당자)</li>
-                      <li>• 범죄경력조회서</li>
-                      <li>• 건강진단서</li>
-                    </ul>
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-green-900 mb-4">📜 자격증 관련</h4>
-                    <ul className="space-y-2 text-gray-700">
-                      <li>• 언어재활사 자격증</li>
-                      <li>• 작업치료사 면허증</li>
-                      <li>• 물리치료사 면허증</li>
-                      <li>• 놀이치료사 자격증</li>
-                      <li>• ABA 치료사 자격증</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-
-              {/* 수익 및 혜택 */}
-              <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-200">
-                <h3 className="text-xl font-bold text-gray-900 mb-4">💰 수익 및 혜택</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="bg-yellow-50 p-6 rounded-lg text-center">
-                    <h4 className="font-bold text-yellow-900 mb-2">월 평균 수익</h4>
-                    <p className="text-2xl font-bold text-yellow-600 mb-2">200-400만원</p>
-                    <p className="text-sm text-gray-600">주 20-30시간 기준</p>
-                  </div>
-                  <div className="bg-green-50 p-6 rounded-lg text-center">
-                    <h4 className="font-bold text-green-900 mb-2">수수료</h4>
-                    <p className="text-2xl font-bold text-green-600 mb-2">첫 수업만 15%</p>
-                    <p className="text-sm text-gray-600">이후 수업료 100% 지급</p>
-                  </div>
-                  <div className="bg-purple-50 p-6 rounded-lg text-center">
-                    <h4 className="font-bold text-purple-900 mb-2">추가 혜택</h4>
-                    <p className="text-sm text-purple-600 mb-2">• 교육비 지원</p>
-                    <p className="text-sm text-purple-600 mb-2">• 보험료 지원</p>
-                    <p className="text-sm text-purple-600">• 우수치료사 인증</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* 연락처 */}
-              <div className="bg-blue-600 text-white p-8 rounded-lg text-center">
-                <h3 className="text-xl font-bold mb-4">더 궁금한 점이 있으신가요?</h3>
-                <p className="mb-4">전문 상담사가 1:1로 안내해드립니다</p>
-                <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-                  <div className="flex items-center space-x-2">
-                    <span>📞</span>
-                    <span className="font-bold">1588-0000</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <span>💬</span>
-                    <span className="font-bold">카카오톡: 더모든키즈</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <span>✉️</span>
-                    <span className="font-bold">info@momci.co.kr</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
@@ -757,7 +622,7 @@ export default function TeacherSearchBoard() {
             {/* 팝업 헤더 */}
             <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-blue-50">
               <div>
-                <h3 className="text-2xl font-bold text-gray-900">더모든 키즈 전문가 프로필 등록</h3>
+                <h3 className="text-2xl font-bold text-gray-900">모든별 키즈 전문가 프로필 등록</h3>
                 <p className="text-base text-gray-600 mt-2">검증된 전문 치료사로 등록하여 안정적인 수익과 전문성 향상의 기회를 얻으세요.</p>
               </div>
               <button 
@@ -785,9 +650,26 @@ export default function TeacherSearchBoard() {
                     {/* 프로필 사진 */}
                     <div className="md:col-span-1">
                       <label className="block text-sm font-medium text-gray-700 mb-2">프로필 사진 *</label>
-                      <div className="w-40 h-40 bg-gray-200 rounded-full flex items-center justify-center mx-auto">
-                        <span className="text-gray-500 text-base text-center">사진 등록<br/>(필수)</span>
+                      <div className="w-40 h-40 bg-gray-200 rounded-full flex items-center justify-center mx-auto relative cursor-pointer hover:bg-gray-300 transition-colors">
+                        {profileImagePreview ? (
+                          <img 
+                            src={profileImagePreview} 
+                            alt="프로필 미리보기" 
+                            className="w-full h-full object-cover rounded-full"
+                          />
+                        ) : (
+                          <span className="text-gray-500 text-base text-center">사진 등록<br/>(필수)</span>
+                        )}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleProfileImageUpload}
+                          className="absolute inset-0 opacity-0 cursor-pointer"
+                        />
                       </div>
+                      {profileImage && (
+                        <p className="text-xs text-gray-600 mt-2 text-center">{profileImage.name}</p>
+                      )}
                     </div>
                     
                     <div className="space-y-4">
@@ -797,6 +679,8 @@ export default function TeacherSearchBoard() {
                         <input 
                           type="text" 
                           placeholder="김민지"
+                          value={formData.name}
+                          onChange={(e) => handleFormChange('name', e.target.value)}
                           className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         />
                       </div>
@@ -805,8 +689,9 @@ export default function TeacherSearchBoard() {
                       <div>
                         <label className="block text-base font-medium text-gray-700 mb-2">생년월일 *</label>
                         <input 
-                          type="text" 
-                          placeholder="YYYY-MM-DD"
+                          type="date" 
+                          value={formData.birthDate}
+                          onChange={(e) => handleFormChange('birthDate', e.target.value)}
                           className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         />
                       </div>
@@ -814,7 +699,10 @@ export default function TeacherSearchBoard() {
                       {/* 성별 */}
                       <div>
                         <label className="block text-base font-medium text-gray-700 mb-2">성별 *</label>
-                        <select className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <select 
+                          value={formData.gender}
+                          onChange={(e) => handleFormChange('gender', e.target.value)}
+                          className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                           <option>여성</option>
                           <option>남성</option>
                         </select>
@@ -826,6 +714,8 @@ export default function TeacherSearchBoard() {
                         <input 
                           type="text" 
                           placeholder="010-1234-5678"
+                          value={formData.phone}
+                          onChange={(e) => handleFormChange('phone', e.target.value)}
                           className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         />
                       </div>
@@ -838,6 +728,8 @@ export default function TeacherSearchBoard() {
                     <input 
                       type="email" 
                       placeholder="partn@example.com"
+                      value={formData.email}
+                      onChange={(e) => handleFormChange('email', e.target.value)}
                       className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
@@ -847,7 +739,9 @@ export default function TeacherSearchBoard() {
                     <label className="block text-base font-medium text-gray-700 mb-2">주소 *</label>
                     <input 
                       type="text" 
-                      placeholder="주소 검색"
+                      placeholder="주소를 입력하세요"
+                      value={formData.address}
+                      onChange={(e) => handleFormChange('address', e.target.value)}
                       className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
@@ -857,11 +751,25 @@ export default function TeacherSearchBoard() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">자격구분 *</label>
                     <div className="space-x-4">
                       <label className="inline-flex items-center">
-                        <input type="radio" name="qualification" className="form-radio text-blue-600" />
+                        <input 
+                          type="radio" 
+                          name="qualification" 
+                          value="보유"
+                          checked={formData.qualification === '보유'}
+                          onChange={(e) => handleFormChange('qualification', e.target.value)}
+                          className="form-radio text-blue-600" 
+                        />
                         <span className="ml-2 text-base">보유</span>
                       </label>
                       <label className="inline-flex items-center">
-                        <input type="radio" name="qualification" className="form-radio text-blue-600" />
+                        <input 
+                          type="radio" 
+                          name="qualification" 
+                          value="미보유"
+                          checked={formData.qualification === '미보유'}
+                          onChange={(e) => handleFormChange('qualification', e.target.value)}
+                          className="form-radio text-blue-600" 
+                        />
                         <span className="ml-2 text-base">미보유</span>
                       </label>
                     </div>
@@ -887,6 +795,8 @@ export default function TeacherSearchBoard() {
                     <textarea 
                       placeholder="예: 서울대학교병원 재활의학과에서 5년간 언어치료사로 근무하며 아동 언어발달 지연 전문 치료를 담당했습니다. 총 200명 이상의 아동을 담당하며 평균 80% 이상의 개선율을 보였습니다."
                       rows={4}
+                      value={formData.therapyActivity}
+                      onChange={(e) => handleFormChange('therapyActivity', e.target.value)}
                       className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
@@ -901,6 +811,8 @@ export default function TeacherSearchBoard() {
                     <textarea 
                       placeholder="예: 언어재활사 1급, 놀이치료사 자격증 보유. 발음교정, 언어발달지연, 자폐스펙트럼 아동 전문. 연세의료원 소아재활의학과 (2019-2024), 삼성서울병원 언어치료실 (2017-2019) 근무 경력."
                       rows={4}
+                      value={formData.mainSpecialty}
+                      onChange={(e) => handleFormChange('mainSpecialty', e.target.value)}
                       className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
@@ -911,14 +823,29 @@ export default function TeacherSearchBoard() {
                   {/* 경력 */}
                   <div className="mb-4">
                     <label className="block text-sm font-medium text-gray-700 mb-2">🎯 경력 *</label>
-                    <select className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                      <option>경력을 선택해주세요</option>
+                    <select 
+                      value={formData.experience}
+                      onChange={(e) => handleFormChange('experience', e.target.value)}
+                      className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                      <option value="">경력을 선택해주세요</option>
                       <option>1년 미만</option>
                       <option>1-2년</option>
                       <option>3-4년</option>
                       <option>5-7년</option>
                       <option>8년 이상</option>
                     </select>
+                  </div>
+
+                  {/* 희망 시간당 치료비 */}
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">희망 시간당 치료비 *</label>
+                    <input 
+                      type="text" 
+                      placeholder="예: 7만원"
+                      value={formData.hourlyRate}
+                      onChange={(e) => handleFormChange('hourlyRate', e.target.value)}
+                      className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
                   </div>
                   
                   {/* 희망 치료 지역 */}
@@ -927,6 +854,8 @@ export default function TeacherSearchBoard() {
                     <input 
                       type="text" 
                       placeholder="예: 서울 강남구, 서초구, 송파구"
+                      value={formData.region}
+                      onChange={(e) => handleFormChange('region', e.target.value)}
                       className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
@@ -937,7 +866,18 @@ export default function TeacherSearchBoard() {
                     <div className="flex space-x-3">
                       {['월', '화', '수', '목', '금', '토', '일'].map(day => (
                         <label key={day} className="inline-flex items-center">
-                          <input type="checkbox" className="form-checkbox text-blue-600 rounded" />
+                          <input 
+                            type="checkbox" 
+                            checked={formData.availableDays.includes(day)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                handleFormChange('availableDays', [...formData.availableDays, day]);
+                              } else {
+                                handleFormChange('availableDays', formData.availableDays.filter(d => d !== day));
+                              }
+                            }}
+                            className="form-checkbox text-blue-600 rounded" 
+                          />
                           <span className="ml-1 text-base">{day}</span>
                         </label>
                       ))}
@@ -950,6 +890,8 @@ export default function TeacherSearchBoard() {
                     <input 
                       type="text" 
                       placeholder="예: 평일 오후 4시 이후 / 주말 오전 전원 가능"
+                      value={formData.availableTime}
+                      onChange={(e) => handleFormChange('availableTime', e.target.value)}
                       className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
@@ -965,7 +907,18 @@ export default function TeacherSearchBoard() {
                         '발달재활', '학습치료'
                       ].map(field => (
                         <label key={field} className="inline-flex items-center">
-                          <input type="checkbox" className="form-checkbox text-blue-600 rounded" />
+                          <input 
+                            type="checkbox" 
+                            checked={formData.specialties.includes(field)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                handleFormChange('specialties', [...formData.specialties, field]);
+                              } else {
+                                handleFormChange('specialties', formData.specialties.filter(s => s !== field));
+                              }
+                            }}
+                            className="form-checkbox text-blue-600 rounded" 
+                          />
                           <span className="ml-2 text-base">{field}</span>
                         </label>
                       ))}
@@ -989,25 +942,94 @@ export default function TeacherSearchBoard() {
                   {/* 학력 증빙 서류 */}
                   <div className="mb-4">
                     <label className="block text-sm font-medium text-gray-700 mb-2">학력 증빙 서류 (졸업증명서 등) *</label>
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center relative cursor-pointer hover:border-blue-300 transition-colors">
+                      <input
+                        type="file"
+                        multiple
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        onChange={(e) => handleFileUpload(e, setEducationFiles)}
+                        className="absolute inset-0 opacity-0 cursor-pointer"
+                      />
                       <p className="text-base text-gray-500">파일을 여기에 드래그하거나 클릭하여 업로드하세요.</p>
+                      <p className="text-sm text-gray-400 mt-1">PDF, JPG, PNG 파일만 가능</p>
                     </div>
+                    {educationFiles.length > 0 && (
+                      <div className="mt-2 space-y-1">
+                        {educationFiles.map((file, index) => (
+                          <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded">
+                            <span className="text-sm text-gray-700">{file.name}</span>
+                            <button
+                              onClick={() => removeFile(index, educationFiles, setEducationFiles)}
+                              className="text-red-500 hover:text-red-700 text-sm"
+                            >
+                              삭제
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   
                   {/* 경력 증빙 서류 */}
                   <div className="mb-4">
                     <label className="block text-sm font-medium text-gray-700 mb-2">경력 증빙 서류 (재직증명서 등) *</label>
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center relative cursor-pointer hover:border-blue-300 transition-colors">
+                      <input
+                        type="file"
+                        multiple
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        onChange={(e) => handleFileUpload(e, setExperienceFiles)}
+                        className="absolute inset-0 opacity-0 cursor-pointer"
+                      />
                       <p className="text-base text-gray-500">파일을 여기에 드래그하거나 클릭하여 업로드하세요.</p>
+                      <p className="text-sm text-gray-400 mt-1">PDF, JPG, PNG 파일만 가능</p>
                     </div>
+                    {experienceFiles.length > 0 && (
+                      <div className="mt-2 space-y-1">
+                        {experienceFiles.map((file, index) => (
+                          <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded">
+                            <span className="text-sm text-gray-700">{file.name}</span>
+                            <button
+                              onClick={() => removeFile(index, experienceFiles, setExperienceFiles)}
+                              className="text-red-500 hover:text-red-700 text-sm"
+                            >
+                              삭제
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   
                   {/* 자격증 사본 */}
                   <div className="mb-4">
                     <label className="block text-sm font-medium text-gray-700 mb-2">자격증 사본 *</label>
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center relative cursor-pointer hover:border-blue-300 transition-colors">
+                      <input
+                        type="file"
+                        multiple
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        onChange={(e) => handleFileUpload(e, setCertificateFiles)}
+                        className="absolute inset-0 opacity-0 cursor-pointer"
+                      />
                       <p className="text-base text-gray-500">파일을 여기에 드래그하거나 클릭하여 업로드하세요.</p>
+                      <p className="text-sm text-gray-400 mt-1">PDF, JPG, PNG 파일만 가능</p>
                     </div>
+                    {certificateFiles.length > 0 && (
+                      <div className="mt-2 space-y-1">
+                        {certificateFiles.map((file, index) => (
+                          <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded">
+                            <span className="text-sm text-gray-700">{file.name}</span>
+                            <button
+                              onClick={() => removeFile(index, certificateFiles, setCertificateFiles)}
+                              className="text-red-500 hover:text-red-700 text-sm"
+                            >
+                              삭제
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -1027,6 +1049,8 @@ export default function TeacherSearchBoard() {
                       <input 
                         type="text" 
                         placeholder="예: 국민은행"
+                        value={formData.bankName}
+                        onChange={(e) => handleFormChange('bankName', e.target.value)}
                         className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       />
                     </div>
@@ -1037,6 +1061,8 @@ export default function TeacherSearchBoard() {
                       <input 
                         type="text" 
                         placeholder="예: 홍길동"
+                        value={formData.accountHolder}
+                        onChange={(e) => handleFormChange('accountHolder', e.target.value)}
                         className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       />
                     </div>
@@ -1048,6 +1074,8 @@ export default function TeacherSearchBoard() {
                     <input 
                       type="text" 
                       placeholder="- 없이 숫자만 입력"
+                      value={formData.accountNumber}
+                      onChange={(e) => handleFormChange('accountNumber', e.target.value)}
                       className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
@@ -1055,9 +1083,29 @@ export default function TeacherSearchBoard() {
                   {/* 통장 사본 업로드 */}
                   <div className="mb-4">
                     <label className="block text-base font-medium text-gray-700 mb-2">통장 사본 *</label>
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center relative cursor-pointer hover:border-blue-300 transition-colors">
+                      <input
+                        type="file"
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        onChange={(e) => handleSingleFileUpload(e, setBankBookFile)}
+                        className="absolute inset-0 opacity-0 cursor-pointer"
+                      />
                       <p className="text-base text-gray-500">통장 첫 페이지 사본을 업로드해주세요.</p>
+                      <p className="text-sm text-gray-400 mt-1">PDF, JPG, PNG 파일만 가능</p>
                     </div>
+                    {bankBookFile && (
+                      <div className="mt-2">
+                        <div className="flex items-center justify-between bg-gray-50 p-2 rounded">
+                          <span className="text-sm text-gray-700">{bankBookFile.name}</span>
+                          <button
+                            onClick={() => setBankBookFile(null)}
+                            className="text-red-500 hover:text-red-700 text-sm"
+                          >
+                            삭제
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -1077,11 +1125,16 @@ export default function TeacherSearchBoard() {
                     <p>4. 플랫폼은 치료사와 학부모 간의 매칭 서비스를 제공하며, 치료의 질과 효과에 대해서는 치료사가 직접 책임집니다.</p>
                     <p>5. 첫 수업 수수료를 제외한 모든 수업료는 100% 치료사에게 지급되며, 정산은 매월 말일 기준으로 익월 10일에 지급됩니다.</p>
                     <p>6. 외부 직거래는 금지되며, 발견 시 계약해지 및 법적 조치가 취해질 수 있습니다. 모든 거래는 플랫폼 내에서만 진행됩니다.</p>
-                    <p>7. 본 약관에 동의함으로써 더모든 키즈의 치료사로서 전문성과 책임감을 가지고 활동할 것을 서약합니다.</p>
+                    <p>7. 본 약관에 동의함으로써 모든별 키즈의 치료사로서 전문성과 책임감을 가지고 활동할 것을 서약합니다.</p>
                   </div>
                   
                   <div className="flex items-center mb-4">
-                    <input type="checkbox" className="form-checkbox text-blue-600 rounded mr-3" />
+                    <input 
+                      type="checkbox" 
+                      checked={formData.agreeTerms}
+                      onChange={(e) => handleFormChange('agreeTerms', e.target.checked)}
+                      className="form-checkbox text-blue-600 rounded mr-3" 
+                    />
                     <span className="text-base text-gray-700">위 이용약관에 모두 동의합니다.</span>
                   </div>
                 </div>
@@ -1097,7 +1150,10 @@ export default function TeacherSearchBoard() {
                 >
                   취소
                 </button>
-                <button className="px-10 py-3 text-base bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">
+                <button 
+                  onClick={handleTeacherRegistration}
+                  className="px-10 py-3 text-base bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                >
                   프로필 등록 진행하기
                 </button>
               </div>

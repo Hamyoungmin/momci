@@ -19,8 +19,8 @@ export default function FAQPage() {
       items: [
         {
           id: 1,
-          question: "더모든 키즈는 어떤 서비스인가요?",
-          answer: "더모든 키즈는 3세부터 초등학교 6학년까지의 아이들을 대상으로 하는 전문 홈스쿨링 치료 서비스입니다. 언어치료, 학습치료, 행동치료 등 다양한 분야의 전문 치료사가 직접 가정으로 방문하여 1:1 맞춤형 치료를 제공합니다."
+          question: "모든별 키즈는 어떤 서비스인가요?",
+          answer: "모든별 키즈는 3세부터 초등학교 6학년까지의 아이들을 대상으로 하는 전문 홈스쿨링 치료 서비스입니다. 언어치료, 학습치료, 행동치료 등 다양한 분야의 전문 치료사가 직접 가정으로 방문하여 1:1 맞춤형 치료를 제공합니다."
         },
         {
           id: 2,
@@ -113,7 +113,7 @@ export default function FAQPage() {
         <div className="text-center mb-12">
           <h1 className="text-3xl font-bold text-gray-900 mb-4">자주 묻는 질문</h1>
           <p className="text-gray-600">
-            더모든 키즈에 대한 궁금한 점들을 확인해보세요
+            모든별 키즈에 대한 궁금한 점들을 확인해보세요
           </p>
         </div>
 

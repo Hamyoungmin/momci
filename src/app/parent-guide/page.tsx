@@ -8,7 +8,7 @@ export default function ParentGuidePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="bg-white border-4 border-blue-700 rounded-lg p-8">
             <div className="text-center mb-20 mt-20">
-              <h2 className="text-5xl font-bold text-gray-900 mb-4">더모든 키즈 이용 가이드</h2>
+              <h2 className="text-5xl font-bold text-gray-900 mb-4">모든별 키즈 이용 가이드</h2>
             </div>
 
             {/* STEP 1 */}
@@ -75,7 +75,7 @@ export default function ParentGuidePage() {
               <div className="border-t border-gray-300 mb-6"></div>
               
               <p className="text-gray-700">
-                첫 달 수업 완료 후, 선생님과 직접 소통하며 편리안 후불제(개인 계좌 이체)로 정산합니다. 이후 과정에 <span className="text-blue-700 font-semibold">더모든 키즈</span>는 수수료를 부과하지 않습니다.
+                첫 달 수업 완료 후, 선생님과 직접 소통하며 편리안 후불제(개인 계좌 이체)로 정산합니다. 이후 과정에 <span className="text-blue-700 font-semibold">모든별 키즈</span>는 수수료를 부과하지 않습니다.
               </p>
             </div>
 

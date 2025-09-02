@@ -52,7 +52,7 @@ export default function NoticePage() {
           <div className="text-center">
             <h1 className="text-4xl font-bold mb-4">공지사항</h1>
             <p className="text-xl text-blue-100">
-              더모든 키즈의 새로운 소식과 중요한 안내사항을 확인하세요
+              모든별 키즈의 새로운 소식과 중요한 안내사항을 확인하세요
             </p>
           </div>
         </div>

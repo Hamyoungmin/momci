@@ -13,7 +13,7 @@ export default function Hero() {
               찾아보세요
             </h1>
             <p className="text-xl text-gray-600 mb-8 leading-relaxed">
-              더모든 키즈는 검증된 전문 치료사와 학부모를 안전하게 연결하는<br />
+              모든별 키즈는 검증된 전문 치료사와 학부모를 안전하게 연결하는<br />
               홈티칭 매칭 플랫폼입니다. 아이에게 꼭 필요한 가장 효과적인 도움을 제공합니다.
             </p>
             

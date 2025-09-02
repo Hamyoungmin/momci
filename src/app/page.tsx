@@ -1,4 +1,4 @@
-import Link from 'next/link';
+﻿import Link from 'next/link';
 import Hero from '@/components/sections/Hero';
 
 export default function Home() {
@@ -12,7 +12,7 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-              더모든 키즈가 특별한 이유
+              모든별 키즈가 특별한 이유
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
               안전하고 투명한 홈티칭 매칭으로 아이에게 최고의 치료 환경을 제공합니다
@@ -70,7 +70,7 @@ export default function Home() {
             지금 바로 시작하세요
           </h2>
           <p className="text-xl mb-8 opacity-90">
-            더모든 키즈와 함께 아이에게 최고의 치료사를 만나보세요
+            모든별 키즈와 함께 아이에게 최고의 치료사를 만나보세요
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link

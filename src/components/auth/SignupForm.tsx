@@ -387,7 +387,7 @@ export default function SignupForm() {
               [필수] 이용약관 동의
             </label>
             <p className="text-xs text-gray-600 mt-1">
-              더모든 키즈 서비스 이용을 위한 약관입니다.{' '}
+              모든별 키즈 서비스 이용을 위한 약관입니다.{' '}
               <Link href="/terms" className="text-blue-600 hover:text-blue-500">자세히 보기</Link>
             </p>
           </div>

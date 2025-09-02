@@ -1,4 +1,4 @@
-import ProfileBoardManagement from "@/components/admin/board/ProfileBoardManagement";
+﻿import ProfileBoardManagement from "@/components/admin/board/ProfileBoardManagement";
 
 export default function ProfileBoardPage() {
   return (

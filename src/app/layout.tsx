@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/Header";
@@ -17,8 +17,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "더모든 키즈 - 아이 맞춤 홈티칭 플랫폼",
-  description: "더모든 키즈는 전문 치료사와 학부모를 안전하게 연결하는 홈티칭 매칭 플랫폼입니다.",
+  title: "모든별 키즈 - 아이 맞춤 홈티칭 플랫폼",
+  description: "모든별 키즈는 전문 치료사와 학부모를 안전하게 연결하는 홈티칭 매칭 플랫폼입니다.",
 };
 
 export default function RootLayout({

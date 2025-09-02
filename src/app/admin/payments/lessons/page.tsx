@@ -1,4 +1,4 @@
-import LessonPaymentManagement from "@/components/admin/payments/LessonPaymentManagement";
+﻿import LessonPaymentManagement from "@/components/admin/payments/LessonPaymentManagement";
 
 export default function LessonPaymentsPage() {
   return (

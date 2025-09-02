@@ -46,10 +46,10 @@ export default function Statistics() {
         {/* 섹션 헤더 */}
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-            더모든 키즈 성과
+            모든별 키즈 성과
           </h2>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            많은 학부모님과 치료사분들이 더모든 키즈를 통해<br />
+            많은 학부모님과 치료사분들이 모든별 키즈를 통해<br />
             안전하고 효과적인 매칭을 경험하고 계십니다
           </p>
         </div>

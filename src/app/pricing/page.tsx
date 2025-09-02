@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "이용권 구매 - 더모든 키즈",
-  description: "더모든 키즈 이용권을 구매하고 전문 치료사와 안전하게 매칭받으세요. 학부모와 선생님을 위한 합리적인 요금제를 확인하세요.",
+  title: "이용권 구매 - 모든별 키즈",
+  description: "모든별 키즈 이용권을 구매하고 전문 치료사와 안전하게 매칭받으세요. 학부모와 선생님을 위한 합리적인 요금제를 확인하세요.",
 };
 
 export default function PricingPage() {
@@ -22,7 +22,7 @@ export default function PricingPage() {
               
               {/* 설명 */}
               <p className="text-gray-600 text-lg leading-relaxed max-w-4xl mx-auto">
-                더모든 키즈는 학부모님과 선생님 모두를 위한 합리적인 이용권을 제공합니다.
+                모든별 키즈는 학부모님과 선생님 모두를 위한 합리적인 이용권을 제공합니다.
               </p>
             </div>
 

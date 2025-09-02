@@ -1,4 +1,4 @@
-import FAQManagement from "@/components/admin/content/FAQManagement";
+﻿import FAQManagement from "@/components/admin/content/FAQManagement";
 
 export default function FAQPage() {
   return (

@@ -65,7 +65,7 @@ export function useAdminStats(): AdminStats {
 
         // 다른 컬렉션들은 존재할 때만 쿼리 (선택적)
         try {
-          // 긴급 신고 수 (컬렉션이 없을 수 있음)
+          // 긴급 신고 수 (복합 인덱스 필요)
           const urgentReportsQuery = query(
             collection(db, 'reports'),
             where('status', '==', 'pending'),

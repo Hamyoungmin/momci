@@ -9,7 +9,7 @@ export default function RefundPolicyPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="bg-white border-4 border-blue-700 rounded-lg p-16">
             <div className="text-center mb-20 mt-20">
-              <h2 className="text-5xl font-bold text-gray-900 mb-4">더모든 키즈 환불 규정</h2>
+              <h2 className="text-5xl font-bold text-gray-900 mb-4">모든별 키즈 환불 규정</h2>
             </div>
 
             {/* 1. 기간제 이용권 */}

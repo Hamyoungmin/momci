@@ -1,7 +1,21 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { collection, addDoc, getDocs, onSnapshot, orderBy, query, serverTimestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+
+// 게시글 타입 정의
+interface Post {
+  id: string;
+  treatment: string;
+  category: string;
+  title: string;
+  details: string;
+  applications: number;
+  region: string;
+  createdAt: any;
+}
 
 export default function RequestBoard() {
   const [selectedSidebarItem, setSelectedSidebarItem] = useState('서울');
@@ -669,7 +683,7 @@ export default function RequestBoard() {
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
-              새 게시글 작성
+              선생님에게 요청하기
             </button>
           </div>
 
@@ -756,7 +770,7 @@ export default function RequestBoard() {
         <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50">
           <div className={`bg-white rounded-lg p-8 max-w-6xl w-[95vw] shadow-xl border-4 border-blue-500 max-h-[90vh] overflow-y-auto create-post-modal ${isModalClosing ? 'animate-slideOut' : 'animate-slideIn'}`}>
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">새 게시글 작성</h2>
+              <h2 className="text-2xl font-bold text-gray-900">선생님에게 요청하기</h2>
               <button
                 onClick={closeCreatePostModal}
                 className="text-gray-400 hover:text-gray-600 text-2xl"
@@ -913,7 +927,7 @@ export default function RequestBoard() {
                   type="submit"
                   className="px-6 py-3 bg-blue-500 text-white rounded-2xl hover:bg-blue-600 transition-colors"
                 >
-                  게시글 등록
+                  홈티지원하기
               </button>
             </div>
             </form>

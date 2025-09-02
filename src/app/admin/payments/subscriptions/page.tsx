@@ -1,4 +1,4 @@
-import SubscriptionPaymentManagement from "@/components/admin/payments/SubscriptionPaymentManagement";
+﻿import SubscriptionPaymentManagement from "@/components/admin/payments/SubscriptionPaymentManagement";
 
 export default function SubscriptionPaymentsPage() {
   return (

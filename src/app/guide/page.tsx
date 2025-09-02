@@ -7,8 +7,8 @@ import FAQ from '@/components/guide/FAQ';
 import ServiceProcess from '@/components/sections/ServiceProcess';
 
 export const metadata: Metadata = {
-  title: "이용안내 - 더모든 키즈",
-  description: "더모든 키즈 플랫폼 이용 방법과 안전한 매칭 프로세스를 확인하세요.",
+  title: "이용안내 - 모든별 키즈",
+  description: "모든별 키즈 플랫폼 이용 방법과 안전한 매칭 프로세스를 확인하세요.",
 };
 
 export default function GuidePage() {

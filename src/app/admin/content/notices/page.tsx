@@ -1,4 +1,4 @@
-import NoticeManagement from "@/components/admin/content/NoticeManagement";
+﻿import NoticeManagement from "@/components/admin/content/NoticeManagement";
 
 export default function NoticesPage() {
   return (

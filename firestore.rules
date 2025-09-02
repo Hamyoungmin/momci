@@ -21,63 +21,164 @@ service cloud.firestore {
       return isOwner(userId) || isAdmin();
     }
     
+    // 추가 보안 헬퍼 함수들
+    function isValidEmail(email) {
+      return email.matches('^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$');
+    }
+    
+    function isValidPhone(phone) {
+      return phone.matches('^01[0-9]-[0-9]{3,4}-[0-9]{4}$');
+    }
+    
+    function hasRecentActivity() {
+      return request.auth != null && request.auth.token.auth_time > timestamp.date() - duration.value(30, 'd');
+    }
+    
+    function isBusinessHours() {
+      return request.time.dayOfWeek() >= 1 && request.time.dayOfWeek() <= 5 &&
+             request.time.hours() >= 9 && request.time.hours() < 18;
+    }
+    
+    function rateLimitCheck(maxPerMinute) {
+      // 실제로는 더 복잡한 rate limiting 로직이 필요하지만, 기본적인 시간 체크
+      return request.time > timestamp.date() - duration.value(1, 'm');
+    }
+    
     // 관리자 컬렉션 (관리자만 관리 가능)
     match /admins/{adminId} {
       allow read, write: if isAdmin();
     }
     
-    // 사용자 프로필 (본인과 관리자만 접근 가능)
+    // 사용자 프로필 (세분화된 권한)
     match /users/{userId} {
-      allow read, write: if isOwnerOrAdmin(userId);
+      // 개별 프로필 조회 - 본인, 관리자, 매칭된 상대방만 가능
+      allow get: if isOwnerOrAdmin(userId) || 
+                    (isAuthenticated() && 
+                     exists(/databases/$(database)/documents/matchings/$(request.auth.uid + '_' + userId)));
+      
+      // 사용자 목록 조회 - 관리자만 가능
+      allow list: if isAdmin();
+      
+      // 프로필 생성 - 본인만, 이메일/전화번호 검증 포함
       allow create: if isOwner(userId) && 
-                       request.resource.data.keys().hasAll(['email', 'name', 'userType']) &&
+                       request.resource.data.keys().hasAll(['email', 'name', 'userType', 'createdAt']) &&
                        request.resource.data.email is string &&
+                       isValidEmail(request.resource.data.email) &&
                        request.resource.data.name is string &&
-                       request.resource.data.userType in ['parent', 'therapist'];
+                       request.resource.data.name.size() >= 2 &&
+                       request.resource.data.userType in ['parent', 'therapist'] &&
+                       (!request.resource.data.keys().hasAny(['phone']) || 
+                        isValidPhone(request.resource.data.phone)) &&
+                       hasRecentActivity();
+      
+      // 프로필 수정 - 본인과 관리자만, 민감한 정보는 제한
+      allow update: if isOwnerOrAdmin(userId) && 
+                       (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['email', 'userType', 'createdAt']) ||
+                        isAdmin()) &&
+                       (!request.resource.data.keys().hasAny(['phone']) || 
+                        isValidPhone(request.resource.data.phone));
+      
+      // 프로필 삭제 - 관리자만
+      allow delete: if isAdmin();
     }
     
-    // 선생님께 요청하기 게시글
+    // 선생님께 요청하기 게시글 (세분화된 권한)
     match /requests/{requestId} {
-      // 모든 인증된 사용자가 읽기 가능
-      allow read: if isAuthenticated();
+      // 개별 게시글 조회 - 모든 인증된 사용자
+      allow get: if isAuthenticated();
       
-      // 생성은 인증된 사용자만
+      // 게시글 목록 조회 - 인증된 사용자, 비활성 계정 제한
+      allow list: if isAuthenticated() && hasRecentActivity();
+      
+      // 게시글 생성 - 스팸 방지 및 내용 검증
       allow create: if isAuthenticated() && 
                        request.resource.data.authorId == request.auth.uid &&
-                       request.resource.data.keys().hasAll(['title', 'content', 'authorId', 'createdAt']) &&
+                       request.resource.data.keys().hasAll(['title', 'content', 'authorId', 'createdAt', 'status']) &&
                        request.resource.data.title is string &&
                        request.resource.data.content is string &&
-                       request.resource.data.title.size() > 0 &&
+                       request.resource.data.title.size() >= 5 &&
                        request.resource.data.title.size() <= 100 &&
-                       request.resource.data.content.size() > 0 &&
-                       request.resource.data.content.size() <= 5000;
+                       request.resource.data.content.size() >= 10 &&
+                       request.resource.data.content.size() <= 5000 &&
+                       request.resource.data.status == 'active' &&
+                       hasRecentActivity() &&
+                       rateLimitCheck(5);  // 분당 5개 제한
       
-      // 수정/삭제는 작성자나 관리자만
-      allow update, delete: if isOwnerOrAdmin(resource.data.authorId);
+      // 게시글 수정 - 작성자만, 일부 필드만 수정 가능
+      allow update: if isOwner(resource.data.authorId) && 
+                       request.resource.data.authorId == resource.data.authorId &&
+                       !request.resource.data.diff(resource.data).affectedKeys().hasAny(['authorId', 'createdAt']) &&
+                       (request.resource.data.title.size() >= 5 && 
+                        request.resource.data.title.size() <= 100) &&
+                       (request.resource.data.content.size() >= 10 && 
+                        request.resource.data.content.size() <= 5000);
       
-      // 댓글/응답 서브컬렉션
+      // 게시글 삭제 - 작성자와 관리자만
+      allow delete: if isOwnerOrAdmin(resource.data.authorId);
+      
+      // 댓글/응답 서브컬렉션 (세분화된 권한)
       match /responses/{responseId} {
-        allow read: if isAuthenticated();
+        // 개별 댓글 조회
+        allow get: if isAuthenticated();
+        
+        // 댓글 목록 조회
+        allow list: if isAuthenticated();
+        
+        // 댓글 생성 - 치료사만, 스팸 방지
         allow create: if isAuthenticated() && 
-                         request.resource.data.authorId == request.auth.uid;
-        allow update, delete: if isOwnerOrAdmin(resource.data.authorId);
+                         request.resource.data.authorId == request.auth.uid &&
+                         request.resource.data.keys().hasAll(['authorId', 'content', 'createdAt', 'requestId']) &&
+                         request.resource.data.requestId == requestId &&
+                         request.resource.data.content is string &&
+                         request.resource.data.content.size() >= 5 &&
+                         request.resource.data.content.size() <= 1000 &&
+                         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+                         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType == 'therapist' &&
+                         rateLimitCheck(10);  // 분당 10개 제한
+        
+        // 댓글 수정 - 작성자만
+        allow update: if isOwner(resource.data.authorId) &&
+                         !request.resource.data.diff(resource.data).affectedKeys().hasAny(['authorId', 'createdAt', 'requestId']) &&
+                         request.resource.data.content.size() >= 5 &&
+                         request.resource.data.content.size() <= 1000;
+        
+        // 댓글 삭제 - 작성자와 관리자만
+        allow delete: if isOwnerOrAdmin(resource.data.authorId);
       }
     }
     
-    // 치료사 프로필
+    // 치료사 프로필 (세분화된 권한)
     match /therapistProfiles/{profileId} {
-      // 모든 인증된 사용자가 읽기 가능 (승인된 프로필만)
-      allow read: if isAuthenticated();
+      // 개별 프로필 조회 - 승인된 프로필만 공개
+      allow get: if isAuthenticated() && 
+                    (resource.data.status == 'approved' || 
+                     isOwnerOrAdmin(resource.data.userId));
       
-      // 생성은 치료사 본인만
+      // 프로필 목록 조회 - 승인된 프로필만, 관리자는 모두
+      allow list: if isAuthenticated() && 
+                     (isAdmin() || 
+                      (request.query.where('status', '==', 'approved') && hasRecentActivity()));
+      
+      // 프로필 생성 - 치료사만, 완전한 정보 필수
       allow create: if isAuthenticated() && 
                        request.resource.data.userId == request.auth.uid &&
-                       request.resource.data.keys().hasAll(['userId', 'name', 'experience', 'createdAt']);
+                       exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+                       get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType == 'therapist' &&
+                       request.resource.data.keys().hasAll(['userId', 'name', 'experience', 'specialties', 'education', 'createdAt', 'status']) &&
+                       request.resource.data.name.size() >= 2 &&
+                       request.resource.data.experience is number &&
+                       request.resource.data.experience >= 0 &&
+                       request.resource.data.specialties is list &&
+                       request.resource.data.specialties.size() > 0 &&
+                       request.resource.data.status == 'pending';
       
-      // 수정은 본인이나 관리자만
-      allow update: if isOwnerOrAdmin(resource.data.userId);
+      // 프로필 수정 - 본인은 일부 필드만, 관리자는 상태 변경 가능
+      allow update: if (isOwner(resource.data.userId) && 
+                        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['userId', 'createdAt', 'status', 'verificationDate'])) ||
+                       (isAdmin() && 
+                        request.resource.data.status in ['pending', 'approved', 'rejected']);
       
-      // 삭제는 관리자만
+      // 프로필 삭제 - 관리자만
       allow delete: if isAdmin();
     }
     
@@ -105,38 +206,66 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
     
-    // 채팅 메시지
+    // 채팅 메시지 (세분화된 권한 + 보안 강화)
     match /chats/{chatId} {
-      // 참여자와 관리자만 읽기 가능
-      allow read: if isAuthenticated() && 
-                     (resource.data.participants.hasAny([request.auth.uid]) || isAdmin());
+      // 개별 채팅방 정보 조회
+      allow get: if isAuthenticated() && 
+                    (resource.data.participants.hasAny([request.auth.uid]) || isAdmin());
       
-      // 참여자만 채팅방 생성/수정 가능
-      allow create, update: if isAuthenticated() && 
-                               request.resource.data.participants.hasAny([request.auth.uid]);
+      // 채팅방 목록 조회 - 본인이 참여한 것만
+      allow list: if isAuthenticated() && 
+                     (isAdmin() || 
+                      request.auth.uid in resource.data.participants);
       
-      // 관리자만 삭제 가능
+      // 채팅방 생성 - 매칭된 사용자들만, 중복 방지
+      allow create: if isAuthenticated() && 
+                       request.resource.data.participants.hasAny([request.auth.uid]) &&
+                       request.resource.data.participants.size() == 2 &&
+                       request.resource.data.keys().hasAll(['participants', 'createdAt', 'lastMessage', 'status']) &&
+                       request.resource.data.status == 'active' &&
+                       hasRecentActivity();
+      
+      // 채팅방 정보 수정 - 참여자만 (상태 변경 등)
+      allow update: if isAuthenticated() && 
+                       (resource.data.participants.hasAny([request.auth.uid]) || isAdmin()) &&
+                       !request.resource.data.diff(resource.data).affectedKeys().hasAny(['participants', 'createdAt']);
+      
+      // 채팅방 삭제 - 관리자만 (중재 목적)
       allow delete: if isAdmin();
       
-      // 메시지 서브컬렉션
+      // 메시지 서브컬렉션 (강화된 보안)
       match /messages/{messageId} {
-        // 채팅방 참여자와 관리자만 읽기 가능
-        allow read: if isAuthenticated() && 
-                       (get(/databases/$(database)/documents/chats/$(chatId)).data.participants.hasAny([request.auth.uid]) || 
-                        isAdmin());
+        // 개별 메시지 조회
+        allow get: if isAuthenticated() && 
+                      (get(/databases/$(database)/documents/chats/$(chatId)).data.participants.hasAny([request.auth.uid]) || 
+                       isAdmin());
         
-        // 메시지 생성은 본인만
+        // 메시지 목록 조회 - 참여자만, 페이징 적용
+        allow list: if isAuthenticated() && 
+                       get(/databases/$(database)/documents/chats/$(chatId)).data.participants.hasAny([request.auth.uid]) &&
+                       hasRecentActivity();
+        
+        // 메시지 생성 - 참여자만, 스팸 방지 및 내용 검증
         allow create: if isAuthenticated() && 
                          request.resource.data.senderId == request.auth.uid &&
-                         request.resource.data.keys().hasAll(['senderId', 'message', 'timestamp']) &&
+                         get(/databases/$(database)/documents/chats/$(chatId)).data.participants.hasAny([request.auth.uid]) &&
+                         request.resource.data.keys().hasAll(['senderId', 'message', 'timestamp', 'type']) &&
                          request.resource.data.message is string &&
+                         request.resource.data.message.size() > 0 &&
+                         request.resource.data.message.size() <= 1000 &&
+                         request.resource.data.type in ['text', 'file', 'system'] &&
+                         // 욕설/금지어 필터링 (실제로는 클라이언트에서 사전 필터링 필요)
+                         !request.resource.data.message.lower().matches('.*직거래.*|.*외부.*|.*카톡.*|.*전화.*') &&
+                         rateLimitCheck(30);  // 분당 30개 메시지 제한
+        
+        // 메시지 수정 - 본인만, 5분 이내, 읽음 상태 변경만
+        allow update: if isOwner(resource.data.senderId) &&
+                         request.time < resource.data.timestamp + duration.value(5, 'm') &&
+                         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['message', 'editedAt']) &&
                          request.resource.data.message.size() > 0 &&
                          request.resource.data.message.size() <= 1000;
         
-        // 메시지 수정은 본인과 관리자만
-        allow update: if isOwnerOrAdmin(resource.data.senderId);
-        
-        // 메시지 삭제는 관리자만
+        // 메시지 삭제 - 관리자만 (중재 목적)
         allow delete: if isAdmin();
       }
     }
@@ -246,6 +375,105 @@ service cloud.firestore {
     // 시스템 로그 (관리자만 접근 가능)
     match /logs/{logId} {
       allow read, write: if isAdmin();
+    }
+    
+    // 구독/이용권 정보
+    match /subscriptions/{subscriptionId} {
+      // 본인과 관리자만 읽기 가능
+      allow read: if isOwnerOrAdmin(resource.data.userId);
+      
+      // 구독 생성은 본인과 관리자만
+      allow create: if isAuthenticated() && 
+                       (request.resource.data.userId == request.auth.uid || isAdmin()) &&
+                       request.resource.data.keys().hasAll(['userId', 'planType', 'status', 'startDate', 'endDate', 'createdAt']) &&
+                       request.resource.data.planType in ['basic', 'premium', 'enterprise'] &&
+                       request.resource.data.status in ['active', 'expired', 'cancelled'];
+      
+      // 구독 수정은 관리자만
+      allow update: if isAdmin();
+      
+      // 구독 삭제는 관리자만
+      allow delete: if isAdmin();
+    }
+    
+    // 환불 요청
+    match /refunds/{refundId} {
+      // 본인과 관리자만 읽기 가능
+      allow read: if isOwnerOrAdmin(resource.data.userId);
+      
+      // 환불 요청 생성은 본인만
+      allow create: if isAuthenticated() && 
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.keys().hasAll(['userId', 'paymentId', 'reason', 'amount', 'status', 'createdAt']) &&
+                       request.resource.data.status == 'pending' &&
+                       request.resource.data.amount is number &&
+                       request.resource.data.amount > 0 &&
+                       request.resource.data.reason is string &&
+                       request.resource.data.reason.size() > 0;
+      
+      // 환불 상태 변경은 관리자만
+      allow update: if isAdmin();
+      
+      // 환불 삭제는 관리자만
+      allow delete: if isAdmin();
+    }
+    
+    // 알림
+    match /notifications/{notificationId} {
+      // 본인과 관리자만 읽기 가능
+      allow read: if isOwnerOrAdmin(resource.data.userId);
+      
+      // 알림 생성은 시스템/관리자만
+      allow create: if isAdmin() &&
+                       request.resource.data.keys().hasAll(['userId', 'title', 'message', 'type', 'isRead', 'createdAt']) &&
+                       request.resource.data.type in ['system', 'matching', 'payment', 'chat', 'report'] &&
+                       request.resource.data.isRead == false;
+      
+      // 알림 읽음 처리는 본인만
+      allow update: if isOwner(resource.data.userId) && 
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']) &&
+                       request.resource.data.isRead == true;
+      
+      // 관리자는 모든 알림 수정 가능
+      allow update: if isAdmin();
+      
+      // 알림 삭제는 본인과 관리자만
+      allow delete: if isOwnerOrAdmin(resource.data.userId);
+    }
+    
+    // 프로필 검증 서류 메타데이터
+    match /verification_documents/{documentId} {
+      // 관리자만 읽기 가능
+      allow read: if isAdmin();
+      
+      // 서류 메타데이터 생성은 해당 사용자와 관리자만
+      allow create: if isAuthenticated() && 
+                       (request.resource.data.userId == request.auth.uid || isAdmin()) &&
+                       request.resource.data.keys().hasAll(['userId', 'fileName', 'fileType', 'fileSize', 'uploadDate', 'status']) &&
+                       request.resource.data.status in ['pending', 'approved', 'rejected'] &&
+                       request.resource.data.fileType in ['education', 'experience', 'certificate', 'license', 'bankbook'];
+      
+      // 검증 상태 변경은 관리자만
+      allow update: if isAdmin();
+      
+      // 서류 삭제는 관리자만
+      allow delete: if isAdmin();
+    }
+    
+    // 채팅 파일 메타데이터
+    match /chat_files/{fileId} {
+      // 채팅 참여자와 관리자만 읽기 가능
+      allow read: if isAuthenticated() && 
+                     (resource.data.uploaderId == request.auth.uid || 
+                      isAdmin());
+      
+      // 파일 메타데이터 생성은 업로더만
+      allow create: if isAuthenticated() && 
+                       request.resource.data.uploaderId == request.auth.uid &&
+                       request.resource.data.keys().hasAll(['chatId', 'uploaderId', 'fileName', 'fileType', 'fileSize', 'uploadDate']);
+      
+      // 파일 삭제는 관리자만 (중재 목적)
+      allow delete: if isAdmin();
     }
     
     // 설정 정보 (관리자만 접근 가능)

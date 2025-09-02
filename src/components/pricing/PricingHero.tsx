@@ -8,7 +8,7 @@ export default function PricingHero() {
             <span className="text-yellow-300">최고의 서비스</span>를 경험하세요
           </h1>
           <p className="text-xl md:text-2xl mb-8 opacity-90 max-w-3xl mx-auto">
-            더모든 키즈는 기존 홈티칭의 높은 수수료 부담을 줄이고<br />
+            모든별 키즈는 기존 홈티칭의 높은 수수료 부담을 줄이고<br />
             안전하고 투명한 매칭 서비스를 제공합니다
           </p>
           

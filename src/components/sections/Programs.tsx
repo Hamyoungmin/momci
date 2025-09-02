@@ -99,10 +99,10 @@ export default function Programs() {
         {/* 섹션 헤더 */}
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-            더모든 키즈 프로그램 안내
+            모든별 키즈 프로그램 안내
           </h2>
           <p className="text-xl text-gray-600 max-w-4xl mx-auto mb-6">
-            더모든 키즈에서 매칭하는 다양한 전문 프로그램들과 함께<br />
+            모든별 키즈에서 매칭하는 다양한 전문 프로그램들과 함께<br />
             아이에게 꼭 필요한 가장 효과적인 도움을 제공합니다.
           </p>
           <div className="inline-flex items-center bg-orange-100 text-orange-800 px-4 py-2 rounded-3xl text-sm font-medium">

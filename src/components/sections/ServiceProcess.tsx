@@ -56,7 +56,7 @@ export default function ServiceProcess() {
         {/* 섹션 헤더 */}
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-            더모든 키즈 이용 가이드
+            모든별 키즈 이용 가이드
           </h2>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
             전체 서비스 플로우를 4단계로 나누어 쉽고 안전하게 이용할 수 있어요
@@ -67,7 +67,7 @@ export default function ServiceProcess() {
         <div className="max-w-5xl mx-auto">
           <div className="bg-white border-2 border-blue-500 rounded-3xl p-8">
             <h3 className="text-2xl font-bold text-center text-gray-900 mb-8">
-              더모든 키즈 이용 가이드
+              모든별 키즈 이용 가이드
             </h3>
             <div className="space-y-8">
               {processes.map((process, index) => (
@@ -120,7 +120,7 @@ export default function ServiceProcess() {
               간단한 4단계로 안전하고 편리하게!
             </h3>
             <p className="text-gray-600 mb-6">
-              더모든 키즈와 함께 아이에게 최고의 치료사를 찾아보세요
+              모든별 키즈와 함께 아이에게 최고의 치료사를 찾아보세요
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <a

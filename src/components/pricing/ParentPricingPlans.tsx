@@ -14,7 +14,7 @@ export default function ParentPricingPlans() {
               
               {/* 설명 */}
               <p className="text-gray-600 text-lg leading-relaxed max-w-4xl mx-auto">
-                기존 홈티칭의 높은 수수료(약 20%) 때문에 부담스러우셨나요? 더모든은 치료비에 붙는 중개 수수료를 <span className="text-blue-600 font-bold">0원</span>으로 만들어 회기당 평균 1만원 이상 저렴한 합리적인 비용을 실현했습니다.
+                기존 홈티칭의 높은 수수료(약 20%) 때문에 부담스러우셨나요? 모든별 키즈은 치료비에 붙는 중개 수수료를 <span className="text-blue-600 font-bold">0원</span>으로 만들어 회기당 평균 1만원 이상 저렴한 합리적인 비용을 실현했습니다.
               </p>
             </div>
 

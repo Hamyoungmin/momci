@@ -1,4 +1,4 @@
-import ProfileVerificationSystem from "@/components/admin/profile/ProfileVerificationSystem";
+﻿import ProfileVerificationSystem from "@/components/admin/profile/ProfileVerificationSystem";
 
 export default function ProfileVerificationPage() {
   return (

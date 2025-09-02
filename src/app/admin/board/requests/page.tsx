@@ -1,4 +1,4 @@
-import RequestBoardManagement from "@/components/admin/board/RequestBoardManagement";
+﻿import RequestBoardManagement from "@/components/admin/board/RequestBoardManagement";
 
 export default function RequestBoardPage() {
   return (

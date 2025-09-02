@@ -7,7 +7,7 @@ export default function SignupPage() {
       <div className="sm:mx-auto sm:w-full sm:max-w-2xl">
         <div className="text-center">
           <h2 className="mt-6 text-center text-3xl font-bold tracking-tight text-gray-900">
-            더모든 키즈 회원가입
+            모든별 키즈 회원가입
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
             전문 치료사와 학부모를 위한 안전한 홈티칭 플랫폼

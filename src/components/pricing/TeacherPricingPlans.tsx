@@ -14,7 +14,7 @@ export default function TeacherPricingPlans() {
               
               {/* 설명 */}
               <p className="text-gray-600 text-lg leading-relaxed max-w-4xl mx-auto">
-                더모든 키즈는 매번 20%씩 떼어가는 수수료 대신, 선생님의 노하우 100% 수익으로 이어지는 투명한 환경을 제공합니다.
+                모든별 키즈는 매번 20%씩 떼어가는 수수료 대신, 선생님의 노하우 100% 수익으로 이어지는 투명한 환경을 제공합니다.
               </p>
             </div>
 
@@ -74,7 +74,7 @@ export default function TeacherPricingPlans() {
                       신뢰의 성장
                     </h3>
                     <p className="text-gray-600 leading-relaxed">
-                      솔직한 후기 중심의 '더모든 키즈 인증' 배지가 지속적이고 안정적인 수업들과 더 많은 기회를 만듭니다.
+                      솔직한 후기 중심의 '모든별 키즈 인증' 배지가 지속적이고 안정적인 수업들과 더 많은 기회를 만듭니다.
                     </p>
                   </div>
                 </div>

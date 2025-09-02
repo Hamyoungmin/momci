@@ -136,7 +136,7 @@ export default function ComparisonTable() {
             기존 업체와 비교
           </h2>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            더모든 키즈가 기존 홈티칭 업체들과 어떻게 다른지 확인해보세요
+            모든별 키즈가 기존 홈티칭 업체들과 어떻게 다른지 확인해보세요
           </p>
         </div>
 
@@ -147,7 +147,7 @@ export default function ComparisonTable() {
             <div className="grid grid-cols-4 gap-4 items-center">
               <div className="text-lg font-bold">비교 항목</div>
               <div className="text-lg font-bold text-center">기존 업체</div>
-              <div className="text-lg font-bold text-center">더모든 키즈</div>
+              <div className="text-lg font-bold text-center">모든별 키즈</div>
               <div className="text-lg font-bold text-center">설명</div>
             </div>
           </div>
@@ -184,7 +184,7 @@ export default function ComparisonTable() {
                         </div>
                       </div>
                       
-                      {/* 더모든 키즈 */}
+                      {/* 모든별 키즈 */}
                       <div className="text-center">
                         <div className={`p-3 rounded-lg ${
                           item.highlight ? 'bg-green-100 text-green-800 font-semibold' : 'bg-blue-100 text-blue-800'
@@ -233,7 +233,7 @@ export default function ComparisonTable() {
               차이를 직접 경험해보세요!
             </h3>
             <p className="text-lg mb-6 opacity-90">
-              더모든 키즈만의 차별화된 서비스를 7일 무료로 체험해보세요
+              모든별 키즈만의 차별화된 서비스를 7일 무료로 체험해보세요
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <a

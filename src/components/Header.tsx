@@ -38,7 +38,7 @@ export default function Header() {
               <div className="w-12 h-12 bg-blue-500 rounded-2xl flex items-center justify-center">
                 <span className="text-white font-bold text-lg">더</span>
               </div>
-              <span className="text-2xl font-bold text-gray-900">더모든 키즈</span>
+              <span className="text-2xl font-bold text-gray-900">모든별 키즈</span>
             </Link>
           </div>
 

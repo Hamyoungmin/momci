@@ -11,10 +11,10 @@ export default function Footer() {
               <div className="w-8 h-8 bg-orange-500 rounded-2xl flex items-center justify-center">
                 <span className="text-white font-bold text-sm">더</span>
               </div>
-              <span className="text-xl font-bold">더모든 키즈</span>
+              <span className="text-xl font-bold">모든별 키즈</span>
             </div>
             <p className="text-gray-300 mb-4 leading-relaxed">
-              더모든 키즈는 전문 치료사와 학부모를 안전하게 연결하는<br />
+              모든별 키즈는 전문 치료사와 학부모를 안전하게 연결하는<br />
               홈티칭 매칭 플랫폼입니다.<br />
               아이에게 꼭 필요한 가장 효과적인 도움을 제공합니다.
             </p>
@@ -108,7 +108,7 @@ export default function Footer() {
               </Link>
             </div>
             <div className="text-sm text-gray-400">
-              © 2024 더모든 키즈. All rights reserved.
+              © 2024 모든별(주) 모든별 키즈. All rights reserved.
             </div>
           </div>
         </div>
