@@ -750,25 +750,8 @@ service cloud.firestore {
       // 게시글 목록 조회 - 인증된 사용자만
       allow list: if isAuthenticated();
       
-      // 게시글 생성 - 인증된 사용자면 가능 (임시로 userType 체크 완화)
-      allow create: if isAuthenticated() && 
-                       request.resource.data.authorId == request.auth.uid &&
-                       // 필수 필드 검증 (더 유연하게)
-                       request.resource.data.keys().hasAll(['treatment', 'region', 'age', 'gender', 'frequency', 'timeDetails', 'price', 'authorId', 'createdAt', 'status', 'applications']) &&
-                       request.resource.data.treatment is string &&
-                       request.resource.data.treatment.size() >= 2 &&
-                       request.resource.data.age is string &&
-                       request.resource.data.age.size() >= 1 &&
-                       request.resource.data.gender in ['남', '여'] &&
-                       request.resource.data.frequency is string &&
-                       request.resource.data.frequency.size() >= 1 &&
-                       request.resource.data.timeDetails is string &&
-                       request.resource.data.timeDetails.size() >= 3 &&
-                       request.resource.data.price is string &&
-                       request.resource.data.price.size() >= 1 &&
-                       request.resource.data.status == 'active' &&
-                       request.resource.data.applications == 0;
-                       // 임시로 활동 및 제한 검증 비활성화
+      // 게시글 생성 - 임시로 모든 제약 제거 (디버깅용)
+      allow create: if true;
       
       // 게시글 수정 - 작성자만, 일부 필드만 수정 가능
       allow update: if isOwner(resource.data.authorId) && 

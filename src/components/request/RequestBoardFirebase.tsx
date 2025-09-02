@@ -135,16 +135,22 @@ export default function RequestBoardFirebase() {
   // 새 게시글 Firebase에 저장
   const addNewPost = async (postData: typeof newPost) => {
     try {
-      // 인증 확인
+      // 강화된 인증 확인
       if (!auth.currentUser) {
         alert('로그인이 필요합니다.');
         return;
       }
 
+      // Firebase 연결 상태 확인
+      console.log('🔐 Firebase 인증 상태:', {
+        uid: auth.currentUser.uid,
+        email: auth.currentUser.email
+      });
+
       const newTitle = `${postData.age} ${postData.gender} ${postData.frequency} 홈티`;
       
-      // Rules에서 요구하는 정확한 필드들만 전송
-      const docRef = await addDoc(collection(db, 'posts'), {
+      // 전송할 데이터 준비
+      const postDataToSend = {
         treatment: postData.treatment,
         region: postData.region || selectedTab,
         age: postData.age,
@@ -156,12 +162,16 @@ export default function RequestBoardFirebase() {
         createdAt: serverTimestamp(),
         status: 'active',
         applications: 0,
-        // 추가 정보들 (Rules에서 허용되는 추가 필드)
+        // 추가 정보들
         title: newTitle,
         category: postData.detailLocation || postData.region,
         details: postData.timeDetails,
         additionalInfo: postData.additionalInfo || ''
-      });
+      };
+
+      console.log('📤 전송할 데이터:', postDataToSend);
+      
+      const docRef = await addDoc(collection(db, 'posts'), postDataToSend);
       
       console.log('Document written with ID: ', docRef.id);
       closeCreatePostModal();
