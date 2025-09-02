@@ -94,17 +94,24 @@ export default function RequestBoardFirebase() {
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
+      console.log('📥 Firestore 스냅샷 받음:', snapshot.size, '개의 문서');
+      
       const posts: Post[] = [];
       snapshot.forEach((doc) => {
+        const docData = doc.data();
+        console.log('📄 문서 데이터:', { id: doc.id, ...docData });
+        
         posts.push({
           id: doc.id,
-          ...doc.data()
+          ...docData
         } as Post);
       });
+      
+      console.log('✅ 최종 posts 배열:', posts);
       setPostsData(posts);
       setLoading(false);
     }, (error) => {
-      console.error('Error fetching posts:', error);
+      console.error('❌ Error fetching posts:', error);
       setLoading(false);
     });
 
@@ -182,22 +189,44 @@ export default function RequestBoardFirebase() {
     }
   };
 
-  // 현재 선택된 지역의 게시글 필터링
+  // 현재 선택된 지역의 게시글 필터링 (디버깅 추가)
   const getCurrentPosts = () => {
+    console.log('🗺️ 지역 필터링:', {
+      selectedSidebarItem,
+      totalPosts: postsData.length,
+      allPostsRegions: postsData.map(p => p.region)
+    });
+    
     if (selectedSidebarItem === '홈티매칭') {
       // 모든 지역의 게시글을 보여줌
+      console.log('🌍 전국 모드: 모든 게시글 표시');
       return postsData;
     }
-    return postsData.filter(post => post.region === selectedSidebarItem);
+    
+    const regionFiltered = postsData.filter(post => post.region === selectedSidebarItem);
+    console.log('🎯 지역 필터링 결과:', regionFiltered.length, '개');
+    return regionFiltered;
   };
 
-  // 검색 필터링
+  // 검색 필터링 (디버깅 추가)
   const filteredPosts = getCurrentPosts().filter((post: Post) => {
     const treatmentMatch = selectedTreatment === '희망치료를 선택하세요' || selectedTreatment === '전체' || post.treatment === selectedTreatment;
     const locationMatch = selectedLocation === '희망지역을 선택하세요' || selectedLocation === '전체' || 
-                         post.category.includes(selectedLocation);
+                         post.category?.includes(selectedLocation);
+    
+    console.log('🔍 필터링 체크:', {
+      post: post,
+      selectedTreatment,
+      selectedLocation,
+      treatmentMatch,
+      locationMatch,
+      finalMatch: treatmentMatch && locationMatch
+    });
+    
     return treatmentMatch && locationMatch;
   });
+  
+  console.log('🎯 필터링된 최종 게시글 수:', filteredPosts.length);
 
   // 선택된 지역에 따른 제목과 탭 변경
   const getRegionTitle = () => {

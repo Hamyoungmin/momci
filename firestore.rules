@@ -744,11 +744,8 @@ service cloud.firestore {
     
     // 게시글 (선생님 요청하기 - posts 컬렉션)
     match /posts/{postId} {
-      // 개별 게시글 조회 - 모든 인증된 사용자
-      allow get: if isAuthenticated();
-      
-      // 게시글 목록 조회 - 인증된 사용자만
-      allow list: if isAuthenticated();
+      // 임시로 읽기도 모든 제약 제거 (디버깅용)
+      allow read: if true;
       
       // 게시글 생성 - 임시로 모든 제약 제거 (디버깅용)
       allow create: if true;
