@@ -480,6 +480,267 @@ service cloud.firestore {
     match /settings/{settingId} {
       allow read, write: if isAdmin();
     }
+    
+    // 수업 정보 (강화된 권한)
+    match /lessons/{lessonId} {
+      // 관련 당사자와 관리자만 읽기 가능
+      allow read: if isAuthenticated() && 
+                     (resource.data.parentId == request.auth.uid || 
+                      resource.data.therapistId == request.auth.uid || 
+                      isAdmin());
+      
+      // 수업 생성은 관리자 또는 매칭 완료된 당사자만
+      allow create: if isAuthenticated() && 
+                       request.resource.data.keys().hasAll(['parentId', 'therapistId', 'matchingId', 'scheduledDate', 'status', 'createdAt']) &&
+                       (request.resource.data.parentId == request.auth.uid || 
+                        request.resource.data.therapistId == request.auth.uid || 
+                        isAdmin()) &&
+                       exists(/databases/$(database)/documents/matchings/$(request.resource.data.matchingId)) &&
+                       request.resource.data.status == 'scheduled' &&
+                       hasRecentActivity();
+      
+      // 수업 상태 변경은 관련 당사자와 관리자만
+      allow update: if isAuthenticated() && 
+                       (resource.data.parentId == request.auth.uid || 
+                        resource.data.therapistId == request.auth.uid || 
+                        isAdmin()) &&
+                       // 상태만 변경 가능, 기본 정보는 수정 불가
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'completedAt', 'notes', 'updatedAt']);
+      
+      // 수업 삭제는 관리자만 (기록 보관 목적)
+      allow delete: if isAdmin();
+    }
+    
+    // 수업 계획서 (교육 계획)
+    match /lesson-plans/{lessonPlanId} {
+      // 관련 당사자와 관리자만 읽기 가능
+      allow read: if isAuthenticated() && 
+                     (resource.data.therapistId == request.auth.uid || 
+                      resource.data.parentId == request.auth.uid || 
+                      isAdmin());
+      
+      // 치료사만 생성 가능
+      allow create: if isAuthenticated() && 
+                       request.resource.data.therapistId == request.auth.uid &&
+                       exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+                       get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType == 'therapist' &&
+                       request.resource.data.keys().hasAll(['therapistId', 'parentId', 'title', 'objectives', 'activities', 'createdAt']) &&
+                       hasRecentActivity();
+      
+      // 치료사와 관리자만 수정 가능
+      allow update: if isAuthenticated() && 
+                       (resource.data.therapistId == request.auth.uid || isAdmin());
+      
+      // 관리자만 삭제 가능
+      allow delete: if isAdmin();
+    }
+    
+    // 일정 관리 (스케줄링)
+    match /schedules/{scheduleId} {
+      // 본인과 관련 당사자, 관리자만 읽기 가능
+      allow read: if isAuthenticated() && 
+                     (resource.data.userId == request.auth.uid || 
+                      resource.data.relatedUsers.hasAny([request.auth.uid]) || 
+                      isAdmin());
+      
+      // 본인만 생성 가능
+      allow create: if isAuthenticated() && 
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.keys().hasAll(['userId', 'title', 'startTime', 'endTime', 'type', 'createdAt']) &&
+                       request.resource.data.type in ['lesson', 'consultation', 'break', 'personal'] &&
+                       hasRecentActivity();
+      
+      // 본인과 관리자만 수정 가능
+      allow update: if isOwnerOrAdmin(resource.data.userId);
+      
+      // 본인과 관리자만 삭제 가능
+      allow delete: if isOwnerOrAdmin(resource.data.userId);
+    }
+    
+    // 즐겨찾기/북마크 (치료사 즐겨찾기)
+    match /favorites/{userId} {
+      // 본인만 읽기 가능
+      allow read: if isOwner(userId);
+      
+      // 본인만 생성/수정/삭제 가능
+      allow create, update, delete: if isOwner(userId) && 
+                                       hasRecentActivity();
+    }
+    
+    // 사용자 선호도 설정
+    match /user-preferences/{userId} {
+      // 본인과 관리자만 읽기 가능
+      allow read: if isOwnerOrAdmin(userId);
+      
+      // 본인만 생성/수정 가능
+      allow create, update: if isOwner(userId) && 
+                               request.resource.data.keys().hasAll(['userId', 'notifications', 'privacy', 'updatedAt']) &&
+                               hasRecentActivity();
+      
+      // 관리자만 삭제 가능 (사용자 탈퇴 시)
+      allow delete: if isAdmin();
+    }
+    
+    // 위치 정보 (민감한 정보)
+    match /locations/{userId} {
+      // 본인, 매칭된 상대방, 관리자만 읽기 가능
+      allow read: if isOwnerOrAdmin(userId) || 
+                     (isAuthenticated() && 
+                      exists(/databases/$(database)/documents/matchings/$(request.auth.uid + '_' + userId)));
+      
+      // 본인만 생성/수정 가능
+      allow create, update: if isOwner(userId) && 
+                               request.resource.data.keys().hasAll(['userId', 'address', 'coordinates', 'accessibility', 'updatedAt']) &&
+                               hasRecentActivity();
+      
+      // 관리자만 삭제 가능
+      allow delete: if isAdmin();
+    }
+    
+    // 비상 연락처 (매우 민감)
+    match /emergency-contacts/{userId} {
+      // 본인과 관리자만 읽기 가능
+      allow read: if isOwnerOrAdmin(userId);
+      
+      // 본인만 생성/수정 가능
+      allow create, update: if isOwner(userId) && 
+                               request.resource.data.keys().hasAll(['userId', 'name', 'phone', 'relationship', 'updatedAt']) &&
+                               isValidPhone(request.resource.data.phone) &&
+                               hasRecentActivity();
+      
+      // 관리자만 삭제 가능
+      allow delete: if isAdmin();
+    }
+    
+    // 수업 히스토리 (기록 보관)
+    match /lesson-history/{historyId} {
+      // 관련 당사자와 관리자만 읽기 가능
+      allow read: if isAuthenticated() && 
+                     (resource.data.parentId == request.auth.uid || 
+                      resource.data.therapistId == request.auth.uid || 
+                      isAdmin());
+      
+      // 시스템/관리자만 생성 가능 (자동 기록)
+      allow create: if isAdmin() &&
+                       request.resource.data.keys().hasAll(['parentId', 'therapistId', 'lessonId', 'date', 'status', 'createdAt']);
+      
+      // 관리자만 수정 가능 (정정 목적)
+      allow update: if isAdmin();
+      
+      // 삭제 불가 (영구 기록)
+      allow delete: if false;
+    }
+    
+    // 평점 히스토리 (투명성)
+    match /rating-history/{ratingId} {
+      // 관련 당사자와 관리자만 읽기 가능
+      allow read: if isAuthenticated() && 
+                     (resource.data.raterId == request.auth.uid || 
+                      resource.data.ratedId == request.auth.uid || 
+                      isAdmin());
+      
+      // 시스템/관리자만 생성 가능 (리뷰 작성 시 자동 생성)
+      allow create: if isAdmin() &&
+                       request.resource.data.keys().hasAll(['raterId', 'ratedId', 'reviewId', 'rating', 'createdAt']);
+      
+      // 수정/삭제 불가 (변조 방지)
+      allow update, delete: if false;
+    }
+    
+    // 할인 쿠폰/프로모션 코드
+    match /promotional-codes/{codeId} {
+      // 관리자만 읽기/관리 가능
+      allow read, write: if isAdmin();
+    }
+    
+    // 쿠폰 사용 기록
+    match /coupon-usage/{usageId} {
+      // 본인과 관리자만 읽기 가능
+      allow read: if isOwnerOrAdmin(resource.data.userId);
+      
+      // 시스템/관리자만 생성 가능
+      allow create: if isAdmin() &&
+                       request.resource.data.keys().hasAll(['userId', 'couponId', 'usedAt', 'discountAmount']);
+      
+      // 수정/삭제 불가 (회계 기록)
+      allow update, delete: if false;
+    }
+    
+    // 사용자 활동 로그 (보안 감사)
+    match /user-activity/{userId}/logs/{logId} {
+      // 본인과 관리자만 읽기 가능
+      allow read: if isOwnerOrAdmin(userId);
+      
+      // 시스템만 생성 가능 (자동 로깅)
+      allow create: if isAdmin();
+      
+      // 수정/삭제 불가 (감사 추적)
+      allow update, delete: if false;
+    }
+    
+    // 차단된 사용자 목록
+    match /blocked-users/{userId} {
+      // 본인과 관리자만 읽기 가능
+      allow read: if isOwnerOrAdmin(userId);
+      
+      // 본인만 생성/수정 가능
+      allow create, update: if isOwner(userId) && 
+                               hasRecentActivity() &&
+                               rateLimitCheck(10); // 분당 10회 제한
+      
+      // 본인과 관리자만 삭제 가능
+      allow delete: if isOwnerOrAdmin(userId);
+    }
+    
+    // 저장된 검색 조건
+    match /saved-searches/{userId} {
+      // 본인만 접근 가능
+      allow read, write: if isOwner(userId) && 
+                            hasRecentActivity();
+    }
+    
+    // 앱 버전 및 설정 관리
+    match /app-versions/{versionId} {
+      // 모든 사용자 읽기 가능 (업데이트 체크)
+      allow read: if true;
+      
+      // 관리자만 생성/수정/삭제 가능
+      allow create, update, delete: if isAdmin();
+    }
+    
+    // 시스템 상태 및 점검 정보
+    match /system-status/{statusId} {
+      // 모든 사용자 읽기 가능
+      allow read: if true;
+      
+      // 관리자만 수정 가능
+      allow write: if isAdmin();
+    }
+    
+    // 사용자 탈퇴 기록 (법적 요구사항)
+    match /user-deletions/{deletionId} {
+      // 관리자만 접근 가능
+      allow read, write: if isAdmin();
+    }
+    
+    // 데이터 백업 메타데이터
+    match /backup-metadata/{backupId} {
+      // 관리자만 접근 가능
+      allow read, write: if isAdmin();
+    }
+    
+    // 서비스 약관 동의 기록
+    match /terms-agreements/{userId} {
+      // 본인과 관리자만 읽기 가능
+      allow read: if isOwnerOrAdmin(userId);
+      
+      // 본인만 생성 가능 (최초 가입 시, 약관 변경 시)
+      allow create: if isOwner(userId) && 
+                       request.resource.data.keys().hasAll(['userId', 'termsVersion', 'agreedAt', 'ipAddress']);
+      
+      // 수정/삭제 불가 (법적 기록)
+      allow update, delete: if false;
+    }
   }
 }
 
