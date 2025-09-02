@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { collection, addDoc, onSnapshot, orderBy, query, serverTimestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase';
 
 // 게시글 타입 정의
 interface Post {
@@ -135,6 +135,12 @@ export default function RequestBoardFirebase() {
   // 새 게시글 Firebase에 저장
   const addNewPost = async (postData: typeof newPost) => {
     try {
+      // 인증 확인
+      if (!auth.currentUser) {
+        alert('로그인이 필요합니다.');
+        return;
+      }
+
       const newTitle = `${postData.age} ${postData.gender} ${postData.frequency} 홈티`;
       
       const docRef = await addDoc(collection(db, 'posts'), {
@@ -150,6 +156,8 @@ export default function RequestBoardFirebase() {
         price: postData.price,
         additionalInfo: postData.additionalInfo,
         applications: 0,
+        authorId: auth.currentUser.uid, // Rules에서 요구하는 필수 필드
+        status: 'active', // Rules에서 요구하는 필수 필드
         createdAt: serverTimestamp()
       });
       
@@ -157,7 +165,7 @@ export default function RequestBoardFirebase() {
       closeCreatePostModal();
     } catch (error) {
       console.error('Error adding document: ', error);
-      alert('게시글 저장 중 오류가 발생했습니다.');
+      alert('게시글 저장 중 오류가 발생했습니다: ' + error.message);
     }
   };
 
