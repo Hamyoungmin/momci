@@ -233,6 +233,187 @@ service firebase.storage {
                         request.time.toMillis() > int(ts) + 86400000);
     }
     
+    // 리뷰 첨부 이미지 (강화된 검증)
+    match /reviews/{reviewId}/images/{filename} {
+      // 리뷰 작성자만 업로드 가능 (스팸 방지)
+      allow create: if isAuthenticated() && 
+                       firestore.exists(/databases/(default)/documents/reviews/$(reviewId)) &&
+                       firestore.get(/databases/(default)/documents/reviews/$(reviewId)).data.authorId == request.auth.uid &&
+                       isValidImageType() &&
+                       hasRecentActivity() &&
+                       // 리뷰당 이미지 개수 제한 (5개)
+                       request.resource.size < 5 * 1024 * 1024; // 5MB 제한
+      
+      // 모든 인증된 사용자가 읽기 가능 (공개 리뷰)
+      allow read: if isAuthenticated();
+      
+      // 리뷰 작성자와 관리자만 삭제 가능
+      allow delete: if isAuthenticated() && 
+                       firestore.exists(/databases/(default)/documents/reviews/$(reviewId)) &&
+                       (firestore.get(/databases/(default)/documents/reviews/$(reviewId)).data.authorId == request.auth.uid ||
+                        isAdmin());
+    }
+    
+    // 매칭 과정에서 필요한 추가 서류 (계약서, 동의서 등)
+    match /matchings/{matchingId}/documents/{filename} {
+      // 관련 당사자만 업로드 가능 (부모 또는 치료사)
+      allow create: if isAuthenticated() && 
+                       firestore.exists(/databases/(default)/documents/matchings/$(matchingId)) &&
+                       (firestore.get(/databases/(default)/documents/matchings/$(matchingId)).data.parentId == request.auth.uid ||
+                        firestore.get(/databases/(default)/documents/matchings/$(matchingId)).data.therapistId == request.auth.uid ||
+                        isAdmin()) &&
+                       isValidDocumentType() &&
+                       hasRecentActivity();
+      
+      // 관련 당사자와 관리자만 읽기 가능 (민감한 계약서류)
+      allow read: if isAuthenticated() && 
+                     firestore.exists(/databases/(default)/documents/matchings/$(matchingId)) &&
+                     (firestore.get(/databases/(default)/documents/matchings/$(matchingId)).data.parentId == request.auth.uid ||
+                      firestore.get(/databases/(default)/documents/matchings/$(matchingId)).data.therapistId == request.auth.uid ||
+                      isAdmin());
+      
+      // 관리자만 삭제 가능 (법적 보관 의무)
+      allow delete: if isAdmin();
+    }
+    
+    // 시스템 에셋 (배너, 가이드 이미지, 아이콘 등)
+    match /system/assets/{category}/{filename} {
+      // 관리자만 업로드/수정/삭제 가능
+      allow create, update, delete: if isAdmin() && 
+                                       (isValidImageType() || isValidVideoType()) &&
+                                       // 시스템 파일은 더 큰 크기 허용
+                                       request.resource.size < 50 * 1024 * 1024; // 50MB 제한
+      
+      // 모든 사용자가 읽기 가능 (공개 에셋)
+      allow read: if true;
+    }
+    
+    // 결제 관련 영수증 및 증빙서류 (강화된 보안)
+    match /payments/{paymentId}/receipts/{filename} {
+      // 관리자만 업로드 가능 (시스템에서 자동 생성)
+      allow create: if isAdmin() && 
+                       firestore.exists(/databases/(default)/documents/payments/$(paymentId)) &&
+                       isValidDocumentType();
+      
+      // 본인과 관리자만 읽기 가능 (민감한 결제 정보)
+      allow read: if isAuthenticated() && 
+                     firestore.exists(/databases/(default)/documents/payments/$(paymentId)) &&
+                     (firestore.get(/databases/(default)/documents/payments/$(paymentId)).data.userId == request.auth.uid ||
+                      isAdmin());
+      
+      // 관리자만 삭제 가능 (회계 법규상 보관 의무)
+      allow delete: if isAdmin();
+    }
+    
+    // 수업 후 피드백 첨부파일 (수업 일지, 사진 등)
+    match /lessons/{lessonId}/feedback/{filename} {
+      // 치료사만 업로드 가능 (수업 진행자)
+      allow create: if isAuthenticated() && 
+                       firestore.exists(/databases/(default)/documents/lessons/$(lessonId)) &&
+                       firestore.get(/databases/(default)/documents/lessons/$(lessonId)).data.therapistId == request.auth.uid &&
+                       (isValidImageType() || isValidDocumentType()) &&
+                       hasRecentActivity() &&
+                       // 수업 완료 후 7일 이내에만 업로드 가능
+                       request.time < firestore.get(/databases/(default)/documents/lessons/$(lessonId)).data.completedAt + duration.value(7, 'd');
+      
+      // 관련 당사자(부모, 치료사)와 관리자만 읽기 가능
+      allow read: if isAuthenticated() && 
+                     firestore.exists(/databases/(default)/documents/lessons/$(lessonId)) &&
+                     (firestore.get(/databases/(default)/documents/lessons/$(lessonId)).data.parentId == request.auth.uid ||
+                      firestore.get(/databases/(default)/documents/lessons/$(lessonId)).data.therapistId == request.auth.uid ||
+                      isAdmin());
+      
+      // 치료사와 관리자만 수정/삭제 가능
+      allow update, delete: if isAuthenticated() && 
+                               firestore.exists(/databases/(default)/documents/lessons/$(lessonId)) &&
+                               (firestore.get(/databases/(default)/documents/lessons/$(lessonId)).data.therapistId == request.auth.uid ||
+                                isAdmin());
+    }
+    
+    // 환불 요청 증빙자료 (강화된 검증)
+    match /refunds/{refundId}/evidence/{filename} {
+      // 환불 신청자만 업로드 가능
+      allow create: if isAuthenticated() && 
+                       firestore.exists(/databases/(default)/documents/refunds/$(refundId)) &&
+                       firestore.get(/databases/(default)/documents/refunds/$(refundId)).data.userId == request.auth.uid &&
+                       firestore.get(/databases/(default)/documents/refunds/$(refundId)).data.status == 'pending' &&
+                       isValidEvidenceFile() &&
+                       hasRecentActivity() &&
+                       // 환불 신청 후 48시간 이내에만 증빙자료 업로드 가능
+                       request.time < firestore.get(/databases/(default)/documents/refunds/$(refundId)).data.createdAt + duration.value(48, 'h');
+      
+      // 신청자와 관리자만 읽기 가능
+      allow read: if isAuthenticated() && 
+                     firestore.exists(/databases/(default)/documents/refunds/$(refundId)) &&
+                     (firestore.get(/databases/(default)/documents/refunds/$(refundId)).data.userId == request.auth.uid ||
+                      isAdmin());
+      
+      // 관리자만 삭제 가능 (환불 처리 완료 후)
+      allow delete: if isAdmin();
+    }
+    
+    // 수업 계획서 및 교육자료
+    match /lesson-plans/{lessonPlanId}/materials/{filename} {
+      // 치료사만 업로드 가능
+      allow create: if isAuthenticated() && 
+                       firestore.exists(/databases/(default)/documents/lesson-plans/$(lessonPlanId)) &&
+                       firestore.get(/databases/(default)/documents/lesson-plans/$(lessonPlanId)).data.therapistId == request.auth.uid &&
+                       (isValidDocumentType() || isValidImageType()) &&
+                       hasRecentActivity();
+      
+      // 관련 당사자와 관리자만 읽기 가능
+      allow read: if isAuthenticated() && 
+                     firestore.exists(/databases/(default)/documents/lesson-plans/$(lessonPlanId)) &&
+                     (firestore.get(/databases/(default)/documents/lesson-plans/$(lessonPlanId)).data.therapistId == request.auth.uid ||
+                      firestore.get(/databases/(default)/documents/lesson-plans/$(lessonPlanId)).data.parentId == request.auth.uid ||
+                      isAdmin());
+      
+      // 치료사와 관리자만 수정/삭제 가능
+      allow update, delete: if isAuthenticated() && 
+                               firestore.exists(/databases/(default)/documents/lesson-plans/$(lessonPlanId)) &&
+                               (firestore.get(/databases/(default)/documents/lesson-plans/$(lessonPlanId)).data.therapistId == request.auth.uid ||
+                                isAdmin());
+    }
+    
+    // 마케팅 자료 (블로그 이미지, 가이드북 등)
+    match /marketing/{category}/{filename} {
+      // 관리자만 업로드/수정/삭제 가능
+      allow create, update, delete: if isAdmin() && 
+                                       (isValidImageType() || isValidDocumentType() || isValidVideoType());
+      
+      // 모든 사용자가 읽기 가능
+      allow read: if true;
+    }
+    
+    // 사용자 인증 서류 (신분증 등, 매우 민감)
+    match /verification/{userId}/identity/{filename} {
+      // 본인만 업로드 가능, 매우 엄격한 검증
+      allow create: if isOwner(userId) && 
+                       isValidEvidenceFile() &&
+                       hasRecentActivity() &&
+                       // 본인 인증은 업무시간에만 가능
+                       isBusinessHours() &&
+                       request.resource.size < 10 * 1024 * 1024; // 10MB 제한
+      
+      // 관리자만 읽기 가능 (극도로 민감한 정보)
+      allow read: if isAdmin();
+      
+      // 관리자만 삭제 가능 (인증 완료 후)
+      allow delete: if isAdmin();
+    }
+    
+    // 백업 및 아카이브 (관리자 전용)
+    match /backups/{date}/{filename} {
+      // 관리자만 접근 가능
+      allow read, write: if isAdmin();
+    }
+    
+    // 로그 파일 (시스템 모니터링)
+    match /logs/{date}/{filename} {
+      // 관리자만 접근 가능
+      allow read, write: if isAdmin();
+    }
+    
     // 기본적으로 모든 다른 경로는 거부
     match /{allPaths=**} {
       allow read, write: if false;
