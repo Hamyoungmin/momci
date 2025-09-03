@@ -133,3 +133,38 @@ body {
 .animate-modal-slide {
   animation: modalSlideIn 0.25s ease-out forwards;
 }
+
+/* FAQ 아코디언 애니메이션 */
+@keyframes faqSlideDown {
+  from {
+    max-height: 0;
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    max-height: 400px;
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes faqSlideUp {
+  from {
+    max-height: 400px;
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    max-height: 0;
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+
+.animate-faq-open {
+  animation: faqSlideDown 0.3s ease-in-out forwards;
+}
+
+.animate-faq-close {
+  animation: faqSlideUp 0.3s ease-in-out forwards;
+}

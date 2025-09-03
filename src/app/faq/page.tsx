@@ -5,7 +5,7 @@ import { getFAQs, groupFAQsByCategory, incrementFAQViews } from '@/lib/faq';
 import type { FAQCategory } from '@/lib/faq';
 
 export default function FAQPage() {
-  const [openItems, setOpenItems] = useState<number[]>([]);
+  const [openItem, setOpenItem] = useState<number | null>(null);
   const [faqCategories, setFaqCategories] = useState<FAQCategory[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -28,11 +28,8 @@ export default function FAQPage() {
   }, []);
 
   const toggleItem = (id: number) => {
-    setOpenItems(prev => 
-      prev.includes(id) 
-        ? prev.filter(item => item !== id)
-        : [...prev, id]
-    );
+    // 같은 항목 클릭시 닫기, 다른 항목 클릭시 그것만 열기
+    setOpenItem(prev => prev === id ? null : id);
 
     // FAQ 조회수 증가 (비동기적으로 처리)
     const categoryIndex = Math.floor(id / 1000);
@@ -138,8 +135,8 @@ export default function FAQPage() {
                           Q. {faq.question}
                       </span>
                       <svg 
-                        className={`w-5 h-5 text-blue-500 transition-transform duration-200 ${
-                            openItems.includes(globalId) ? 'transform rotate-180' : ''
+                        className={`w-5 h-5 text-blue-500 transition-transform duration-300 ease-in-out ${
+                            openItem === globalId ? 'transform rotate-180' : ''
                         }`} 
                         fill="none" 
                         stroke="currentColor" 
@@ -149,14 +146,18 @@ export default function FAQPage() {
                       </svg>
                     </button>
                     
-                      {openItems.includes(globalId) && (
+                    <div className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                      openItem === globalId 
+                        ? 'max-h-96 opacity-100' 
+                        : 'max-h-0 opacity-0'
+                    }`}>
                       <div className="px-4 pb-4 border-t border-gray-200 bg-blue-50">
-                          <p className="text-gray-700 pt-4 leading-relaxed whitespace-pre-wrap">
+                        <p className="text-gray-700 pt-4 leading-relaxed whitespace-pre-wrap">
                           <span className="font-medium text-blue-600">A. </span>
-                            {faq.answer}
+                          {faq.answer}
                         </p>
                       </div>
-                    )}
+                    </div>
                   </div>
                   );
                 })}

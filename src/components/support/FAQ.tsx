@@ -115,21 +115,25 @@ export default function FAQ() {
                         <span className="font-medium text-gray-900">
                           Q. {faq.question}
                         </span>
-                        <span className={`text-blue-500 text-xl transition-transform ${
+                        <span className={`text-blue-500 text-xl transition-transform duration-300 ease-in-out ${
                           isOpen ? 'transform rotate-180' : ''
                         }`}>
                           ▼
                         </span>
                       </button>
                       
-                      {isOpen && (
+                      <div className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                        isOpen 
+                          ? 'max-h-96 opacity-100' 
+                          : 'max-h-0 opacity-0'
+                      }`}>
                         <div className="px-4 pb-4 border-t border-gray-200 bg-blue-50">
                           <p className="text-gray-700 pt-4 leading-relaxed whitespace-pre-wrap">
                             <span className="font-medium text-blue-600">A. </span>
                             {faq.answer}
                           </p>
                         </div>
-                      )}
+                      </div>
                     </div>
                   );
                 })}
