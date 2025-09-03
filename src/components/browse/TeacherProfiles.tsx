@@ -3,7 +3,7 @@
 import { useState } from 'react';
 
 export default function TeacherProfiles() {
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
 
   // 실제 치료사 데이터
   const teachers = [
@@ -190,8 +190,10 @@ export default function TeacherProfiles() {
           : 'space-y-6'
         }>
           {teachers.map((teacher) => (
-            <div key={teacher.id} className={`bg-white border border-blue-500 rounded-xl shadow-sm hover:shadow-lg transition-shadow ${
-              viewMode === 'list' ? 'p-6' : 'p-6'
+            <div key={teacher.id} className={`bg-white rounded-2xl shadow-sm hover:shadow-lg transition-all duration-200 ${
+              viewMode === 'list' 
+                ? 'border-2 border-blue-100 hover:border-blue-200 p-6' 
+                : 'border border-blue-500 p-6'
             }`}>
               {viewMode === 'grid' ? (
                 // 그리드 뷰
@@ -242,60 +244,102 @@ export default function TeacherProfiles() {
                   </button>
                 </div>
               ) : (
-                // 리스트 뷰
-                <div className="flex items-start space-x-4">
-                  {/* 프로필 이미지 */}
-                  <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
-                    <span className="text-xl">👩‍⚕️</span>
-                  </div>
-                  
-                  <div className="flex-1">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h3 className="text-lg font-bold text-gray-900 mb-1">{teacher.name}</h3>
-                        <p className="text-gray-600 text-sm mb-2">{teacher.title}</p>
-                        
-                        {/* 평점 */}
-                        <div className="flex items-center space-x-1 mb-2">
-                          {[...Array(5)].map((_, i) => (
-                            <span key={i} className="text-yellow-400 text-sm">
-                              {i < Math.floor(teacher.rating) ? '⭐' : '☆'}
-                            </span>
-                          ))}
-                          <span className="text-sm text-gray-500 ml-1">
-                            {teacher.rating} ({teacher.reviewCount}개)
-                          </span>
-                        </div>
-                        
-                        {/* 소개 */}
-                        <p className="text-gray-700 text-sm mb-3 line-clamp-2">{teacher.introduction}</p>
-                        
-                        {/* 전문 분야 */}
-                        <div className="flex flex-wrap gap-1 mb-2">
-                          {teacher.specialties.map((specialty, index) => (
-                            <span key={index} className={`px-2 py-1 rounded-full text-xs ${
-                              index < 2 ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                            }`}>
-                              {specialty}
-                            </span>
-                          ))}
-                        </div>
-                        
-                        {/* 추가 정보 */}
-                        <div className="flex items-center space-x-4 text-xs text-gray-500">
-                          <span>📍 {teacher.location}</span>
-                          <span>💬 {teacher.responseTime}</span>
-                          <span>⏰ {teacher.availability}</span>
+                // 리스트 뷰 - 새로운 치료사 프로필 카드 디자인
+                <div className="flex items-start justify-between">
+                  <div className="flex items-start space-x-4 flex-1">
+                    {/* 프로필 이미지 */}
+                    <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden relative">
+                      <div className="text-center">
+                        <span className="text-gray-500 text-xs font-medium block">프로필</span>
+                        <span className="text-gray-400 text-xs block">사진</span>
+                      </div>
+                    </div>
+                    
+                    {/* 치료사 정보 */}
+                    <div className="flex-1">
+                      {/* 치료사 이름과 경력 */}
+                      <div className="flex items-center space-x-2 mb-1">
+                        <h3 className="text-lg font-bold text-gray-900">
+                          {teacher.name} 치료사
+                        </h3>
+                        <span className="text-sm text-gray-600">
+                          ({teacher.experience}차 {teacher.specialties[0]}사)
+                        </span>
+                      </div>
+                      
+                      {/* 별점과 후기 */}
+                      <div className="flex items-center space-x-2 mb-3">
+                        <div className="flex items-center">
+                          <span className="text-orange-400 text-lg">★</span>
+                          <span className="text-sm font-medium ml-1">{teacher.rating}</span>
+                          <span className="text-xs text-gray-500 ml-1">(후기 {teacher.reviewCount}개)</span>
                         </div>
                       </div>
                       
-                      <div className="text-right">
-                        <div className="text-xl font-bold text-blue-600 mb-2">
-                          시간당 {teacher.hourlyRate.toLocaleString()}원
+                      {/* 치료분야 태그 */}
+                      <div className="flex items-center space-x-2 mb-3">
+                        {teacher.specialties.slice(0, 3).map((specialty, index) => (
+                          <span key={index} className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                            index === 0 
+                              ? 'bg-blue-50 text-blue-700 border border-blue-200' 
+                              : index === 1 
+                              ? 'bg-purple-50 text-purple-700 border border-purple-200'
+                              : 'bg-green-50 text-green-700 border border-green-200'
+                          }`}>
+                            #{specialty}
+                          </span>
+                        ))}
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-50 text-gray-700 border border-gray-200">
+                          #{teacher.location.split(' ')[1] || teacher.location}
+                        </span>
+                      </div>
+                      
+                      {/* 가격 정보 */}
+                      <div className="text-xl font-bold text-blue-600 mb-4">
+                        회기당 {teacher.hourlyRate.toLocaleString()}원
+                      </div>
+                      
+                      {/* 구분선 */}
+                      <div className="border-t border-gray-200 pt-3 mb-3"></div>
+                      
+                      {/* 인증 정보 - 체크마크 스타일 */}
+                      <div className="flex items-center space-x-4">
+                        {teacher.certificates.slice(0, 3).map((cert, index) => (
+                          <div key={index} className="flex items-center space-x-1">
+                            <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                              <span className="text-white text-xs">✓</span>
+                            </div>
+                            <span className="text-sm text-gray-700">
+                              {cert.includes('자격') || cert.includes('면허') ? '자격증' :
+                               cert.includes('경력') || cert.includes('인증') ? '경력증명' :
+                               '신분증확인서'}
+                            </span>
+                          </div>
+                        ))}
+                        <span className="text-gray-400 text-xs">보험가입</span>
+                        <div className="flex items-center space-x-1">
+                          <span className="text-blue-600 text-sm">★</span>
+                          <span className="text-sm text-blue-600">더많은 인증</span>
                         </div>
-                        <button className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-                          1:1 채팅
-                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* 오른쪽: 채팅 버튼 */}
+                  <div className="flex flex-col items-end space-y-3 ml-6">
+                    <button className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-2xl font-medium transition-colors shadow-sm">
+                      1:1 채팅
+                    </button>
+                    
+                    <div className="text-right">
+                      {/* 상세 프로필 보기 텍스트 스타일 변경 */}
+                      <div className="text-xs text-gray-500 mb-1">
+                        상세 프로필 보기 &gt;
+                      </div>
+                      
+                      {/* 응답 시간 */}
+                      <div className="text-xs text-gray-400">
+                        {teacher.responseTime}
                       </div>
                     </div>
                   </div>
