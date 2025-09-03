@@ -537,6 +537,68 @@ service firebase.storage {
       allow read: if isAuthenticated();
     }
     
+    // 치료사 프로필 사진 (상세 프로필용)
+    match /teacher-profiles/{userId}/profile-image/{filename} {
+      // 치료사 본인만 업로드/수정/삭제 가능
+      allow create, update, delete: if isAuthenticated() && 
+                                       isOwner(userId) &&
+                                       isValidProfileImage() &&
+                                       hasRecentActivity();
+      
+      // 모든 인증된 사용자가 읽기 가능 (공개 프로필)
+      allow read: if isAuthenticated();
+    }
+    
+    // 치료사 소개 비디오 (상세 프로필용)
+    match /teacher-profiles/{userId}/introduction-video/{filename} {
+      // 치료사 본인만 업로드/수정/삭제 가능
+      allow create, update, delete: if isAuthenticated() && 
+                                       isOwner(userId) &&
+                                       isValidVideoType() &&
+                                       hasRecentActivity() &&
+                                       // 비디오 파일 크기 제한 (50MB)
+                                       request.resource.size < 50 * 1024 * 1024;
+      
+      // 모든 인증된 사용자가 읽기 가능 (공개 소개 비디오)
+      allow read: if isAuthenticated();
+    }
+    
+    // 치료사 인증서/자격증 (상세 프로필용)
+    match /teacher-profiles/{userId}/certifications/{filename} {
+      // 치료사 본인만 업로드/수정/삭제 가능
+      allow create, update, delete: if isAuthenticated() && 
+                                       isOwner(userId) &&
+                                       isValidDocumentType() &&
+                                       hasRecentActivity() &&
+                                       // 인증서 파일 크기 제한 (10MB)
+                                       request.resource.size < 10 * 1024 * 1024;
+      
+      // 치료사 본인과 관리자, 승인된 학부모만 읽기 가능
+      allow read: if isAuthenticated() && 
+                     (isOwner(userId) || isAdmin());
+    }
+    
+    // 후기 첨부 파일 (학부모 후기용)
+    match /teacher-reviews/{reviewId}/attachments/{filename} {
+      // 후기 작성자만 업로드 가능
+      allow create: if isAuthenticated() && 
+                       firestore.exists(/databases/(default)/documents/therapist-reviews/$(reviewId)) &&
+                       firestore.get(/databases/(default)/documents/therapist-reviews/$(reviewId)).data.parentId == request.auth.uid &&
+                       isValidImageType() &&
+                       hasRecentActivity() &&
+                       // 후기 첨부파일 크기 제한 (5MB)
+                       request.resource.size < 5 * 1024 * 1024;
+      
+      // 모든 인증된 사용자가 읽기 가능 (공개 후기)
+      allow read: if isAuthenticated();
+      
+      // 후기 작성자와 관리자만 삭제 가능
+      allow delete: if isAuthenticated() && 
+                       firestore.exists(/databases/(default)/documents/therapist-reviews/$(reviewId)) &&
+                       (firestore.get(/databases/(default)/documents/therapist-reviews/$(reviewId)).data.parentId == request.auth.uid ||
+                        isAdmin());
+    }
+    
     // 기본적으로 모든 다른 경로는 거부
     match /{allPaths=**} {
       allow read, write: if false;

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { collection, addDoc, onSnapshot, orderBy, query, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, onSnapshot, orderBy, query, serverTimestamp, where, limit } from 'firebase/firestore';
 import { db, auth } from '@/lib/firebase';
 
 // 게시글 타입 정의
@@ -21,6 +21,33 @@ interface Post {
   price: string;
   additionalInfo: string;
   createdAt: any;
+  // 치료사 정보
+  teacherName?: string;
+  teacherExperience?: number;
+  teacherSpecialty?: string;
+  teacherRating?: number;
+  teacherReviewCount?: number;
+  teacherProfileImage?: string;
+  teacherCertifications?: string[];
+  teacherEducation?: string;
+  teacherCareer?: string;
+  teacherRegions?: string[];
+  teacherSchedule?: string;
+  teacherIntroduction?: string;
+  teacherPhilosophy?: string;
+  teacherServices?: string;
+  teacherVideoUrl?: string;
+}
+
+// 후기 타입 정의
+interface Review {
+  id: string;
+  teacherId: string;
+  parentId: string;
+  content: string;
+  rating: number;
+  createdAt: any;
+  parentName?: string;
 }
 
 export default function RequestBoardFirebase() {
@@ -52,6 +79,8 @@ export default function RequestBoardFirebase() {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [selectedProfile, setSelectedProfile] = useState<Post | null>(null);
   const [isProfileModalClosing, setIsProfileModalClosing] = useState(false);
+  const [teacherReviews, setTeacherReviews] = useState<Review[]>([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
 
   const sidebarItems = ['홈티매칭', '서울', '인천/경기북부', '경기남부', '충청,강원,대전', '전라,경상,부산'];
   const tabs = ['서울', '인천/경기북부', '경기남부', '충청,강원,대전', '전라,경상,부산'];
@@ -152,6 +181,40 @@ export default function RequestBoardFirebase() {
   const openProfileModal = (post: Post) => {
     setSelectedProfile(post);
     setShowProfileModal(true);
+    
+    // 해당 교사의 후기 가져오기
+    fetchTeacherReviews(post.id);
+  };
+
+  // 교사 후기 가져오기
+  const fetchTeacherReviews = (teacherId: string) => {
+    setReviewsLoading(true);
+    
+    const reviewsQuery = query(
+      collection(db, 'therapist-reviews'),
+      where('therapistId', '==', teacherId),
+      orderBy('createdAt', 'desc'),
+      limit(5)
+    );
+
+    const unsubscribe = onSnapshot(reviewsQuery, (snapshot) => {
+      const reviews: Review[] = [];
+      snapshot.forEach((doc) => {
+        reviews.push({
+          id: doc.id,
+          ...doc.data()
+        } as Review);
+      });
+      
+      console.log('📥 교사 후기 가져옴:', reviews.length, '개');
+      setTeacherReviews(reviews);
+      setReviewsLoading(false);
+    }, (error) => {
+      console.error('❌ 교사 후기 가져오기 오류:', error);
+      setReviewsLoading(false);
+    });
+
+    return unsubscribe;
   };
 
   // 상세 프로필 모달 닫기
@@ -955,11 +1018,13 @@ export default function RequestBoardFirebase() {
                 
                 {/* 기본 정보 */}
                 <div>
-                  <h2 className="text-xl font-bold text-gray-900 mb-1">김OO 치료사 (7년차 언어치료사)</h2>
+                  <h2 className="text-xl font-bold text-gray-900 mb-1">
+                    {selectedProfile.teacherName || '김OO'} 치료사 ({selectedProfile.teacherExperience || 7}년차 {selectedProfile.teacherSpecialty || selectedProfile.treatment}사)
+                  </h2>
                   <div className="flex items-center mb-2">
                     <span className="text-orange-400 text-lg">★</span>
-                    <span className="text-sm font-medium ml-1">4.8</span>
-                    <span className="text-xs text-gray-500 ml-1">(후기 15개)</span>
+                    <span className="text-sm font-medium ml-1">{selectedProfile.teacherRating || 4.8}</span>
+                    <span className="text-xs text-gray-500 ml-1">(후기 {selectedProfile.teacherReviewCount || 15}개)</span>
                   </div>
                   <div className="text-2xl font-bold text-blue-600 mb-3">
                     회기당 {(() => {
@@ -1024,21 +1089,36 @@ export default function RequestBoardFirebase() {
                   <div>
                     <h4 className="font-semibold mb-2">치료 철학 및 접근</h4>
                     <p className="text-gray-700 text-sm leading-relaxed">
-                      저는 아이의 독특한 의사소통 능력을 통해 각 아이에게 맞는 치료 접근을 중요하게 생각합니다. 아이에게 지친 부모는 제가 즐길 수 있을 만큼 실상에 절실함을 얻었어 아이의 지금의 단계를 발견하는 것이 가장 강력한 해결을 만드는 것이라고 생각합니다.
+                      {selectedProfile.teacherPhilosophy || 
+                      "저는 아이의 독특한 의사소통 능력을 통해 각 아이에게 맞는 치료 접근을 중요하게 생각합니다. 아이에게 지친 부모는 제가 도움을 드릴 수 있을 만큼 실상에 절실함을 얻었어 아이의 지금의 단계를 발견하는 것이 가장 강력한 해결을 만드는 것이라고 생각합니다."
+                      }
                     </p>
                   </div>
                   
                   <div>
                     <h4 className="font-semibold mb-2">주요 치료영역/서비스</h4>
                     <p className="text-gray-700 text-sm leading-relaxed">
-                      OOO 치료영역에서 약 5년간 근무하면서 더 각 아이들 수준에 따른 치료를 해봤고, 요즘은 감각을 약간 어려워하는 아이를 지원하는 상호 작용이 아이적어서 치료 가능성을 훈련 아이에게 있어주고 있습니다.
+                      {selectedProfile.teacherServices || 
+                      `${selectedProfile.treatment} 치료영역에서 약 ${selectedProfile.teacherExperience || 5}년간 근무하면서 다양한 아이들 수준에 따른 치료를 해봤고, 요즘은 감각을 약간 어려워하는 아이를 지원하는 상호 작용이 아이들에게 치료 가능성을 훈련시켜 주고 있습니다.`
+                      }
                     </p>
                   </div>
                   
                   <div className="bg-gray-100 rounded-lg">
-                    <div className="text-center py-12 text-gray-500 text-sm">
-                      영상이 등록될 경우, 영상 플레이어가 여기에 표시됩니다.
-                    </div>
+                    {selectedProfile.teacherVideoUrl ? (
+                      <video 
+                        src={selectedProfile.teacherVideoUrl} 
+                        controls 
+                        className="w-full rounded-lg"
+                        poster="/placeholder-video.png"
+                      >
+                        영상을 재생할 수 없습니다.
+                      </video>
+                    ) : (
+                      <div className="text-center py-12 text-gray-500 text-sm">
+                        영상이 등록될 경우, 영상 플레이어가 여기에 표시됩니다.
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1055,15 +1135,17 @@ export default function RequestBoardFirebase() {
                     <tbody>
                       <tr className="border-b border-gray-200">
                         <td className="px-4 py-3 font-medium text-gray-700 bg-gray-50 w-1/4">학력 사항</td>
-                        <td className="px-4 py-3 text-gray-600">1급기 / 65,000원</td>
+                        <td className="px-4 py-3 text-gray-600">{selectedProfile.teacherEducation || '1급기 / 65,000원'}</td>
                         <td className="px-4 py-3 font-medium text-gray-700 bg-gray-50 w-1/4">총 경력</td>
-                        <td className="px-4 py-3 text-gray-600">7년 3개월</td>
+                        <td className="px-4 py-3 text-gray-600">{selectedProfile.teacherCareer || `${selectedProfile.teacherExperience || 7}년 3개월`}</td>
                       </tr>
                       <tr className="border-b border-gray-200">
                         <td className="px-4 py-3 font-medium text-gray-700 bg-gray-50">활동 가능 지역</td>
-                        <td className="px-4 py-3 text-gray-600">서울시 강남구, 서초구, 송파구</td>
+                        <td className="px-4 py-3 text-gray-600">
+                          {selectedProfile.teacherRegions?.join(', ') || `${selectedProfile.region || '서울시'} ${selectedProfile.category || '강남구, 서초구, 송파구'}`}
+                        </td>
                         <td className="px-4 py-3 font-medium text-gray-700 bg-gray-50">치료 가능 시간</td>
-                        <td className="px-4 py-3 text-gray-600">평일 오후 4시 이후 / 주말 오전 (법일 기준)</td>
+                        <td className="px-4 py-3 text-gray-600">{selectedProfile.teacherSchedule || selectedProfile.timeDetails || '평일 오후 4시 이후 / 주말 오전 (범일 기준)'}</td>
                       </tr>
                     </tbody>
                   </table>
@@ -1074,23 +1156,72 @@ export default function RequestBoardFirebase() {
               <div className="mb-8">
                 <div className="flex items-center mb-4">
                   <span className="text-blue-500 mr-2">💬</span>
-                  <h3 className="text-lg font-semibold text-gray-900">학부모 후기 (3건)</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    학부모 후기 ({selectedProfile.teacherReviewCount || teacherReviews.length || 3}건)
+                  </h3>
                 </div>
                 
                 <div className="space-y-4">
-                  <div className="bg-gray-50 p-4 rounded-lg border">
-                    <p className="text-sm text-gray-700 mb-2 leading-relaxed">
-                      "신경쓰 정말 최고에요! 저희 아이가 너무 달라져 가리되네, 처음에는 마음을 열지 않으셨는데 지금은 수업시간이 기다려져요. 센터에도 인정받는 선생님 정말 감사해요."
-                    </p>
-                    <div className="text-xs text-gray-500 text-right">- 학부모 (2025.08.15)</div>
-                  </div>
-                  
-                  <div className="bg-gray-50 p-4 rounded-lg border">
-                    <p className="text-sm text-gray-700 mb-2 leading-relaxed">
-                      "체계적으로 잘 가르쳐주시고, 아이의 부족한 능력과 놓이니 시간대비와, 각 종류마다"
-                    </p>
-                    <div className="text-xs text-gray-500 text-right">- 학부모 (2025.07.20)</div>
-                  </div>
+                  {reviewsLoading ? (
+                    <div className="text-center py-8 text-gray-500">
+                      후기를 불러오는 중...
+                    </div>
+                  ) : teacherReviews.length > 0 ? (
+                    teacherReviews.map((review, index) => (
+                      <div key={review.id} className="bg-gray-50 p-4 rounded-lg border">
+                        <div className="flex items-center mb-2">
+                          <div className="flex items-center">
+                            {[...Array(5)].map((_, i) => (
+                              <span key={i} className={`text-sm ${i < review.rating ? 'text-orange-400' : 'text-gray-300'}`}>
+                                ★
+                              </span>
+                            ))}
+                            <span className="text-xs text-gray-500 ml-1">({review.rating}/5)</span>
+                          </div>
+                        </div>
+                        <p className="text-sm text-gray-700 mb-2 leading-relaxed">
+                          "{review.content}"
+                        </p>
+                        <div className="text-xs text-gray-500 text-right">
+                          - {review.parentName || '학부모'} (
+                          {review.createdAt ? 
+                            new Date(review.createdAt.toDate ? review.createdAt.toDate() : review.createdAt).toLocaleDateString('ko-KR') : 
+                            '2025.08.15'
+                          })
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    // 기본 더미 후기 (실제 후기가 없을 때)
+                    <>
+                      <div className="bg-gray-50 p-4 rounded-lg border">
+                        <div className="flex items-center mb-2">
+                          <div className="flex items-center">
+                            <span className="text-orange-400 text-sm">★★★★★</span>
+                            <span className="text-xs text-gray-500 ml-1">(5/5)</span>
+                          </div>
+                        </div>
+                        <p className="text-sm text-gray-700 mb-2 leading-relaxed">
+                          "선생님 정말 최고에요! 저희 아이가 너무 달라져 가네요, 처음에는 마음을 열지 않았는데 지금은 수업시간이 기다려져요. 센터에도 인정받는 선생님 정말 감사해요."
+                        </p>
+                        <div className="text-xs text-gray-500 text-right">- 학부모 (2025.08.15)</div>
+                      </div>
+                      
+                      <div className="bg-gray-50 p-4 rounded-lg border">
+                        <div className="flex items-center mb-2">
+                          <div className="flex items-center">
+                            <span className="text-orange-400 text-sm">★★★★</span>
+                            <span className="text-gray-300 text-sm">★</span>
+                            <span className="text-xs text-gray-500 ml-1">(4/5)</span>
+                          </div>
+                        </div>
+                        <p className="text-sm text-gray-700 mb-2 leading-relaxed">
+                          "체계적으로 잘 가르쳐주시고, 아이의 부족한 능력과 시간대비하여, 각 종류마다 맞춤 치료해주십니다."
+                        </p>
+                        <div className="text-xs text-gray-500 text-right">- 학부모 (2025.07.20)</div>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
 
