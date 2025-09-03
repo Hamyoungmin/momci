@@ -1,157 +1,84 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { collection, onSnapshot, query, where, orderBy } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+
+// 치료사 타입 정의
+interface Teacher {
+  id: string;
+  name: string;
+  title: string;
+  rating: number;
+  reviewCount: number;
+  experience: string;
+  hourlyRate: number;
+  profileImage?: string;
+  specialties: string[];
+  location: string;
+  introduction: string;
+  education: string;
+  certificates: string[];
+  isOnline: boolean;
+  responseTime: string;
+  availability: string;
+  createdAt: any;
+}
 
 export default function TeacherProfiles() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // 실제 치료사 데이터
-  const teachers = [
-    {
-      id: 1,
-      name: '김민정',
-      title: '12년차 언어재활사',
-      rating: 4.9,
-      reviewCount: 127,
-      experience: '12년',
-      hourlyRate: 80000,
-      profileImage: null,
-      specialties: ['언어치료', '조음장애', '유창성장애', '언어발달지연'],
-      location: '서울 강남구',
-      introduction: '연세대학교 언어병리학 석사 출신으로, 다양한 언어장애 아동들과 함께 성장해온 경험이 있습니다. 아이 개별 특성에 맞는 체계적인 치료 프로그램을 제공합니다.',
-      education: '연세대학교 언어병리학과 석사 졸업',
-      certificates: ['언어재활사 1급', '조음음운장애 전문가', '유창성장애 전문치료사'],
-      isOnline: true,
-      responseTime: '평균 1시간 이내',
-      availability: '평일 오후 2-8시, 토요일 오전'
-    },
-    {
-      id: 2,
-      name: '박소영',
-      title: '8년차 놀이치료사',
-      rating: 4.8,
-      reviewCount: 89,
-      experience: '8년',
-      hourlyRate: 70000,
-      profileImage: null,
-      specialties: ['놀이치료', '사회성치료', '정서치료', '애착문제'],
-      location: '서울 서초구',
-      introduction: '아이들의 마음을 놀이로 이해하고 소통합니다. 불안, 우울, 사회성 부족 등 다양한 정서적 어려움을 겪는 아이들과 함께 성장의 여정을 걸어가고 있습니다.',
-      education: '이화여자대학교 아동학과 졸업',
-      certificates: ['놀이치료사 1급', '가족놀이치료사', '모래놀이치료사'],
-      isOnline: false,
-      responseTime: '평균 2시간 이내',
-      availability: '평일 오전 10-6시, 토요일 오후'
-    },
-    {
-      id: 3,
-      name: '이현우',
-      title: '15년차 작업치료사',
-      rating: 4.9,
-      reviewCount: 156,
-      experience: '15년',
-      hourlyRate: 85000,
-      profileImage: null,
-      specialties: ['감각통합치료', '작업치료', '소근육발달', '시지각훈련'],
-      location: '경기 성남시',
-      introduction: '감각통합의 아버지 A.J Ayres의 이론을 바탕으로 아이들의 감각 처리 능력 향상에 집중합니다. 국제인증 감각통합치료사로서 전문적인 평가와 치료를 제공합니다.',
-      education: '연세대학교 작업치료학과 졸업',
-      certificates: ['작업치료사 면허', 'SIPT 국제인증', '감각통합치료 전문가'],
-      isOnline: true,
-      responseTime: '평균 30분 이내',
-      availability: '평일/주말 모두 가능'
-    },
-    {
-      id: 4,
-      name: '최지은',
-      title: '6년차 물리치료사',
-      rating: 4.7,
-      reviewCount: 73,
-      experience: '6년',
-      hourlyRate: 65000,
-      profileImage: null,
-      specialties: ['소아물리치료', '운동발달', '자세교정', '보바스치료'],
-      location: '인천 남동구',
-      introduction: '뇌성마비, 발달지연 등으로 운동발달에 어려움을 겪는 아이들의 기능 향상을 전문으로 합니다. NDT-Bobath 접근법을 통한 체계적인 치료를 제공합니다.',
-      education: '삼육대학교 물리치료학과 졸업',
-      certificates: ['물리치료사 면허', 'NDT-Bobath 인증', '소아발달 전문가'],
-      isOnline: false,
-      responseTime: '평균 3시간 이내',
-      availability: '평일 오후 1-7시'
-    },
-    {
-      id: 5,
-      name: '정현석',
-      title: '10년차 ABA치료사',
-      rating: 4.8,
-      reviewCount: 94,
-      experience: '10년',
-      hourlyRate: 90000,
-      profileImage: null,
-      specialties: ['ABA치료', '자폐스펙트럼', 'ADHD', '행동중재'],
-      location: '서울 송파구',
-      introduction: '자폐스펙트럼장애 및 발달장애 아동을 위한 응용행동분석(ABA) 전문가입니다. 미국에서 BCBA 자격을 취득하여 국제적 수준의 치료 서비스를 제공합니다.',
-      education: '미국 UCLA 특수교육학 석사',
-      certificates: ['BCBA 국제인증', 'ABA 전문치료사', 'VB-MAPP 인증'],
-      isOnline: true,
-      responseTime: '평균 1시간 이내',
-      availability: '평일 저녁, 주말 전일 가능'
-    },
-    {
-      id: 6,
-      name: '한수진',
-      title: '9년차 미술치료사',
-      rating: 4.6,
-      reviewCount: 68,
-      experience: '9년',
-      hourlyRate: 60000,
-      profileImage: null,
-      specialties: ['미술치료', '표현예술치료', '트라우마치료', '자존감향상'],
-      location: '경기 고양시',
-      introduction: '미술을 통해 말로 표현하기 어려운 아이들의 마음을 이해하고 치유합니다. 특히 트라우마나 정서적 어려움을 겪는 아이들과의 작업에 전문성을 가지고 있습니다.',
-      education: '홍익대학교 미술치료학과 석사 졸업',
-      certificates: ['미술치료사 1급', '표현예술치료사', '트라우마 전문상담사'],
-      isOnline: false,
-      responseTime: '평균 4시간 이내',
-      availability: '평일 오전, 주말 오후'
-    },
-    {
-      id: 7,
-      name: '윤태영',
-      title: '7년차 특수교사',
-      rating: 4.7,
-      reviewCount: 52,
-      experience: '7년',
-      hourlyRate: 55000,
-      profileImage: null,
-      specialties: ['학습지도', '인지능력향상', '기초학습', '개별교육'],
-      location: '부산 해운대구',
-      introduction: '학습에 어려움을 겪는 아이들을 위한 개별 맞춤 교육을 제공합니다. 아이의 강점을 발견하여 자신감을 기르고, 체계적인 학습 전략을 통해 학업 성취를 도와드립니다.',
-      education: '부산대학교 특수교육과 졸업',
-      certificates: ['특수교사 자격증', '학습치료사', '개별화교육 전문가'],
-      isOnline: true,
-      responseTime: '평균 2시간 이내',
-      availability: '평일 방과후, 주말 가능'
-    },
-    {
-      id: 8,
-      name: '강민아',
-      title: '5년차 인지학습치료사',
-      rating: 4.5,
-      reviewCount: 41,
-      experience: '5년',
-      hourlyRate: 50000,
-      profileImage: null,
-      specialties: ['인지학습치료', '주의집중', '기억력향상', '학습전략'],
-      location: '대전 유성구',
-      introduction: 'ADHD, 학습장애 등으로 학습에 어려움을 겪는 아이들의 인지능력 향상을 전문으로 합니다. 과학적 근거에 기반한 인지훈련 프로그램을 제공합니다.',
-      education: '대전대학교 심리학과 졸업',
-      certificates: ['인지학습치료사', '주의집중향상 전문가', '학습코칭 전문가'],
-      isOnline: true,
-      responseTime: '평균 3시간 이내',
-      availability: '평일 오후 3-8시, 토요일'
-    }
-  ];
+  // Firebase에서 치료사 데이터 실시간으로 가져오기
+  useEffect(() => {
+    console.log('🔍 Firebase에서 치료사 프로필 데이터 가져오기 시작...');
+    
+    const q = query(
+      collection(db, 'therapistProfiles'),
+      where('status', '==', 'approved'),
+      orderBy('createdAt', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      console.log('📥 치료사 프로필 스냅샷 받음:', snapshot.size, '개의 문서');
+      
+      const teacherProfiles: Teacher[] = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        console.log('📄 치료사 데이터:', { id: doc.id, ...data });
+        
+        teacherProfiles.push({
+          id: doc.id,
+          name: data.name || '치료사',
+          title: `${data.experience || '0'}년차 ${data.specialty || '치료사'}`,
+          rating: data.rating || 4.8,
+          reviewCount: data.reviewCount || 0,
+          experience: data.experience || '0년',
+          hourlyRate: data.hourlyRate || 65000,
+          profileImage: data.profileImage,
+          specialties: data.specialties || [data.specialty || '치료'],
+          location: data.location || '서울',
+          introduction: data.introduction || '전문적인 치료 서비스를 제공합니다.',
+          education: data.education || '관련 학과 졸업',
+          certificates: data.certificates || ['자격증'],
+          isOnline: data.isOnline || true,
+          responseTime: data.responseTime || '평균 2시간 이내',
+          availability: data.availability || '평일/주말 상담 가능',
+          createdAt: data.createdAt
+        });
+      });
+      
+      console.log('✅ 최종 치료사 프로필 배열:', teacherProfiles);
+      setTeachers(teacherProfiles);
+      setLoading(false);
+    }, (error) => {
+      console.error('❌ 치료사 프로필 가져오기 오류:', error);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   return (
     <section className="py-20 bg-white">
@@ -160,7 +87,9 @@ export default function TeacherProfiles() {
         <div className="flex justify-between items-center mb-8">
           <div>
             <h2 className="text-2xl font-bold text-gray-900">검증된 전문 치료사</h2>
-            <p className="text-gray-600 mt-1">총 {teachers.length}명의 선생님이 등록되어 있습니다</p>
+            <p className="text-gray-600 mt-1">
+              {loading ? '치료사 정보를 불러오는 중...' : `총 ${teachers.length}명의 선생님이 등록되어 있습니다`}
+            </p>
           </div>
           
           {/* 보기 모드 선택 */}
@@ -184,12 +113,25 @@ export default function TeacherProfiles() {
           </div>
         </div>
 
+        {/* 로딩 상태 */}
+        {loading && (
+          <div className="flex justify-center items-center py-20">
+            <div className="text-gray-500">치료사 정보를 불러오는 중...</div>
+          </div>
+        )}
+
         {/* 치료사 목록 */}
-        <div className={viewMode === 'grid' 
-          ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' 
-          : 'space-y-6'
-        }>
-          {teachers.map((teacher) => (
+        {!loading && (
+          <div className={viewMode === 'grid' 
+            ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' 
+            : 'space-y-6'
+          }>
+            {teachers.length === 0 ? (
+              <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center text-gray-500 col-span-full">
+                등록된 치료사가 없습니다.
+              </div>
+            ) : (
+              teachers.map((teacher) => (
             <div key={teacher.id} className={`bg-white rounded-2xl shadow-sm hover:shadow-lg transition-all duration-200 ${
               viewMode === 'list' 
                 ? 'border-2 border-blue-100 hover:border-blue-200 p-6' 
@@ -247,16 +189,16 @@ export default function TeacherProfiles() {
                 // 리스트 뷰 - 새로운 치료사 프로필 카드 디자인
                 <div className="flex items-start justify-between">
                   <div className="flex items-start space-x-4 flex-1">
-                    {/* 프로필 이미지 */}
+                  {/* 프로필 이미지 */}
                     <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden relative">
                       <div className="text-center">
                         <span className="text-gray-500 text-xs font-medium block">프로필</span>
                         <span className="text-gray-400 text-xs block">사진</span>
                       </div>
-                    </div>
-                    
+                  </div>
+                  
                     {/* 치료사 정보 */}
-                    <div className="flex-1">
+                  <div className="flex-1">
                       {/* 치료사 이름과 경력 */}
                       <div className="flex items-center space-x-2 mb-1">
                         <h3 className="text-lg font-bold text-gray-900">
@@ -264,9 +206,9 @@ export default function TeacherProfiles() {
                         </h3>
                         <span className="text-sm text-gray-600">
                           ({teacher.experience}차 {teacher.specialties[0]}사)
-                        </span>
-                      </div>
-                      
+                          </span>
+                        </div>
+                        
                       {/* 별점과 후기 */}
                       <div className="flex items-center space-x-2 mb-3">
                         <div className="flex items-center">
@@ -287,13 +229,13 @@ export default function TeacherProfiles() {
                               : 'bg-green-50 text-green-700 border border-green-200'
                           }`}>
                             #{specialty}
-                          </span>
-                        ))}
+                            </span>
+                          ))}
                         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-50 text-gray-700 border border-gray-200">
                           #{teacher.location.split(' ')[1] || teacher.location}
                         </span>
-                      </div>
-                      
+                        </div>
+                        
                       {/* 가격 정보 */}
                       <div className="text-xl font-bold text-blue-600 mb-4">
                         회기당 {teacher.hourlyRate.toLocaleString()}원
@@ -328,8 +270,8 @@ export default function TeacherProfiles() {
                   {/* 오른쪽: 채팅 버튼 */}
                   <div className="flex flex-col items-end space-y-3 ml-6">
                     <button className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-2xl font-medium transition-colors shadow-sm">
-                      1:1 채팅
-                    </button>
+                          1:1 채팅
+                        </button>
                     
                     <div className="text-right">
                       {/* 상세 프로필 보기 텍스트 스타일 변경 */}
@@ -346,11 +288,14 @@ export default function TeacherProfiles() {
                 </div>
               )}
             </div>
-          ))}
-        </div>
+                ))
+              )}
+          </div>
+        )}
 
         {/* 페이지네이션 */}
-        <div className="flex justify-center mt-12">
+        {!loading && teachers.length > 0 && (
+          <div className="flex justify-center mt-12">
           <div className="flex items-center space-x-2">
             <button className="px-3 py-2 rounded-lg border border-gray-300 text-gray-500 hover:bg-gray-50">
               이전
@@ -371,7 +316,8 @@ export default function TeacherProfiles() {
               다음
             </button>
           </div>
-        </div>
+          </div>
+        )}
       </div>
     </section>
   );
