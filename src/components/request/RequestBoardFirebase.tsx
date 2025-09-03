@@ -536,110 +536,117 @@ export default function RequestBoardFirebase() {
                 </div>
               ) : (
                 currentPosts.map((post, index) => (
-                  <div key={post.id} className="bg-white rounded-2xl border border-gray-200 p-6 hover:shadow-md transition-shadow">
-                    <div className="flex items-center justify-between">
+                  <div key={post.id} className="bg-white rounded-2xl border-2 border-blue-100 p-6 hover:shadow-lg transition-all duration-200 hover:border-blue-200">
+                    <div className="flex items-start justify-between">
                       {/* 왼쪽: 프로필 정보 */}
-                      <div className="flex items-start space-x-4">
-                        {/* 번호와 프로필 */}
-                        <div className="flex flex-col items-center space-y-2">
-                          <div className="text-sm text-gray-500 font-medium">
-                            #{(startIndex + index + 1).toString().padStart(3, '0')}
-                          </div>
-                          {/* 프로필 이미지 */}
-                          <div className="w-16 h-16 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-md">
-                            {post.age?.charAt(0) || 'P'}
+                      <div className="flex items-start space-x-4 flex-1">
+                        {/* 프로필 이미지 */}
+                        <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden relative">
+                          <div className="text-center">
+                            <span className="text-gray-500 text-xs font-medium block">프로필</span>
+                            <span className="text-gray-400 text-xs block">사진</span>
                           </div>
                         </div>
                         
-                        {/* 기본 정보 */}
+                        {/* 치료사 정보 */}
                         <div className="flex-1">
-                          <div className="flex items-center space-x-3 mb-2">
-                            <h3 className="text-lg font-bold text-gray-900">{post.title}</h3>
-                            <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-                              {post.age} {post.gender}아이
+                          {/* 치료사 이름과 경력 */}
+                          <div className="flex items-center space-x-2 mb-1">
+                            <h3 className="text-lg font-bold text-gray-900">
+                              김OO 치료사
+                            </h3>
+                            <span className="text-sm text-gray-600">
+                              (7년차 {post.treatment}사)
                             </span>
                           </div>
                           
-                          {/* 치료분야와 지역 */}
+                          {/* 별점과 후기 */}
+                          <div className="flex items-center space-x-2 mb-3">
+                            <div className="flex items-center">
+                              <span className="text-orange-400 text-lg">★</span>
+                              <span className="text-sm font-medium ml-1">4.8</span>
+                              <span className="text-xs text-gray-500 ml-1">(후기 15개)</span>
+                            </div>
+                          </div>
+                          
+                          {/* 치료분야 태그 */}
                           <div className="flex items-center space-x-2 mb-3">
                             <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-50 text-blue-700 border border-blue-200">
                               #{post.treatment}
                             </span>
-                            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-50 text-purple-700 border border-purple-200">
-                              {post.category}
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200">
+                              #{post.category}
+                            </span>
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
+                              #{post.frequency}
                             </span>
                           </div>
                           
                           {/* 가격 정보 */}
-                          <div className="text-xl font-bold text-blue-600 mb-3">
+                          <div className="text-xl font-bold text-blue-600 mb-4">
                             회기당 {(() => {
                               if (!post.price) return '65,000원';
                               const priceStr = post.price.toString();
-                              // 이미 원이 포함되어 있으면 그대로 반환
                               if (priceStr.includes('원')) return priceStr;
-                              // 숫자만 있으면 콤마 추가 후 원 붙이기
                               const numericPrice = priceStr.replace(/[^0-9]/g, '');
                               return numericPrice.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '원';
                             })()}
                           </div>
                           
-                          {/* 인증 정보 - 둥근 박스들 */}
-                          <div className="flex items-center space-x-2 mb-3">
-                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 border border-green-200">
-                              자격증
-                            </span>
-                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200">
-                              경력증명
-                            </span>
-                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
-                              신분증확인
-                            </span>
-                            <span className="text-gray-400 text-xs ml-2">내부검수</span>
-                          </div>
+                          {/* 구분선 */}
+                          <div className="border-t border-gray-200 pt-3 mb-3"></div>
                           
-                          {/* 세부 정보 */}
-                          <div className="text-sm text-gray-600 space-y-1">
-                            <p><span className="font-medium">희망시간:</span> {post.details}</p>
-                            <p><span className="font-medium">희망빈도:</span> {post.frequency}</p>
-                            {post.additionalInfo && (
-                              <p className="text-gray-500 mt-2 overflow-hidden text-ellipsis max-h-12">
-                                {post.additionalInfo.length > 100 ? 
-                                  post.additionalInfo.substring(0, 100) + '...' : 
-                                  post.additionalInfo
-                                }
-                              </p>
-                            )}
+                          {/* 인증 정보 - 체크마크 스타일 */}
+                          <div className="flex items-center space-x-4">
+                            <div className="flex items-center space-x-1">
+                              <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                                <span className="text-white text-xs">✓</span>
+                              </div>
+                              <span className="text-sm text-gray-700">자격증</span>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                              <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                                <span className="text-white text-xs">✓</span>
+                              </div>
+                              <span className="text-sm text-gray-700">경력증명</span>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                              <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                                <span className="text-white text-xs">✓</span>
+                              </div>
+                              <span className="text-sm text-gray-700">신분증확인서</span>
+                            </div>
+                            <span className="text-gray-400 text-xs">보험가입</span>
+                            <div className="flex items-center space-x-1">
+                              <span className="text-blue-600 text-sm">★</span>
+                              <span className="text-sm text-blue-600">더많은 인증</span>
+                            </div>
                           </div>
                         </div>
                       </div>
                       
                       {/* 오른쪽: 채팅 버튼 */}
-                      <div className="flex flex-col items-end space-y-3">
+                      <div className="flex flex-col items-end space-y-3 ml-6">
                         <button className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-2xl font-medium transition-colors shadow-sm">
                           1:1 채팅
                         </button>
                         
-                        {/* 지원자 수 표시 */}
-                        {post.applications > 0 && (
-                          <div className="text-sm text-blue-600 font-medium bg-blue-50 px-3 py-1 rounded-full">
-                            +{post.applications} 지원자
+                        <div className="text-right">
+                          {/* 상세 프로필 보기 텍스트 스타일 변경 */}
+                          <div className="text-xs text-gray-500 mb-1">
+                            상세 프로필 보기 &gt;
                           </div>
-                        )}
-                        
-                        {/* 작성일 */}
-                        <div className="text-xs text-gray-400">
-                          {post.createdAt ? 
-                            new Date(post.createdAt.toDate ? post.createdAt.toDate() : post.createdAt).toLocaleDateString('ko-KR', {
-                              month: 'long',
-                              day: 'numeric'
-                            }) : '오늘'
-                          }
+                          
+                          {/* 작성일 */}
+                          <div className="text-xs text-gray-400">
+                            {post.createdAt ? 
+                              new Date(post.createdAt.toDate ? post.createdAt.toDate() : post.createdAt).toLocaleDateString('ko-KR', {
+                                month: 'long',
+                                day: 'numeric'
+                              }) : '9월 2일'
+                            }
+                          </div>
                         </div>
-                        
-                        {/* 상세 프로필 보기 링크 */}
-                        <button className="text-xs text-blue-500 hover:text-blue-700 underline">
-                          상세 프로필 보기
-                        </button>
                       </div>
                     </div>
                   </div>
