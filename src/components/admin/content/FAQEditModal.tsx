@@ -1,20 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-
-interface FAQ {
-  id: string;
-  category: 'general' | 'payment' | 'matching' | 'technical' | 'other';
-  question: string;
-  answer: string;
-  isActive: boolean;
-  views: number;
-  order: number;
-  createdAt: string;
-  updatedAt: string;
-  createdBy: string;
-  tags: string[];
-}
+import { FAQ } from '@/lib/faq';
 
 interface FAQEditModalProps {
   isOpen: boolean;
@@ -33,142 +20,165 @@ export default function FAQEditModal({
   onSave, 
   onDelete 
 }: FAQEditModalProps) {
-  const [category, setCategory] = useState<'general' | 'payment' | 'matching' | 'technical' | 'other'>('general');
-  const [question, setQuestion] = useState('');
-  const [answer, setAnswer] = useState('');
-  const [isActive, setIsActive] = useState(true);
-  const [order, setOrder] = useState(1);
-  const [tags, setTags] = useState<string[]>([]);
-  const [newTag, setNewTag] = useState('');
+  // 기본 상태
+  const [formData, setFormData] = useState({
+    category: 'common',
+    question: '',
+    answer: '',
+    isActive: true,
+    order: 1
+  });
 
+  // 닫기 애니메이션을 위한 상태
+  const [isClosing, setIsClosing] = useState(false);
+
+  // 모달이 열릴 때 데이터 초기화
   useEffect(() => {
-    if (faq && !isCreating) {
-      setCategory(faq.category);
-      setQuestion(faq.question);
-      setAnswer(faq.answer);
-      setIsActive(faq.isActive);
-      setOrder(faq.order);
-      setTags(faq.tags);
-    } else if (isCreating) {
-      // 새 FAQ 작성 시 초기값
-      setCategory('general');
-      setQuestion('');
-      setAnswer('');
-      setIsActive(true);
-      setOrder(1);
-      setTags([]);
+    if (isOpen) {
+      setIsClosing(false); // 열릴 때 닫기 상태 리셋
+      if (faq && !isCreating) {
+        setFormData({
+          category: faq.category,
+          question: faq.question,
+          answer: faq.answer,
+          isActive: faq.isActive,
+          order: faq.order
+        });
+      } else if (isCreating) {
+        setFormData({
+          category: 'common',
+          question: '',
+          answer: '',
+          isActive: true,
+          order: 1
+        });
+      }
     }
-  }, [faq, isCreating]);
+  }, [isOpen, faq, isCreating]);
 
-  if (!isOpen) return null;
+  // 애니메이션과 함께 닫기
+  const handleClose = () => {
+    setIsClosing(true);
+    setTimeout(() => {
+      onClose();
+      setIsClosing(false);
+    }, 250); // 애니메이션 시간과 맞춤
+  };
 
-  const handleSave = () => {
-    if (!question.trim() || !answer.trim()) {
-      alert('질문과 답변을 입력해주세요.');
+  // 모달이 닫혀있으면 렌더링하지 않음
+  if (!isOpen) {
+    return null;
+  }
+
+  // 저장 핸들러
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!formData.question.trim() || !formData.answer.trim()) {
+      alert('질문과 답변을 모두 입력해주세요.');
       return;
     }
 
     const faqData: Partial<FAQ> = {
-      category,
-      question: question.trim(),
-      answer: answer.trim(),
-      isActive,
-      order,
-      tags,
+      category: formData.category,
+      question: formData.question.trim(),
+      answer: formData.answer.trim(),
+      isActive: formData.isActive,
+      order: formData.order,
       ...(isCreating && { 
-        id: 'FAQ' + Date.now().toString().slice(-3),
-        views: 0
+        views: 0,
+        createdBy: 'admin'
       })
     };
 
     onSave(faqData);
   };
 
+  // 삭제 핸들러
   const handleDelete = () => {
-    if (!faq) return;
+    if (!faq || isCreating) return;
     
-    if (confirm('정말 이 FAQ를 삭제하시겠습니까?')) {
+    if (window.confirm('정말 이 FAQ를 삭제하시겠습니까?')) {
       onDelete(faq.id);
     }
   };
 
-  const handleAddTag = () => {
-    if (newTag.trim() && !tags.includes(newTag.trim())) {
-      setTags([...tags, newTag.trim()]);
-      setNewTag('');
-    }
+  // 입력값 변경 핸들러
+  const handleInputChange = (field: string, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
-  const handleRemoveTag = (tagToRemove: string) => {
-    setTags(tags.filter(tag => tag !== tagToRemove));
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      handleAddTag();
-    }
+  // 카테고리 이름 매핑
+  const getCategoryName = (category: string) => {
+    const categoryMap: Record<string, string> = {
+      'common': '공통질문',
+      'parent': '학부모 회원',
+      'therapist': '치료사 회원',
+      'payment': '결제 및 회원'
+    };
+    return categoryMap[category] || category;
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-        {/* 배경 오버레이 */}
-        <div className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onClick={onClose}></div>
-
-        {/* 모달 */}
-        <div className="inline-block w-full max-w-3xl p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-lg">
-          {/* 헤더 */}
-          <div className="flex items-center justify-between pb-4 border-b border-gray-200">
+    <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50">
+      <div className={`bg-white rounded-lg p-8 max-w-6xl w-[95vw] shadow-xl border-4 border-blue-500 max-h-[90vh] overflow-y-auto ${isClosing ? 'animate-slideOut' : 'animate-slideIn'}`}>
+        {/* 헤더 */}
+        <div className="flex justify-between items-center mb-6">
             <div>
-              <h3 className="text-lg font-medium text-gray-900">
+              <h2 className="text-2xl font-bold text-gray-900">
                 {isCreating ? '새 FAQ 작성' : 'FAQ 수정'}
-              </h3>
+              </h2>
               {!isCreating && faq && (
-                <p className="text-sm text-gray-600">ID: {faq.id} | 조회수: {faq.views.toLocaleString()}</p>
+                <p className="text-sm text-gray-500 mt-1">
+                  ID: {faq.id} • 조회수: {faq.views?.toLocaleString() || 0}회
+                </p>
               )}
             </div>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
+            <button
+              onClick={handleClose}
+              className="text-gray-400 hover:text-gray-600 text-2xl"
+              type="button"
+            >
+              ✕
             </button>
           </div>
 
           {/* 폼 내용 */}
-          <div className="mt-6 space-y-6">
-            {/* 기본 정보 */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* 카테고리 & 순서 */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   카테고리 *
                 </label>
                 <select
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value as any)}
+                  value={formData.category}
+                  onChange={(e) => handleInputChange('category', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
                 >
-                  <option value="general">일반 이용 문의</option>
-                  <option value="payment">결제 관련</option>
-                  <option value="matching">매칭 관련</option>
-                  <option value="technical">기술 지원</option>
-                  <option value="other">기타</option>
+                  <option value="common">공통질문</option>
+                  <option value="parent">학부모 회원</option>
+                  <option value="therapist">치료사 회원</option>
+                  <option value="payment">결제 및 회원</option>
                 </select>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  순서 *
+                  순서
                 </label>
                 <input
                   type="number"
-                  value={order}
-                  onChange={(e) => setOrder(Number(e.target.value))}
-                  min={1}
-                  max={99}
+                  value={formData.order}
+                  onChange={(e) => handleInputChange('order', parseInt(e.target.value) || 1)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  min="1"
+                  required
                 />
-                <p className="text-xs text-gray-500 mt-1">숫자가 낮을수록 먼저 표시됩니다</p>
               </div>
             </div>
 
@@ -179,10 +189,11 @@ export default function FAQEditModal({
               </label>
               <input
                 type="text"
-                value={question}
-                onChange={(e) => setQuestion(e.target.value)}
+                value={formData.question}
+                onChange={(e) => handleInputChange('question', e.target.value)}
                 placeholder="자주 묻는 질문을 입력하세요"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
               />
             </div>
 
@@ -192,144 +203,84 @@ export default function FAQEditModal({
                 답변 *
               </label>
               <textarea
-                value={answer}
-                onChange={(e) => setAnswer(e.target.value)}
+                value={formData.answer}
+                onChange={(e) => handleInputChange('answer', e.target.value)}
+                placeholder="질문에 대한 답변을 입력하세요"
                 rows={6}
-                placeholder="상세한 답변을 입력하세요"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
               />
-            </div>
-
-            {/* 태그 */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                태그
-              </label>
-              <div className="space-y-3">
-                <div className="flex space-x-2">
-                  <input
-                    type="text"
-                    value={newTag}
-                    onChange={(e) => setNewTag(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    placeholder="태그를 입력하고 Enter를 누르세요"
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleAddTag}
-                    className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700"
-                  >
-                    추가
-                  </button>
-                </div>
-                
-                {tags.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {tags.map((tag, index) => (
-                      <span
-                        key={index}
-                        className="inline-flex items-center px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-full"
-                      >
-                        #{tag}
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveTag(tag)}
-                          className="ml-2 text-gray-500 hover:text-red-500"
-                        >
-                          ×
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
             </div>
 
             {/* 활성 상태 */}
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center">
               <input
                 type="checkbox"
-                checked={isActive}
-                onChange={(e) => setIsActive(e.target.checked)}
+                id="isActive"
+                checked={formData.isActive}
+                onChange={(e) => handleInputChange('isActive', e.target.checked)}
                 className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
               />
-              <label className="text-sm font-medium text-gray-700">
-                FAQ 활성화
+              <label htmlFor="isActive" className="ml-2 text-sm text-gray-700">
+                활성화 (체크 해제 시 사용자에게 보이지 않습니다)
               </label>
             </div>
 
             {/* 미리보기 */}
-            <div className="bg-gray-50 rounded-lg p-4">
-              <h4 className="text-sm font-medium text-gray-900 mb-3">미리보기</h4>
-              <div className="space-y-3">
-                <div className="flex items-center space-x-2">
-                  <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                    category === 'general' ? 'bg-blue-100 text-blue-800' :
-                    category === 'payment' ? 'bg-purple-100 text-purple-800' :
-                    category === 'matching' ? 'bg-green-100 text-green-800' :
-                    category === 'technical' ? 'bg-orange-100 text-orange-800' :
-                    'bg-gray-100 text-gray-800'
-                  }`}>
-                    {category === 'general' ? '일반 이용' :
-                     category === 'payment' ? '결제 관련' :
-                     category === 'matching' ? '🤝 매칭 관련' :
-                     category === 'technical' ? '기술 지원' : '기타'}
-                  </span>
-                  <span className="text-xs text-gray-500">순서: #{order}</span>
-                </div>
-                
-                <div>
-                  <h5 className="font-medium text-gray-900 mb-2">
-                    {question || '질문을 입력하세요'}
-                  </h5>
-                  <p className="text-sm text-gray-700 whitespace-pre-wrap">
-                    {answer || '답변을 입력하세요'}
-                  </p>
-                </div>
-                
-                {tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1">
-                    {tags.map((tag, index) => (
-                      <span key={index} className="px-2 py-1 text-xs bg-gray-200 text-gray-600 rounded">
-                        #{tag}
-                      </span>
-                    ))}
+            {formData.question && formData.answer && (
+              <div className="bg-gray-50 p-4 rounded-lg border">
+                <h4 className="text-sm font-medium text-gray-900 mb-2">미리보기</h4>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
+                      {getCategoryName(formData.category)}
+                    </span>
+                    <span className="text-xs text-gray-500">순서: {formData.order}</span>
+                    {formData.isActive ? (
+                      <span className="text-xs text-green-600">활성</span>
+                    ) : (
+                      <span className="text-xs text-red-600">비활성</span>
+                    )}
                   </div>
+                  <div className="text-sm">
+                    <p className="font-medium text-gray-900">Q. {formData.question}</p>
+                    <p className="text-gray-600 mt-1">A. {formData.answer}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 버튼들 */}
+            <div className="flex justify-between pt-4 border-t border-gray-200">
+              <div>
+                {!isCreating && (
+                  <button
+                    type="button"
+                    onClick={handleDelete}
+                    className="px-4 py-2 text-red-600 hover:bg-red-50 border border-red-200 rounded-md transition-colors"
+                  >
+                    삭제
+                  </button>
                 )}
               </div>
-            </div>
-          </div>
-
-          {/* 푸터 */}
-          <div className="mt-6 pt-4 border-t border-gray-200 flex justify-between">
-            <div>
-              {!isCreating && faq && (
+              <div className="flex gap-2">
                 <button
-                  onClick={handleDelete}
-                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
+                  type="button"
+                  onClick={handleClose}
+                  className="px-4 py-2 text-gray-600 hover:bg-gray-50 border border-gray-300 rounded-md transition-colors"
                 >
-                  삭제
+                  취소
                 </button>
-              )}
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                >
+                  {isCreating ? '작성 완료' : '수정 완료'}
+                </button>
+              </div>
             </div>
-            <div className="flex space-x-3">
-              <button
-                onClick={onClose}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300"
-              >
-                취소
-              </button>
-              <button
-                onClick={handleSave}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
-              >
-                {isCreating ? '작성 완료' : '수정 완료'}
-              </button>
-            </div>
-          </div>
+          </form>
         </div>
-      </div>
     </div>
   );
 }

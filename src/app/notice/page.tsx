@@ -1,7 +1,47 @@
-import React from 'react';
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+
+interface Notice {
+  id: string;
+  title: string;
+  date: string;
+  isNew: boolean;
+  isImportant: boolean;
+  content: string;
+  createdAt?: any;
+}
 
 export default function NoticePage() {
-  const notices = [
+  const [firebaseNotices, setFirebaseNotices] = useState<Notice[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [expandedNotice, setExpandedNotice] = useState<string | null>(null);
+
+  // Firebase에서 실제 공지사항 가져오기
+  useEffect(() => {
+    const noticesQuery = query(
+      collection(db, 'notices'),
+      orderBy('createdAt', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(noticesQuery, (snapshot) => {
+      const noticesData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate()
+      })) as Notice[];
+      
+      setFirebaseNotices(noticesData);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // 더미 데이터 (기존 디자인 유지용)
+  const dummyNotices = [
     {
       id: 1,
       title: "[중요] 새로운 치료사 매칭 시스템 도입 안내",
@@ -44,14 +84,34 @@ export default function NoticePage() {
     },
   ];
 
+  // 드롭다운 토글 함수 (한 번에 하나만 열리도록)
+  const toggleNotice = (noticeId: string) => {
+    setExpandedNotice(prev => prev === noticeId ? null : noticeId);
+  };
+
+  // Firebase 데이터와 더미 데이터 병합 (실제 데이터가 우선)
+  const allNotices = [
+    ...firebaseNotices,
+    ...dummyNotices.filter(dummy => 
+      !firebaseNotices.some(firebase => firebase.title === dummy.title)
+    )
+  ].sort((a, b) => {
+    // 중요 공지사항을 맨 위로
+    if (a.isImportant && !b.isImportant) return -1;
+    if (!a.isImportant && b.isImportant) return 1;
+    
+    // 날짜순 정렬
+    return new Date(b.date).getTime() - new Date(a.date).getTime();
+  });
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Hero 섹션 */}
-      <section className="bg-blue-500 text-white py-16">
+      <section className="bg-white py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            <h1 className="text-4xl font-bold mb-4">공지사항</h1>
-            <p className="text-xl text-blue-100">
+            <h1 className="text-4xl font-bold mb-4 text-gray-900">공지사항</h1>
+            <p className="text-xl text-gray-600">
               모든별 키즈의 새로운 소식과 중요한 안내사항을 확인하세요
             </p>
           </div>
@@ -61,47 +121,91 @@ export default function NoticePage() {
       {/* 공지사항 목록 */}
       <section className="py-16">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          {loading ? (
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+              <p className="text-gray-600">공지사항을 불러오는 중...</p>
+            </div>
+          ) : (
           <div className="bg-white rounded-xl shadow-lg overflow-hidden">
             {/* 헤더 */}
             <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold text-gray-900">전체 공지사항</h2>
-                <span className="text-sm text-gray-500">총 {notices.length}건</span>
+                <span className="text-sm text-gray-500">총 {allNotices.length}건</span>
               </div>
             </div>
 
             {/* 목록 */}
             <div className="divide-y divide-gray-200">
-              {notices.map((notice) => (
-                <div key={notice.id} className="px-6 py-6 hover:bg-gray-50 transition-colors cursor-pointer">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-2 mb-2">
-                        {notice.isImportant && (
-                          <span className="bg-red-100 text-red-600 text-xs px-2 py-1 rounded-full font-medium">
-                            중요
-                          </span>
-                        )}
-                        {notice.isNew && (
-                          <span className="bg-blue-100 text-blue-600 text-xs px-2 py-1 rounded-full font-medium">
-                            NEW
-                          </span>
-                        )}
+              {allNotices.map((notice) => {
+                const isExpanded = expandedNotice === notice.id.toString();
+                return (
+                  <div key={notice.id} className="transition-all duration-200">
+                    <div 
+                      className="px-6 py-6 hover:bg-gray-50 transition-colors cursor-pointer"
+                      onClick={() => toggleNotice(notice.id.toString())}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-2 mb-2">
+                            {notice.isImportant && (
+                              <span className="bg-red-100 text-red-600 text-xs px-2 py-1 rounded-full font-medium">
+                                중요
+                              </span>
+                            )}
+                            {notice.isNew && (
+                              <span className="bg-blue-100 text-blue-600 text-xs px-2 py-1 rounded-full font-medium">
+                                NEW
+                              </span>
+                            )}
+                          </div>
+                          <h3 className="text-lg font-medium text-gray-900 mb-2 hover:text-blue-500 transition-colors">
+                            {notice.title}
+                          </h3>
+                          <p className="text-sm text-gray-500">{notice.date}</p>
+                        </div>
+                        <div className="ml-4">
+                          <svg 
+                            className={`h-5 w-5 text-gray-400 transform transition-transform duration-300 ${
+                              isExpanded ? 'rotate-90' : ''
+                            }`} 
+                            fill="none" 
+                            viewBox="0 0 24 24" 
+                            stroke="currentColor"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </div>
                       </div>
-                      <h3 className="text-lg font-medium text-gray-900 mb-2 hover:text-blue-500 transition-colors">
-                        {notice.title}
-                      </h3>
-                      <p className="text-gray-600 text-sm mb-3">{notice.content}</p>
-                      <p className="text-sm text-gray-500">{notice.date}</p>
                     </div>
-                    <div className="ml-4">
-                      <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
+                    
+                    {/* 드롭다운 내용 */}
+                    <div 
+                      className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                        isExpanded ? 'max-h-screen opacity-100' : 'max-h-0 opacity-0'
+                      }`}
+                    >
+                      <div className="px-8 py-6 bg-gray-50 border-t border-gray-200">
+                        <div className="max-w-none text-gray-700 leading-relaxed">
+                          {notice.content.split('\n').map((line, index) => (
+                            <p key={index} className="mb-4 text-base leading-7 last:mb-0">
+                              {line || '\u00A0'} {/* 빈 줄도 공간 차지하도록 */}
+                            </p>
+                          ))}
+                          
+                          {/* 추가 여백과 구분선 */}
+                          <div className="mt-6 pt-4 border-t border-gray-200">
+                            <p className="text-sm text-gray-500 italic">
+                              자세한 문의사항이 있으시면 고객센터로 연락해 주세요.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* 페이지네이션 */}
@@ -123,32 +227,12 @@ export default function NoticePage() {
               </div>
             </div>
           </div>
+          )}
         </div>
       </section>
 
       {/* 중요 안내 */}
-      <section className="py-16 bg-blue-50">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-blue-100 border-l-4 border-blue-500 p-6 rounded-r-lg">
-            <div className="flex items-start">
-              <div className="flex-shrink-0">
-                <svg className="h-6 w-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <h3 className="text-lg font-medium text-blue-800 mb-2">공지사항 알림 서비스</h3>
-                <p className="text-blue-700 text-sm mb-3">
-                  중요한 공지사항을 놓치지 않도록 알림 서비스를 신청하세요.
-                </p>
-                <button className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-                  알림 신청하기
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+
     </div>
   );
 }

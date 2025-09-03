@@ -1,8 +1,5 @@
 import type { Metadata } from "next";
-import ReviewsHero from '@/components/reviews/ReviewsHero';
 import ReviewsList from '@/components/reviews/ReviewsList';
-import ReviewStats from '@/components/reviews/ReviewStats';
-import Statistics from '@/components/sections/Statistics';
 
 export const metadata: Metadata = {
   title: "치료사 후기 - 모든별 키즈",
@@ -12,16 +9,7 @@ export const metadata: Metadata = {
 export default function ReviewsPage() {
   return (
     <div>
-      {/* 히어로 섹션 */}
-      <ReviewsHero />
-      
-      {/* 후기 통계 */}
-      <ReviewStats />
-      
-      {/* 플랫폼 통계 */}
-      <Statistics />
-      
-      {/* 후기 목록 */}
+      {/* 후기 목록만 표시 */}
       <ReviewsList />
     </div>
   );

@@ -61,7 +61,8 @@ const menuItems: MenuItem[] = [
     title: '콘텐츠 관리',
     children: [
       { title: '공지사항', href: '/admin/content/notices' },
-      { title: 'FAQ', href: '/admin/content/faq' }
+      { title: 'FAQ', href: '/admin/content/faq' },
+      { title: '후기 관리', href: '/admin/content/reviews' }
     ]
   },
   {

@@ -8,7 +8,7 @@ export default function Footer() {
           {/* 브랜드 정보 */}
           <div className="col-span-1 md:col-span-2">
             <div className="flex items-center space-x-2 mb-4">
-              <div className="w-8 h-8 bg-orange-500 rounded-2xl flex items-center justify-center">
+              <div className="w-8 h-8 bg-blue-500 rounded-2xl flex items-center justify-center">
                 <span className="text-white font-bold text-sm">더</span>
               </div>
               <span className="text-xl font-bold">모든별 키즈</span>

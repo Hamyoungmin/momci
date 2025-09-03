@@ -58,8 +58,8 @@ export default function Hero() {
                   <div className="w-32 h-32 bg-orange-200 rounded-full mx-auto mb-6 flex items-center justify-center">
                     <span className="text-4xl">👩‍⚕️</span>
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">김OO 치료사</h3>
-                  <p className="text-gray-600 mb-4">7년차 언어재활사</p>
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">전문 치료사</h3>
+                  <p className="text-gray-600 mb-4">검증된 자격증 보유</p>
                   <div className="flex justify-center items-center space-x-1 mb-4">
                     {[...Array(5)].map((_, i) => (
                       <span key={i} className="text-yellow-400">⭐</span>

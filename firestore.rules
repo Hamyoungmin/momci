@@ -13,6 +13,11 @@ service cloud.firestore {
              exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
     
+    function isFAQAdmin() {
+      return request.auth != null && 
+             request.auth.token.email == 'dudals7334@naver.com';
+    }
+    
     function isAuthenticated() {
       return request.auth != null;
     }
@@ -361,8 +366,8 @@ service cloud.firestore {
       // 모든 사용자가 읽기 가능
       allow read: if true;
       
-      // 관리자만 생성/수정/삭제 가능
-      allow create, update, delete: if isAdmin();
+      // 특정 관리자만 FAQ 관리 가능
+      allow create, update, delete: if isFAQAdmin();
     }
     
     // 시스템 통계 (관리자만 접근 가능)
@@ -1117,6 +1122,31 @@ service cloud.firestore {
                        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['parentId', 'therapistId', 'createdAt']);
       
       // 관리자만 삭제 가능 (부적절한 리뷰)
+      allow delete: if isAdmin();
+    }
+
+    // 일반 후기 (reviews 컬렉션)
+    match /reviews/{reviewId} {
+      // 승인된 후기만 읽기 가능 (일반 사용자)
+      allow read: if resource.data.status == 'approved' || 
+                     isOwner(resource.data.userId) || 
+                     isAdmin();
+      
+      // 인증된 사용자만 후기 작성 가능
+      allow create: if isAuthenticated() && 
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.keys().hasAll(['title', 'content', 'category', 'rating', 'createdAt', 'status']) &&
+                       request.resource.data.rating is number &&
+                       request.resource.data.rating >= 1 &&
+                       request.resource.data.rating <= 5 &&
+                       request.resource.data.status == 'pending';
+      
+      // 관리자만 상태 변경 가능 (승인/거부)
+      allow update: if isAdmin() && 
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) &&
+                       request.resource.data.status in ['pending', 'approved', 'rejected'];
+      
+      // 관리자만 삭제 가능
       allow delete: if isAdmin();
     }
   }

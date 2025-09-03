@@ -3,20 +3,7 @@
 import { useState, useEffect } from 'react';
 import FAQTable from './FAQTable';
 import FAQEditModal from './FAQEditModal';
-
-interface FAQ {
-  id: string;
-  category: 'general' | 'payment' | 'matching' | 'technical' | 'other';
-  question: string;
-  answer: string;
-  isActive: boolean;
-  views: number;
-  order: number;
-  createdAt: string;
-  updatedAt: string;
-  createdBy: string;
-  tags: string[];
-}
+import { FAQ, getAllFAQsForAdmin, addFAQ, updateFAQ, deleteFAQ, initializeFAQs } from '@/lib/faq';
 
 export default function FAQManagement() {
   const [selectedFAQ, setSelectedFAQ] = useState<FAQ | null>(null);
@@ -29,9 +16,21 @@ export default function FAQManagement() {
   const [faqs, setFaqs] = useState<FAQ[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // FAQ 데이터 로드
+  const loadFAQs = async () => {
+    try {
+      setLoading(true);
+      const faqList = await getAllFAQsForAdmin();
+      setFaqs(faqList);
+    } catch (error) {
+      console.error('FAQ 로드 오류:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    // TODO: Firebase에서 실제 FAQ 데이터 가져오기
-    setLoading(false);
+    loadFAQs();
   }, []);
 
   const handleFAQSelect = (faq: FAQ) => {
@@ -52,16 +51,53 @@ export default function FAQManagement() {
     setIsCreating(false);
   };
 
-  const handleSaveFAQ = (faqData: Partial<FAQ>) => {
-    // 실제 구현 시 API 호출
-    console.log('Save FAQ:', faqData);
-    handleCloseModal();
+  const handleSaveFAQ = async (faqData: Partial<FAQ>) => {
+    try {
+      console.log('FAQ 저장 시작:', faqData);
+      
+      if (isCreating) {
+        await addFAQ(faqData as Omit<FAQ, 'id' | 'createdAt' | 'updatedAt' | 'views'>);
+        alert('✅ FAQ가 성공적으로 작성되었습니다!');
+      } else if (selectedFAQ) {
+        await updateFAQ(selectedFAQ.id, faqData);
+        alert('✅ FAQ가 성공적으로 수정되었습니다!');
+      }
+      await loadFAQs(); // 데이터 새로고침
+      handleCloseModal();
+    } catch (error: any) {
+      console.error('FAQ 저장 오류 상세:', error);
+      
+      let errorMessage = 'FAQ 저장 중 오류가 발생했습니다.';
+      
+      if (error.message) {
+        if (error.message.includes('사용자가 인증되지 않았습니다')) {
+          errorMessage = '❌ 로그인이 필요합니다.\n페이지를 새로고침하고 다시 로그인해주세요.';
+        } else if (error.message.includes('필수 필드가 누락되었습니다')) {
+          errorMessage = '❌ 필수 항목을 모두 입력해주세요.\n(카테고리, 질문, 답변)';
+        } else if (error.code === 'permission-denied') {
+          errorMessage = '❌ 권한이 없습니다.\n관리자 계정으로 로그인했는지 확인해주세요.';
+        } else if (error.code === 'unauthenticated') {
+          errorMessage = '❌ 인증이 만료되었습니다.\n페이지를 새로고침하고 다시 로그인해주세요.';
+        } else if (error.message.includes('Network')) {
+          errorMessage = '❌ 네트워크 오류입니다.\n인터넷 연결을 확인해주세요.';
+        } else {
+          errorMessage = `❌ 오류: ${error.message}`;
+        }
+      }
+      
+      alert(errorMessage);
+    }
   };
 
-  const handleDeleteFAQ = (faqId: string) => {
-    // 실제 구현 시 API 호출
-    console.log('Delete FAQ:', faqId);
-    handleCloseModal();
+  const handleDeleteFAQ = async (faqId: string) => {
+    try {
+      await deleteFAQ(faqId);
+      await loadFAQs(); // 데이터 새로고침
+      handleCloseModal();
+    } catch (error) {
+      console.error('FAQ 삭제 오류:', error);
+      alert('FAQ 삭제 중 오류가 발생했습니다.');
+    }
   };
 
   const filteredFAQs = faqs.filter(faq => {
@@ -117,7 +153,7 @@ export default function FAQManagement() {
         <div className="bg-white rounded-xl shadow-sm border-2 border-green-100 p-6 hover:border-green-200 transition-all duration-200 group">
           <div className="flex items-center">
             <div className="">
-              <p className="text-sm font-medium text-gray-500">일반 문의</p>
+              <p className="text-sm font-medium text-gray-500">자주묻는질문</p>
               <p className="text-xl font-bold text-gray-900">
                 {faqs.filter(f => f.category === 'general').length}개
               </p>
@@ -128,7 +164,7 @@ export default function FAQManagement() {
         <div className="bg-white rounded-xl shadow-sm border-2 border-purple-100 p-6 hover:border-purple-200 transition-all duration-200 group">
           <div className="flex items-center">
             <div className="">
-              <p className="text-sm font-medium text-gray-500">결제 관련</p>
+              <p className="text-sm font-medium text-gray-500">결제 및 환불</p>
               <p className="text-xl font-bold text-gray-900">
                 {faqs.filter(f => f.category === 'payment').length}개
               </p>
@@ -165,11 +201,10 @@ export default function FAQManagement() {
               className="px-3 py-2 text-sm border-2 border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="all">전체 카테고리</option>
-              <option value="general">일반 이용</option>
-              <option value="payment">결제 관련</option>
-              <option value="matching">매칭 관련</option>
-              <option value="technical">기술 지원</option>
-              <option value="other">기타</option>
+              <option value="common">공통질문</option>
+              <option value="parent">학부모 회원</option>
+              <option value="therapist">치료사 회원</option>
+              <option value="payment">결제 및 회원</option>
             </select>
 
             {/* 상태 필터 */}
@@ -183,12 +218,33 @@ export default function FAQManagement() {
               <option value="inactive">비활성</option>
             </select>
 
-            <button
-              onClick={handleCreateNew}
-              className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-medium rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 transform hover:scale-105"
-            >
-              + 새 FAQ 작성
-            </button>
+            <div className="flex items-center space-x-3">
+              {faqs.length === 0 && (
+                <button
+                  onClick={async () => {
+                    if (confirm('기본 FAQ 데이터를 초기화하시겠습니까?')) {
+                      try {
+                        await initializeFAQs();
+                        await loadFAQs();
+                        alert('기본 FAQ 데이터가 초기화되었습니다.');
+                      } catch (error) {
+                        console.error('FAQ 초기화 오류:', error);
+                        alert('FAQ 초기화 중 오류가 발생했습니다.');
+                      }
+                    }
+                  }}
+                  className="px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white text-sm font-medium rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all duration-200 transform hover:scale-105"
+                >
+                  🌱 기본 데이터 초기화
+                </button>
+              )}
+              <button
+                onClick={handleCreateNew}
+                className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-medium rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 transform hover:scale-105"
+              >
+                + 새 FAQ 작성
+              </button>
+            </div>
           </div>
         </div>
 
@@ -232,10 +288,41 @@ export default function FAQManagement() {
           </div>
         </div>
         <div className="p-6">
-          <FAQTable
-            faqs={filteredFAQs}
-            onFAQSelect={handleFAQSelect}
-          />
+          {loading ? (
+            <div className="flex justify-center items-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+              <span className="ml-3 text-gray-600">FAQ 데이터를 불러오는 중...</span>
+            </div>
+          ) : filteredFAQs.length === 0 ? (
+            <div className="text-center py-12">
+              <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <h3 className="mt-2 text-sm font-medium text-gray-900">FAQ가 없습니다</h3>
+              <p className="mt-1 text-sm text-gray-500">
+                {faqs.length === 0 ? '첫 번째 FAQ를 작성해보세요.' : '검색 조건에 맞는 FAQ가 없습니다.'}
+              </p>
+              {faqs.length === 0 && (
+                <div className="mt-6">
+                  <button
+                    type="button"
+                    onClick={handleCreateNew}
+                    className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    <svg className="-ml-1 mr-2 h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                    </svg>
+                    새 FAQ 작성
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <FAQTable
+              faqs={filteredFAQs}
+              onFAQSelect={handleFAQSelect}
+            />
+          )}
         </div>
       </div>
 

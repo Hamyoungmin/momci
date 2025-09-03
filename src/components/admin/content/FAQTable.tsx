@@ -1,18 +1,6 @@
 'use client';
 
-interface FAQ {
-  id: string;
-  category: 'general' | 'payment' | 'matching' | 'technical' | 'other';
-  question: string;
-  answer: string;
-  isActive: boolean;
-  views: number;
-  order: number;
-  createdAt: string;
-  updatedAt: string;
-  createdBy: string;
-  tags: string[];
-}
+import { FAQ } from '@/lib/faq';
 
 interface FAQTableProps {
   faqs: FAQ[];
@@ -20,20 +8,18 @@ interface FAQTableProps {
 }
 
 export default function FAQTable({ faqs, onFAQSelect }: FAQTableProps) {
-  const getCategoryBadge = (category: FAQ['category']) => {
+  const getCategoryBadge = (category: string) => {
     switch (category) {
-      case 'general':
-        return <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">일반 이용</span>;
+      case 'common':
+        return <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">공통질문</span>;
+      case 'parent':
+        return <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">학부모 회원</span>;
+      case 'therapist':
+        return <span className="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded-full">치료사 회원</span>;
       case 'payment':
-        return <span className="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded-full">결제 관련</span>;
-      case 'matching':
-        return <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">매칭 관련</span>;
-      case 'technical':
-        return <span className="px-2 py-1 text-xs font-medium bg-orange-100 text-orange-800 rounded-full">기술 지원</span>;
-      case 'other':
-        return <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">기타</span>;
+        return <span className="px-2 py-1 text-xs font-medium bg-orange-100 text-orange-800 rounded-full">결제 및 회원</span>;
       default:
-        return <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">알 수 없음</span>;
+        return <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">{category}</span>;
     }
   };
 
@@ -131,7 +117,7 @@ export default function FAQTable({ faqs, onFAQSelect }: FAQTableProps) {
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900">
                       <div className="flex flex-wrap gap-1">
-                        {faq.tags.slice(0, 2).map((tag, index) => (
+                        {(faq.tags || []).slice(0, 2).map((tag, index) => (
                           <span
                             key={index}
                             className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded"
@@ -139,9 +125,14 @@ export default function FAQTable({ faqs, onFAQSelect }: FAQTableProps) {
                             #{tag}
                           </span>
                         ))}
-                        {faq.tags.length > 2 && (
+                        {(faq.tags || []).length > 2 && (
                           <span className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded">
-                            +{faq.tags.length - 2}
+                            +{(faq.tags || []).length - 2}
+                          </span>
+                        )}
+                        {(!faq.tags || faq.tags.length === 0) && (
+                          <span className="px-2 py-1 text-xs bg-gray-50 text-gray-400 rounded">
+                            태그 없음
                           </span>
                         )}
                       </div>
@@ -168,9 +159,9 @@ export default function FAQTable({ faqs, onFAQSelect }: FAQTableProps) {
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500">
                       <div className="space-y-1">
-                        <div>{new Date(faq.updatedAt).toLocaleDateString('ko-KR')}</div>
+                        <div>{faq.updatedAt.toLocaleDateString('ko-KR')}</div>
                         <div className="text-xs">
-                          {new Date(faq.updatedAt).toLocaleTimeString('ko-KR', { 
+                          {faq.updatedAt.toLocaleTimeString('ko-KR', { 
                             hour: '2-digit', 
                             minute: '2-digit' 
                           })}
