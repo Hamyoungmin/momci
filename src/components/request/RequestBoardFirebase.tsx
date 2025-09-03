@@ -48,6 +48,11 @@ export default function RequestBoardFirebase() {
     additionalInfo: ''
   });
 
+  // 상세 프로필 모달 상태
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [selectedProfile, setSelectedProfile] = useState<Post | null>(null);
+  const [isProfileModalClosing, setIsProfileModalClosing] = useState(false);
+
   const sidebarItems = ['홈티매칭', '서울', '인천/경기북부', '경기남부', '충청,강원,대전', '전라,경상,부산'];
   const tabs = ['서울', '인천/경기북부', '경기남부', '충청,강원,대전', '전라,경상,부산'];
   
@@ -141,6 +146,22 @@ export default function RequestBoardFirebase() {
         additionalInfo: ''
       });
     }, 300); // 애니메이션 시간과 맞춤
+  };
+
+  // 상세 프로필 모달 열기
+  const openProfileModal = (post: Post) => {
+    setSelectedProfile(post);
+    setShowProfileModal(true);
+  };
+
+  // 상세 프로필 모달 닫기
+  const closeProfileModal = () => {
+    setIsProfileModalClosing(true);
+    setTimeout(() => {
+      setShowProfileModal(false);
+      setIsProfileModalClosing(false);
+      setSelectedProfile(null);
+    }, 300);
   };
 
   // 새 게시글 Firebase에 저장
@@ -283,6 +304,13 @@ export default function RequestBoardFirebase() {
       // 게시글 작성 모달 외부 클릭 시 모달 닫기
       if (!target.closest('.create-post-modal') && !target.closest('[data-create-post-button]')) {
         closeCreatePostModal();
+      }
+      // 상세 프로필 모달 외부 클릭 시 모달 닫기
+      if (!target.closest('.profile-modal') && showProfileModal) {
+        // 배경 오버레이를 클릭한 경우에만 닫기
+        if (target.classList.contains('modal-overlay')) {
+          closeProfileModal();
+        }
       }
     };
 
@@ -632,10 +660,13 @@ export default function RequestBoardFirebase() {
                         </button>
                         
                         <div className="text-right">
-                          {/* 상세 프로필 보기 텍스트 스타일 변경 */}
-                          <div className="text-xs text-gray-500 mb-1">
+                          {/* 상세 프로필 보기 버튼 */}
+                          <button 
+                            onClick={() => openProfileModal(post)}
+                            className="text-xs text-gray-500 hover:text-blue-600 mb-1 cursor-pointer transition-colors"
+                          >
                             상세 프로필 보기 &gt;
-                          </div>
+                          </button>
                           
                           {/* 작성일 */}
                           <div className="text-xs text-gray-400">
@@ -894,6 +925,189 @@ export default function RequestBoardFirebase() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* 상세 프로필 모달 */}
+      {showProfileModal && selectedProfile && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* 배경 오버레이 */}
+          <div 
+            className="absolute inset-0 bg-black bg-opacity-50 modal-overlay"
+            onClick={closeProfileModal}
+          ></div>
+          
+          {/* 모달 콘텐츠 */}
+          <div className={`relative bg-white rounded-lg max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto profile-modal ${isProfileModalClosing ? 'animate-slideOut' : 'animate-slideIn'}`}>
+            {/* 모달 헤더 */}
+            <div className="sticky top-0 bg-white border-b border-gray-200 p-6 z-10">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  {/* 프로필 이미지 */}
+                  <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center">
+                    <div className="text-center">
+                      <span className="text-gray-500 text-xs font-medium block">프로필</span>
+                      <span className="text-gray-400 text-xs block">사진</span>
+                    </div>
+                  </div>
+                  
+                  {/* 기본 정보 */}
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900">김OO 치료사</h2>
+                    <p className="text-sm text-gray-600">(7년차 {selectedProfile.treatment}사)</p>
+                    <div className="flex items-center mt-1">
+                      <span className="text-orange-400 text-lg">★</span>
+                      <span className="text-sm font-medium ml-1">4.8</span>
+                      <span className="text-xs text-gray-500 ml-1">(후기 15개)</span>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* 닫기 버튼 */}
+                <button
+                  onClick={closeProfileModal}
+                  className="text-gray-400 hover:text-gray-600 text-2xl"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+            
+            {/* 모달 바디 */}
+            <div className="p-6">
+              {/* 가격 및 전문분야 */}
+              <div className="mb-6">
+                <div className="text-2xl font-bold text-blue-600 mb-3">
+                  회기당 {(() => {
+                    if (!selectedProfile.price) return '65,000원';
+                    const priceStr = selectedProfile.price.toString();
+                    if (priceStr.includes('원')) return priceStr;
+                    const numericPrice = priceStr.replace(/[^0-9]/g, '');
+                    return numericPrice.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '원';
+                  })()}
+                </div>
+                
+                <div className="flex flex-wrap gap-2 mb-4">
+                  <span className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm font-medium">
+                    #{selectedProfile.treatment}
+                  </span>
+                  <span className="px-3 py-1 bg-purple-50 text-purple-700 rounded-full text-sm font-medium">
+                    #{selectedProfile.category}
+                  </span>
+                  <span className="px-3 py-1 bg-green-50 text-green-700 rounded-full text-sm font-medium">
+                    #{selectedProfile.frequency}
+                  </span>
+                </div>
+              </div>
+              
+              {/* 신뢰 정보 */}
+              <div className="mb-6">
+                <div className="flex items-center space-x-4 mb-4">
+                  <div className="flex items-center space-x-1">
+                    <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                      <span className="text-white text-xs">✓</span>
+                    </div>
+                    <span className="text-sm text-gray-700">자격증</span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                      <span className="text-white text-xs">✓</span>
+                    </div>
+                    <span className="text-sm text-gray-700">경력증명</span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                      <span className="text-white text-xs">✓</span>
+                    </div>
+                    <span className="text-sm text-gray-700">신분증확인서</span>
+                  </div>
+                  <span className="text-gray-400 text-xs">보험가입</span>
+                  <div className="flex items-center space-x-1">
+                    <span className="text-blue-600 text-sm">★</span>
+                    <span className="text-sm text-blue-600">더많은 인증</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 상세 소개 */}
+              <div className="mb-6">
+                <div className="flex items-center mb-3">
+                  <span className="text-blue-500 mr-2">👤</span>
+                  <h3 className="text-lg font-semibold text-gray-900">선생님 소개</h3>
+                </div>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h4 className="font-semibold mb-2">치료 철학 및 접근</h4>
+                  <p className="text-gray-700 text-sm mb-3">
+                    저는 아이의 독특한 의사소통 능력을 통해 각 아이에게 맞는 치료 접근을 중요하게 생각합니다. 아이에게 지친 부모는 제가 즐기 출 만큼 실상에 절실함을 얻었어 아이의 지금의 단계를 발견하는 것이 가장 강력한 해결을 만드는 것 같 않이 되고 있습니다.
+                  </p>
+                  
+                  <h4 className="font-semibold mb-2">주요 치료영역/서비스</h4>
+                  <p className="text-gray-700 text-sm">
+                    OOO 치료영역에서 약 5년간 근무하면서 더 각 아이들 수준에 따른 치료를 해봤고, 요즘은 감각을 약간 어려워하는 아이를 지원하는 손바뀌 제놨인 것이 아이적어서 치료 가능성를 훈련 아이에게 있어어합니다.
+                  </p>
+                </div>
+              </div>
+
+              {/* 학력 정보 */}
+              <div className="mb-6">
+                <div className="flex items-center mb-3">
+                  <span className="text-blue-500 mr-2">🎓</span>
+                  <h3 className="text-lg font-semibold text-gray-900">학력 정보 학부모 보기</h3>
+                </div>
+                <div className="space-y-2 text-sm">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <span className="font-medium text-gray-700">학력 사항</span>
+                      <p className="text-gray-600">1급기 / 65,000원</p>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">총 경력</span>
+                      <p className="text-gray-600">7년 3개월</p>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">활동 가능 지역</span>
+                      <p className="text-gray-600">서울시 강남구, 서초구, 송파구</p>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">치료 가능 시간</span>
+                      <p className="text-gray-600">평일 오후 4시 이후 / 주말 오전 (범일 기준)</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 학부모 후기 */}
+              <div className="mb-6">
+                <div className="flex items-center mb-3">
+                  <span className="text-blue-500 mr-2">💬</span>
+                  <h3 className="text-lg font-semibold text-gray-900">학부모 후기 (3건)</h3>
+                </div>
+                <div className="space-y-4">
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <p className="text-sm text-gray-700 mb-2">
+                      "신장 정말 최고에요! 저희 아이가 너무 달라져 가리되네, 처음에는 마음을 열지 않으셨는데 지금은 수업시간이 기다려져요. 센터에도 인정받는 수우님 정말 감사해요."
+                    </p>
+                    <div className="text-xs text-gray-500">- 학부모 (2025.08.15)</div>
+                  </div>
+                  
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <p className="text-sm text-gray-700 mb-2">
+                      "체계적으로 잘 가르쳐주시고, 아이의 부족한 능력과 놓으니 시간래비와, 각종들마다"
+                    </p>
+                    <div className="text-xs text-gray-500">- 학부모 (2025.07.20)</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 1:1 채팅 버튼 */}
+              <div className="text-center">
+                <button className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-4 rounded-2xl font-medium transition-colors text-lg">
+                  <span className="mr-2">💬</span>
+                  1:1 채팅으로 문의하기
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
