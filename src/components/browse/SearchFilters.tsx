@@ -23,7 +23,7 @@ export default function SearchFilters() {
               <select
                 value={selectedRegion}
                 onChange={(e) => setSelectedRegion(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-purple-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-blue-500"
               >
                 {regions.map((region) => (
                   <option key={region} value={region}>{region}</option>
@@ -37,7 +37,7 @@ export default function SearchFilters() {
               <select
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-purple-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-blue-500"
               >
                 {categories.map((category) => (
                   <option key={category} value={category}>{category}</option>
@@ -51,7 +51,7 @@ export default function SearchFilters() {
               <select
                 value={selectedExperience}
                 onChange={(e) => setSelectedExperience(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-purple-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-blue-500"
               >
                 {experiences.map((exp) => (
                   <option key={exp} value={exp}>{exp}</option>
@@ -61,7 +61,7 @@ export default function SearchFilters() {
 
             {/* 검색 버튼 */}
             <div className="flex items-end">
-              <button className="w-full bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-2xl font-medium transition-colors">
+              <button className="w-full bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-2xl font-medium transition-colors">
                 검색
               </button>
             </div>
