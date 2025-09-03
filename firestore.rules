@@ -149,15 +149,13 @@ service cloud.firestore {
     
     // 치료사 프로필 (세분화된 권한)
     match /therapistProfiles/{profileId} {
-      // 개별 프로필 조회 - 승인된 프로필만 공개
-      allow get: if isAuthenticated() && 
-                    (resource.data.status == 'approved' || 
-                     isOwnerOrAdmin(resource.data.userId));
+      // 개별 프로필 조회 - 승인된 프로필은 공개, 미승인은 본인과 관리자만
+      allow get: if (resource.data.status == 'approved') ||
+                    (isAuthenticated() && isOwnerOrAdmin(resource.data.userId));
       
-      // 프로필 목록 조회 - 승인된 프로필만, 관리자는 모두
-      allow list: if isAuthenticated() && 
-                     (isAdmin() || 
-                      (request.query.where('status', '==', 'approved') && hasRecentActivity()));
+      // 프로필 목록 조회 - 승인된 프로필은 공개, 관리자는 모두 (선생님 둘러보기용)
+      allow list: if (request.query.where('status', '==', 'approved')) ||
+                     (isAuthenticated() && isAdmin());
       
       // 프로필 생성 - 치료사만, 완전한 정보 필수
       allow create: if isAuthenticated() && 
@@ -995,6 +993,95 @@ service cloud.firestore {
                                exists(/databases/$(database)/documents/posts/$(postId));
       
       // 관리자만 삭제 가능
+      allow delete: if isAdmin();
+    }
+    
+    // 치료사 프로필 즐겨찾기 (선생님 둘러보기)
+    match /therapist-favorites/{userId} {
+      // 본인만 읽기/쓰기 가능
+      allow read, write: if isOwner(userId);
+      
+      // 즐겨찾기 추가
+      allow create: if isAuthenticated() && 
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.keys().hasAll(['userId', 'therapistId', 'createdAt']) &&
+                       exists(/databases/$(database)/documents/therapistProfiles/$(request.resource.data.therapistId));
+    }
+    
+    // 치료사 프로필 조회 기록 (추천 알고리즘용)
+    match /therapist-views/{viewId} {
+      // 관리자만 읽기 가능 (분석용)
+      allow read: if isAdmin();
+      
+      // 조회 기록 생성 (익명 또는 인증된 사용자)
+      allow create: if request.resource.data.keys().hasAll(['therapistId', 'viewedAt', 'userAgent']) &&
+                       exists(/databases/$(database)/documents/therapistProfiles/$(request.resource.data.therapistId)) &&
+                       get(/databases/$(database)/documents/therapistProfiles/$(request.resource.data.therapistId)).data.status == 'approved';
+      
+      // 수정/삭제 불가
+      allow update, delete: if false;
+    }
+    
+    // 치료사 프로필 검색 기록 (개인화 추천용)
+    match /therapist-searches/{searchId} {
+      // 관리자만 읽기 가능 (분석용)
+      allow read: if isAdmin();
+      
+      // 검색 기록 생성
+      allow create: if request.resource.data.keys().hasAll(['query', 'filters', 'results', 'searchedAt']) &&
+                       request.resource.data.query is string &&
+                       request.resource.data.query.size() >= 1;
+      
+      // 수정/삭제 불가
+      allow update, delete: if false;
+    }
+    
+    // 치료사-학부모 채팅방 (선생님 둘러보기에서 시작)
+    match /therapist-inquiries/{inquiryId} {
+      // 관련 당사자와 관리자만 읽기 가능
+      allow read: if isAuthenticated() && 
+                     (request.auth.uid == resource.data.parentId ||
+                      request.auth.uid == resource.data.therapistId ||
+                      isAdmin());
+      
+      // 학부모만 문의 시작 가능
+      allow create: if isAuthenticated() && 
+                       request.resource.data.parentId == request.auth.uid &&
+                       exists(/databases/$(database)/documents/therapistProfiles/$(request.resource.data.therapistId)) &&
+                       get(/databases/$(database)/documents/therapistProfiles/$(request.resource.data.therapistId)).data.status == 'approved' &&
+                       request.resource.data.keys().hasAll(['parentId', 'therapistId', 'subject', 'initialMessage', 'createdAt', 'status']) &&
+                       request.resource.data.status == 'active';
+      
+      // 상태 업데이트만 관련 당사자가 가능
+      allow update: if isAuthenticated() && 
+                       (request.auth.uid == resource.data.parentId ||
+                        request.auth.uid == resource.data.therapistId) &&
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt']);
+      
+      // 관리자만 삭제 가능
+      allow delete: if isAdmin();
+    }
+    
+    // 치료사 프로필 평점/리뷰 (선생님 둘러보기)
+    match /therapist-reviews/{reviewId} {
+      // 모든 인증된 사용자가 읽기 가능 (공개 리뷰)
+      allow read: if isAuthenticated();
+      
+      // 수업을 받은 학부모만 리뷰 작성 가능
+      allow create: if isAuthenticated() && 
+                       request.resource.data.parentId == request.auth.uid &&
+                       exists(/databases/$(database)/documents/therapistProfiles/$(request.resource.data.therapistId)) &&
+                       request.resource.data.keys().hasAll(['parentId', 'therapistId', 'rating', 'content', 'createdAt']) &&
+                       request.resource.data.rating is number &&
+                       request.resource.data.rating >= 1 &&
+                       request.resource.data.rating <= 5;
+      
+      // 작성자만 수정 가능 (작성 후 24시간 내)
+      allow update: if isOwner(resource.data.parentId) && 
+                       request.time < resource.data.createdAt + duration.value(24, 'h') &&
+                       !request.resource.data.diff(resource.data).affectedKeys().hasAny(['parentId', 'therapistId', 'createdAt']);
+      
+      // 관리자만 삭제 가능 (부적절한 리뷰)
       allow delete: if isAdmin();
     }
   }
