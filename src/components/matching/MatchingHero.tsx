@@ -83,10 +83,10 @@ export default function MatchingHero() {
               이용권 구매하고 시작하기
             </Link>
             <Link
-              href="/guide"
+              href="/faq"
               className="border-2 border-blue-500 text-blue-500 hover:bg-blue-500 hover:text-white px-8 py-4 rounded-lg font-semibold text-lg transition-colors"
             >
-              매칭 방법 자세히 보기
+              매칭 방법 자세히보기
             </Link>
           </div>
         </div>

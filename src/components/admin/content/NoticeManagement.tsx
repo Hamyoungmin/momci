@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { collection, query, orderBy, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import NoticeTable from './NoticeTable';
 import NoticeEditModal from './NoticeEditModal';
 
@@ -13,11 +15,11 @@ interface Notice {
   isActive: boolean;
   startDate: string;
   endDate?: string;
-  views: number;
-  createdAt: string;
-  updatedAt: string;
+  views?: number;
+  createdAt: any;
+  updatedAt: any;
   createdBy: string;
-  priority: number;
+  priority?: number;
   targetAudience: 'all' | 'parents' | 'teachers';
 }
 
@@ -32,9 +34,29 @@ export default function NoticeManagement() {
   const [notices, setNotices] = useState<Notice[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Firebase에서 공지사항 데이터 로드
   useEffect(() => {
-    // TODO: Firebase에서 실제 공지사항 데이터 가져오기
-    setLoading(false);
+    const noticesQuery = query(
+      collection(db, 'notices'),
+      orderBy('createdAt', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(noticesQuery, (snapshot) => {
+      const noticesData = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          createdAt: data.createdAt?.toDate(),
+          updatedAt: data.updatedAt?.toDate()
+        } as Notice;
+      });
+      
+      setNotices(noticesData);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
   const handleNoticeSelect = (notice: Notice) => {
@@ -55,16 +77,66 @@ export default function NoticeManagement() {
     setIsCreating(false);
   };
 
-  const handleSaveNotice = (noticeData: Partial<Notice>) => {
-    // 실제 구현 시 API 호출
-    console.log('Save notice:', noticeData);
-    handleCloseModal();
+  const handleSaveNotice = async (noticeData: Partial<Notice>) => {
+    try {
+      if (isCreating) {
+        // 새 공지사항 작성
+        const now = new Date();
+        const dateString = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')}`;
+        
+        await addDoc(collection(db, 'notices'), {
+          ...noticeData,
+          views: 0,
+          createdBy: 'admin',
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          startDate: noticeData.startDate || dateString + ' 00:00'
+        });
+        alert('✅ 공지사항이 성공적으로 작성되었습니다!');
+      } else if (selectedNotice) {
+        // 공지사항 수정
+        await updateDoc(doc(db, 'notices', selectedNotice.id), {
+          ...noticeData,
+          updatedAt: serverTimestamp()
+        });
+        alert('✅ 공지사항이 성공적으로 수정되었습니다!');
+      }
+      
+      handleCloseModal();
+    } catch (error: any) {
+      console.error('공지사항 저장 오류:', error);
+      
+      let errorMessage = '공지사항 저장 중 오류가 발생했습니다.';
+      
+      if (error.message) {
+        if (error.message.includes('사용자가 인증되지 않았습니다')) {
+          errorMessage = '❌ 로그인이 필요합니다.\n페이지를 새로고침하고 다시 로그인해주세요.';
+        } else if (error.code === 'permission-denied') {
+          errorMessage = '❌ 권한이 없습니다.\n관리자 계정으로 로그인했는지 확인해주세요.';
+        } else if (error.code === 'unauthenticated') {
+          errorMessage = '❌ 인증이 만료되었습니다.\n페이지를 새로고침하고 다시 로그인해주세요.';
+        } else if (error.message.includes('Network')) {
+          errorMessage = '❌ 네트워크 오류입니다.\n인터넷 연결을 확인해주세요.';
+        } else {
+          errorMessage = `❌ 오류: ${error.message}`;
+        }
+      }
+      
+      alert(errorMessage);
+    }
   };
 
-  const handleDeleteNotice = (noticeId: string) => {
-    // 실제 구현 시 API 호출
-    console.log('Delete notice:', noticeId);
-    handleCloseModal();
+  const handleDeleteNotice = async (noticeId: string) => {
+    if (!confirm('정말 이 공지사항을 삭제하시겠습니까?')) return;
+    
+    try {
+      await deleteDoc(doc(db, 'notices', noticeId));
+      alert('✅ 공지사항이 삭제되었습니다.');
+      handleCloseModal();
+    } catch (error: any) {
+      console.error('공지사항 삭제 오류:', error);
+      alert('❌ 삭제에 실패했습니다. 다시 시도해주세요.');
+    }
   };
 
   const filteredNotices = notices.filter(notice => {
@@ -228,10 +300,41 @@ export default function NoticeManagement() {
           </div>
         </div>
         <div className="p-6">
-          <NoticeTable
-            notices={filteredNotices}
-            onNoticeSelect={handleNoticeSelect}
-          />
+          {loading ? (
+            <div className="flex justify-center items-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
+              <span className="ml-3 text-gray-600">공지사항 데이터를 불러오는 중...</span>
+            </div>
+          ) : filteredNotices.length === 0 ? (
+            <div className="text-center py-12">
+              <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+              </svg>
+              <h3 className="mt-2 text-sm font-medium text-gray-900">공지사항이 없습니다</h3>
+              <p className="mt-1 text-sm text-gray-500">
+                {notices.length === 0 ? '첫 번째 공지사항을 작성해보세요.' : '검색 조건에 맞는 공지사항이 없습니다.'}
+              </p>
+              {notices.length === 0 && (
+                <div className="mt-6">
+                  <button
+                    type="button"
+                    onClick={handleCreateNew}
+                    className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                  >
+                    <svg className="-ml-1 mr-2 h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                    </svg>
+                    새 공지사항 작성
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <NoticeTable
+              notices={filteredNotices}
+              onNoticeSelect={handleNoticeSelect}
+            />
+          )}
         </div>
       </div>
 

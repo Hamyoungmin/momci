@@ -96,9 +96,8 @@ export default function NoticeEditModal({
       targetAudience,
       isActive,
       startDate: startDate + ' 00:00',
-      endDate: hasEndDate && endDate ? endDate + ' 23:59' : undefined,
       priority,
-      ...(isCreating && { id: 'NOT' + Date.now().toString().slice(-3) })
+      ...(hasEndDate && endDate && { endDate: endDate + ' 23:59' })
     };
 
     onSave(noticeData);
@@ -113,32 +112,31 @@ export default function NoticeEditModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-        {/* 배경 오버레이 */}
-        <div className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onClick={onClose}></div>
-
-        {/* 모달 */}
-        <div className="inline-block w-full max-w-4xl p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-lg">
-          {/* 헤더 */}
-          <div className="flex items-center justify-between pb-4 border-b border-gray-200">
+    <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50">
+      <div className="bg-white rounded-lg p-8 max-w-6xl w-[95vw] shadow-xl border-4 border-blue-500 max-h-[90vh] overflow-y-auto">
+        {/* 헤더 */}
+        <div className="flex justify-between items-center mb-6">
             <div>
-              <h3 className="text-lg font-medium text-gray-900">
+              <h2 className="text-2xl font-bold text-gray-900">
                 {isCreating ? '새 공지사항 작성' : '공지사항 수정'}
-              </h3>
+              </h2>
               {!isCreating && notice && (
-                <p className="text-sm text-gray-600">ID: {notice.id}</p>
+                <p className="text-sm text-gray-500 mt-1">
+                  ID: {notice.id} • 조회수: {notice.views?.toLocaleString() || 0}회
+                </p>
               )}
             </div>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600 text-2xl"
+              type="button"
+            >
+              ✕
             </button>
           </div>
 
           {/* 폼 내용 */}
-          <div className="mt-6 space-y-6">
+          <form onSubmit={(e) => {e.preventDefault(); handleSave();}} className="space-y-6">
             {/* 기본 정보 */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="md:col-span-2">
@@ -315,37 +313,38 @@ export default function NoticeEditModal({
                 </p>
               </div>
             </div>
-          </div>
 
-          {/* 푸터 */}
-          <div className="mt-6 pt-4 border-t border-gray-200 flex justify-between">
-            <div>
-              {!isCreating && notice && (
+            {/* 버튼들 */}
+            <div className="flex justify-between pt-4 border-t border-gray-200">
+              <div>
+                {!isCreating && (
+                  <button
+                    type="button"
+                    onClick={handleDelete}
+                    className="px-4 py-2 text-red-600 hover:bg-red-50 border border-red-200 rounded-md transition-colors"
+                  >
+                    삭제
+                  </button>
+                )}
+              </div>
+              <div className="flex gap-2">
                 <button
-                  onClick={handleDelete}
-                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
+                  type="button"
+                  onClick={onClose}
+                  className="px-4 py-2 text-gray-600 hover:bg-gray-50 border border-gray-300 rounded-md transition-colors"
                 >
-                  삭제
+                  취소
                 </button>
-              )}
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                >
+                  {isCreating ? '작성 완료' : '수정 완료'}
+                </button>
+              </div>
             </div>
-            <div className="flex space-x-3">
-              <button
-                onClick={onClose}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300"
-              >
-                취소
-              </button>
-              <button
-                onClick={handleSave}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
-              >
-                {isCreating ? '작성 완료' : '수정 완료'}
-              </button>
-            </div>
-          </div>
+          </form>
         </div>
-      </div>
     </div>
   );
 }

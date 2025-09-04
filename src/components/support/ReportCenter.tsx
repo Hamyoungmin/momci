@@ -1,24 +1,129 @@
 'use client';
 
 import { useState } from 'react';
+import { createReport } from '@/lib/reports';
 
 export default function ReportCenter() {
   const [showReportForm, setShowReportForm] = useState(false);
   const [selectedTeacher, setSelectedTeacher] = useState('');
   const [reportContent, setReportContent] = useState('');
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmitReport = (e: React.FormEvent) => {
+  // 파일 처리 함수들
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const newFiles = Array.from(e.target.files);
+      
+      // 큰 파일에 대한 경고
+      const largeFiles = newFiles.filter(file => file.size > 5 * 1024 * 1024); // 5MB 이상
+      if (largeFiles.length > 0) {
+        const fileNames = largeFiles.map(f => f.name).join(', ');
+        const confirmed = confirm(
+          `⚠️ 큰 파일이 감지되었습니다:\n${fileNames}\n\n` +
+          `큰 파일은 업로드가 오래 걸리거나 실패할 수 있습니다.\n` +
+          `그래도 추가하시겠습니까?\n\n` +
+          `(신고는 파일 없이도 접수 가능합니다)`
+        );
+        if (!confirmed) {
+          return;
+        }
+      }
+      
+      setAttachedFiles(prev => [...prev, ...newFiles]);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    
+    if (e.dataTransfer.files) {
+      const newFiles = Array.from(e.dataTransfer.files);
+      
+      // 큰 파일에 대한 경고 (드래그앤드롭)
+      const largeFiles = newFiles.filter(file => file.size > 5 * 1024 * 1024); // 5MB 이상
+      if (largeFiles.length > 0) {
+        const fileNames = largeFiles.map(f => f.name).join(', ');
+        const confirmed = confirm(
+          `⚠️ 큰 파일이 감지되었습니다:\n${fileNames}\n\n` +
+          `큰 파일은 업로드가 오래 걸리거나 실패할 수 있습니다.\n` +
+          `그래도 추가하시겠습니까?\n\n` +
+          `(신고는 파일 없이도 접수 가능합니다)`
+        );
+        if (!confirmed) {
+          return;
+        }
+      }
+      
+      setAttachedFiles(prev => [...prev, ...newFiles]);
+    }
+  };
+
+  const removeFile = (index: number) => {
+    setAttachedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const handleSubmitReport = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedTeacher || !reportContent || !agreedToTerms) {
       alert('모든 필수 항목을 입력하고 동의해주세요.');
       return;
     }
-    alert('신고가 접수되었습니다. 검토 후 결과를 안내드리겠습니다.');
-    setShowReportForm(false);
-    setSelectedTeacher('');
-    setReportContent('');
-    setAgreedToTerms(false);
+
+    setIsSubmitting(true);
+
+    try {
+      // 신고 데이터 생성
+      const reportData = {
+        type: 'direct_trade' as const,
+        reportedName: selectedTeacher === 'direct_input' ? '직접 입력된 선생님' : selectedTeacher,
+        description: reportContent,
+        title: `직거래 신고 - ${selectedTeacher === 'direct_input' ? '직접 입력된 선생님' : selectedTeacher}`
+      };
+
+      // 신고 생성 (파일 포함)
+      const reportId = await createReport(reportData, attachedFiles);
+
+      let message = '✅ 신고가 성공적으로 접수되었습니다!\n신고 ID: ' + reportId + '\n\n검토 후 결과를 안내드리겠습니다.';
+      if (attachedFiles.length > 0) {
+        message += `\n\n📎 첨부파일 처리 결과:\n- 총 ${attachedFiles.length}개 파일 중 업로드를 시도했습니다.\n- 일부 파일이 네트워크 문제로 업로드되지 않을 수 있지만,\n- 신고는 정상적으로 접수되었습니다.`;
+      }
+      
+      alert(message);
+      
+      // 폼 리셋
+      setShowReportForm(false);
+      setSelectedTeacher('');
+      setReportContent('');
+      setAgreedToTerms(false);
+      setAttachedFiles([]);
+    } catch (error) {
+      console.error('신고 제출 실패:', error);
+      alert('❌ 신고 접수에 실패했습니다.\n' + (error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.') + '\n\n다시 시도해주세요.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -109,10 +214,16 @@ export default function ReportCenter() {
 
               {/* 신고자 정보 */}
               <div className="mb-8">
-                <h3 className="font-bold text-gray-900 mb-4">👤 신고자 이름</h3>
-                <div className="bg-gray-100 rounded-lg p-4">
-                  <p className="font-medium">로그인된 사용자</p>
-                  <p className="text-sm text-gray-600 mt-1">귀하의 정보는 안전하게 보호됩니다.</p>
+                <h3 className="font-bold text-gray-900 mb-4">👤 신고자 정보</h3>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-center mb-2">
+                    <div className="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
+                    <p className="font-medium text-blue-800">익명 신고 가능</p>
+                  </div>
+                  <p className="text-sm text-blue-700">
+                    로그인하지 않아도 신고하실 수 있습니다. 
+                    신고자의 정보는 관리자만 확인할 수 있으며, 안전하게 보호됩니다.
+                  </p>
                 </div>
               </div>
 
@@ -167,13 +278,92 @@ export default function ReportCenter() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     📎 증빙 자료 첨부 (선택)
                   </label>
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-                    <p className="text-gray-500 mb-2">관련 대화 내용 스크린샷 등 증빙 자료들을 첨부해주세요.</p>
-                    <p className="text-sm text-gray-400">파일을 여기에 드래그하거나 클릭하여 업로드</p>
+                  
+                  {/* 파일 업로드 영역 */}
+                  <div 
+                    className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                      isDragOver 
+                        ? 'border-blue-400 bg-blue-50' 
+                        : 'border-gray-300 hover:border-gray-400'
+                    }`}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                  >
+                    <div className="space-y-2">
+                      <div className="flex justify-center">
+                        <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                        </svg>
+                      </div>
+                      <p className="text-gray-500 mb-2">관련 대화 내용 스크린샷 등 증빙 자료들을 첨부해주세요.</p>
+                      <div className="space-y-1">
+                        <p className="text-sm text-gray-400">파일을 여기에 드래그하거나</p>
+                        <label className="inline-block cursor-pointer">
+                          <input
+                            type="file"
+                            multiple
+                            accept="image/*,.pdf,.doc,.docx,.txt"
+                            onChange={handleFileSelect}
+                            className="hidden"
+                          />
+                          <span className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                            파일 선택
+                          </span>
+                        </label>
+                      </div>
+                      <p className="text-xs text-gray-400">지원 형식: 이미지, PDF, 문서 파일</p>
+                    </div>
                   </div>
-                  <p className="text-sm text-gray-500 mt-2">
-                    ※ 카카오톡 대화, 문자 메세지 등을 캡처하여 첨부하시면 더 빠른 처리가 가능합니다.
-                  </p>
+                  
+                  {/* 첨부된 파일 목록 */}
+                  {attachedFiles.length > 0 && (
+                    <div className="mt-4 space-y-2">
+                      <h4 className="text-sm font-medium text-gray-700">첨부된 파일 ({attachedFiles.length}개)</h4>
+                      <div className="space-y-2 max-h-40 overflow-y-auto">
+                        {attachedFiles.map((file, index) => (
+                          <div key={index} className="flex items-center justify-between bg-gray-50 rounded-lg p-3">
+                            <div className="flex items-center space-x-3 flex-1 min-w-0">
+                              <div className="flex-shrink-0">
+                                {file.type.startsWith('image/') ? (
+                                  <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                                  </svg>
+                                ) : (
+                                  <svg className="w-5 h-5 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
+                                  </svg>
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-gray-900 truncate">{file.name}</p>
+                                <p className="text-xs text-gray-500">{formatFileSize(file.size)}</p>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removeFile(index)}
+                              className="flex-shrink-0 ml-2 text-red-400 hover:text-red-600 transition-colors"
+                              title="파일 삭제"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="mt-2 space-y-1">
+                    <p className="text-sm text-gray-500">
+                      ※ 카카오톡 대화, 문자 메세지 등을 캡처하여 첨부하시면 더 빠른 처리가 가능합니다.
+                    </p>
+                    <p className="text-sm text-blue-600 font-medium">
+                      💡 파일 없이도 신고 가능합니다. 네트워크가 느린 경우 파일을 제외하고 신고하세요.
+                    </p>
+                  </div>
                 </div>
 
                 {/* 허위신고 경고 */}
@@ -209,9 +399,21 @@ export default function ReportCenter() {
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                    disabled={isSubmitting}
+                    className={`flex-1 px-6 py-3 rounded-lg font-medium transition-colors ${
+                      isSubmitting 
+                        ? 'bg-gray-400 cursor-not-allowed' 
+                        : 'bg-blue-500 hover:bg-blue-600'
+                    } text-white`}
                   >
-                    신고 제출하기
+                    {isSubmitting ? (
+                      <div className="flex items-center justify-center">
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-top-transparent mr-2"></div>
+                        제출 중...
+                      </div>
+                    ) : (
+                      '신고 제출하기'
+                    )}
                   </button>
                 </div>
               </form>

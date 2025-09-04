@@ -26,6 +26,17 @@ service firebase.storage {
       return request.auth != null && request.auth.token.auth_time > timestamp.date() - duration.value(30, 'd');
     }
     
+    // 신고 파일 전용 검증 (더 관대한 조건)
+    function isValidReportFile() {
+      return request.resource.contentType in [
+        'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+        'application/pdf', 'application/msword', 
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'text/plain'
+      ] && request.resource.size < 15 * 1024 * 1024 && // 15MB 제한
+      request.resource.size > 100; // 최소 100bytes (매우 작은 파일 방지)
+    }
+    
     // 업무시간 검증 (DDoS 방지)
     function isBusinessHours() {
       return request.time.dayOfWeek() >= 1 && request.time.dayOfWeek() <= 7 &&
@@ -170,6 +181,25 @@ service firebase.storage {
       
       // 관리자만 삭제 가능
       allow delete: if isAdmin();
+    }
+    
+    // 직거래 신고 증빙 파일 - 실용적인 운영용 보안 규칙
+    match /reports/{reportId}/evidence/{filename} {
+      // 증빙 파일 업로드: 누구나 가능 (익명 신고 지원), 기본적인 파일 검증
+      allow create: if isValidReportFile();
+      
+      // 증빙 파일 읽기: 특정 관리자 이메일 또는 관리자 컬렉션에 등록된 사용자
+      allow read: if isAuthenticated() && 
+                     (request.auth.token.email == 'dudals7334@naver.com' ||
+                      firestore.exists(/databases/(default)/documents/admins/$(request.auth.uid)));
+      
+      // 증빙 파일 수정: 허용하지 않음 (원본 보존)
+      allow update: if false;
+      
+      // 증빙 파일 삭제: 특정 관리자만 가능 (조사 완료 후)
+      allow delete: if isAuthenticated() && 
+                       (request.auth.token.email == 'dudals7334@naver.com' ||
+                        firestore.exists(/databases/(default)/documents/admins/$(request.auth.uid)));
     }
     
     // 임시 파일 (만료시간 포함)

@@ -39,82 +39,76 @@ export default function ReportStatusCards({ reports }: ReportStatusCardsProps) {
     {
       title: '접수 대기',
       count: reports.filter(r => r.status === 'pending').length,
-      icon: '',
-      color: 'bg-yellow-500',
-      description: '신규 신고'
+      color: 'text-yellow-600',
+      bgColor: 'bg-yellow-50',
+      borderColor: 'border-yellow-200'
     },
     {
       title: '조사 중',
       count: reports.filter(r => r.status === 'investigating').length,
-      icon: '',
-      color: 'bg-blue-500',
-      description: '처리 진행'
+      color: 'text-blue-600',
+      bgColor: 'bg-blue-50',
+      borderColor: 'border-blue-200'
     },
     {
       title: '처리 완료',
       count: reports.filter(r => r.status === 'completed').length,
-      icon: '',
-      color: 'bg-green-500',
-      description: '해결됨'
+      color: 'text-green-600',
+      bgColor: 'bg-green-50',
+      borderColor: 'border-green-200'
     },
     {
       title: '긴급 신고',
       count: reports.filter(r => r.priority === 'urgent' || 
         (r.type === 'direct_trade' && r.status === 'pending')).length,
-      icon: '',
-      color: 'bg-red-500',
-      description: '즉시 처리 필요'
+      color: 'text-red-600',
+      bgColor: 'bg-red-50',
+      borderColor: 'border-red-200'
     },
     {
       title: '직거래 신고',
       count: directTradeReports.length,
-      icon: '',
-      color: 'bg-orange-500',
-      description: `처리율 ${directTradeReports.length > 0 ? Math.round((directTradeProcessed / directTradeReports.length) * 100) : 0}%`
+      color: 'text-orange-600',
+      bgColor: 'bg-orange-50',
+      borderColor: 'border-orange-200'
     },
     {
       title: '오늘 신고',
       count: todayReports.length,
-      icon: '',
-      color: 'bg-purple-500',
-      description: '당일 접수'
+      color: 'text-purple-600',
+      bgColor: 'bg-purple-50',
+      borderColor: 'border-purple-200'
     },
     {
       title: '포상금 지급',
       count: rewardGiven,
-      icon: '',
-      color: 'bg-pink-500',
-      description: '이용권 지급'
+      color: 'text-pink-600',
+      bgColor: 'bg-pink-50',
+      borderColor: 'border-pink-200'
     },
     {
       title: '처벌 조치',
       count: penaltiesGiven,
-      icon: '',
-      color: 'bg-gray-600',
-      description: '경고/정지'
+      color: 'text-gray-600',
+      bgColor: 'bg-gray-50',
+      borderColor: 'border-gray-200'
     }
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8 gap-3">
       {statusCards.map((card, index) => (
         <div
           key={index}
-          className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow"
+          className={`${card.bgColor} rounded-lg border ${card.borderColor} p-4 hover:shadow-md transition-all duration-200 min-w-0`}
         >
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <p className="text-sm font-medium text-gray-600 mb-1">{card.title}</p>
-              <p className="text-2xl font-bold text-gray-900 mb-2">
-                {card.count}
-                {card.title === '직거래 신고' || card.title === '처리 완료' || 
-                 card.title === '접수 대기' || card.title === '조사 중' ? '건' : 
-                 card.title === '포상금 지급' || card.title === '처벌 조치' ? '건' : 
-                 card.title === '오늘 신고' || card.title === '긴급 신고' ? '건' : ''}
-              </p>
-              <p className="text-xs text-gray-500">{card.description}</p>
+          <div className="text-center">
+            <div className={`text-2xl font-bold ${card.color} mb-2`}>
+              {card.count}
             </div>
-
+            <p className={`text-xs font-medium ${card.color} truncate`}>
+              {card.title}
+            </p>
           </div>
         </div>
       ))}

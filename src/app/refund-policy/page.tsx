@@ -1,5 +1,4 @@
 import React from 'react';
-import Link from 'next/link';
 
 export default function RefundPolicyPage() {
   return (
@@ -64,7 +63,7 @@ export default function RefundPolicyPage() {
             {/* 안내사항 */}
             <div className="mt-[90px] mb-[30px] text-center">
               <p className="text-gray-600 text-sm">
-                ※ 모든 환불은 고객센터(1588-0000)를 통해 신청하실 수 있으며, 환불 처리는 영업일 기준 3-5일 소요됩니다.
+                ※ 모든 환불은 고객센터를 통해 신청하실 수 있습니다.
               </p>
             </div>
           </div>

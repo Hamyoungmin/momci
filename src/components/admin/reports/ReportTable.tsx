@@ -57,7 +57,7 @@ export default function ReportTable({ reports, onReportSelect }: ReportTableProp
   const getTypeBadge = (type: Report['type']) => {
     switch (type) {
       case 'direct_trade':
-        return <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">🚫 직거래</span>;
+        return <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">직거래</span>;
       case 'inappropriate_behavior':
         return <span className="px-2 py-1 text-xs font-medium bg-orange-100 text-orange-800 rounded-full">부적절행동</span>;
       case 'false_profile':
@@ -80,7 +80,7 @@ export default function ReportTable({ reports, onReportSelect }: ReportTableProp
       case 'medium':
         return <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">보통</span>;
       case 'low':
-        return <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">✅ 낮음</span>;
+        return <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">낮음</span>;
       default:
         return <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">알 수 없음</span>;
     }
@@ -123,35 +123,20 @@ export default function ReportTable({ reports, onReportSelect }: ReportTableProp
         </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full">
+      <div className="overflow-hidden">
+        <table className="w-full table-auto">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                신고 ID
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6 sm:w-1/5">
+                신고 유형
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                유형 & 우선순위
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                신고자
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                피신고자
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-3/6 sm:w-2/5">
                 신고 내용
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                증거자료
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6 sm:w-1/5">
                 상태
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                담당자
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6 sm:w-1/5">
                 접수일
               </th>
             </tr>
@@ -161,109 +146,83 @@ export default function ReportTable({ reports, onReportSelect }: ReportTableProp
               <tr
                 key={report.id}
                 className={`hover:bg-gray-50 cursor-pointer transition-colors ${
-                  isUrgent(report) ? 'bg-red-50' : ''
+                  isUrgent(report) ? 'bg-red-50 border-l-4 border-red-500' : ''
                 }`}
                 onClick={() => onReportSelect(report)}
               >
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
-                  {report.id}
-                  {isUrgent(report) && (
-                    <div className="text-xs text-red-600 font-medium">긴급</div>
-                  )}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm">
-                  <div className="space-y-1">
+                {/* 신고 유형 */}
+                <td className="px-4 py-4 text-sm">
+                  <div className="space-y-2">
                     {getTypeBadge(report.type)}
-                    {getPriorityBadge(report.priority)}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  <div className="space-y-1">
-                    <div className="font-medium">{report.reporterName}</div>
-                    <div className="text-xs text-gray-500">{report.reporterId}</div>
-                    <div>{getUserTypeBadge(report.reporterType)}</div>
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  <div className="space-y-1">
-                    <div className="font-medium">{report.reportedName}</div>
-                    <div className="text-xs text-gray-500">{report.reportedId}</div>
-                    <div>{getUserTypeBadge(report.reportedType)}</div>
-                  </div>
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-900">
-                  <div className="max-w-xs">
-                    <div className="font-medium truncate" title={report.title}>
-                      {report.title}
-                    </div>
-                    <div className="text-xs text-gray-500 mt-1 truncate" title={report.description}>
-                      {report.description}
-                    </div>
-                    {(report.relatedChatId || report.relatedMatchingId) && (
-                      <div className="text-xs text-blue-600 mt-1">
-                        {report.relatedChatId && `채팅: ${report.relatedChatId}`}
-                        {report.relatedMatchingId && ` 매칭: ${report.relatedMatchingId}`}
+                    {isUrgent(report) && (
+                      <div className="flex items-center space-x-1">
+                        <span className="px-2 py-1 text-xs font-bold bg-red-100 text-red-800 rounded-full animate-pulse">
+                          긴급
+                        </span>
                       </div>
                     )}
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+
+                {/* 신고 내용 */}
+                <td className="px-4 py-4 text-sm">
                   <div className="space-y-1">
-                    <div className="text-xs text-gray-600">
-                      총 {report.evidence.length}개
+                    <div className="font-semibold text-gray-900 truncate" title={report.title}>
+                      {report.title}
                     </div>
-                    <div className="flex flex-wrap gap-1">
-                      {report.evidence.slice(0, 2).map((evidence, index) => (
-                        <span
-                          key={index}
-                          className={`px-1.5 py-0.5 text-xs rounded ${
-                            evidence.type === 'chat' ? 'bg-blue-100 text-blue-700' :
-                            evidence.type === 'screenshot' ? 'bg-green-100 text-green-700' :
-                            'bg-purple-100 text-purple-700'
-                          }`}
-                        >
-                          {evidence.type === 'chat' ? '채팅' :
-                           evidence.type === 'screenshot' ? '스크린샷' : '파일'}
-                        </span>
-                      ))}
-                      {report.evidence.length > 2 && (
-                        <span className="px-1.5 py-0.5 text-xs bg-gray-100 text-gray-600 rounded">
-                          +{report.evidence.length - 2}
-                        </span>
+                    <div className="text-xs text-gray-600 leading-tight" title={report.description} 
+                         style={{
+                           display: '-webkit-box',
+                           WebkitLineClamp: 2,
+                           WebkitBoxOrient: 'vertical',
+                           overflow: 'hidden'
+                         }}>
+                      {report.description}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1 text-xs text-gray-500">
+                      <span className="whitespace-nowrap">신고자: {report.reporterName}</span>
+                      <span className="hidden sm:inline">•</span>
+                      <span className="whitespace-nowrap">피신고자: {report.reportedName}</span>
+                      {report.evidence.length > 0 && (
+                        <>
+                          <span className="hidden sm:inline">•</span>
+                          <span className="whitespace-nowrap">{report.evidence.length}개 첨부</span>
+                        </>
                       )}
                     </div>
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  {getStatusBadge(report.status)}
-                  {report.resolution?.penalty && (
-                    <div className="text-xs text-red-600 mt-1">
-                      처벌: {report.resolution.penalty === 'warning' ? '경고' :
-                             report.resolution.penalty === 'temporary_ban' ? '정지' : '영구정지'}
-                    </div>
-                  )}
-                  {report.resolution?.reward && (
-                    <div className="text-xs text-green-600 mt-1">
-                      포상: 이용권 1개월
-                    </div>
-                  )}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {report.assignedTo ? (
-                    <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
-                      {report.assignedTo}
-                    </span>
-                  ) : (
-                    <span className="text-gray-400">미배정</span>
-                  )}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  <div className="space-y-1">
-                    <div>{new Date(report.createdAt).toLocaleDateString('ko-KR')}</div>
-                    <div className="text-xs">{getTimeDifference(report.createdAt)}</div>
-                    {isUrgent(report) && report.type === 'direct_trade' && (
+
+                {/* 상태 */}
+                <td className="px-4 py-4 text-sm">
+                  <div className="space-y-2">
+                    {getStatusBadge(report.status)}
+                    {report.assignedTo && (
+                      <div className="text-xs text-blue-600">
+                        담당: {report.assignedTo}
+                      </div>
+                    )}
+                    {report.resolution?.penalty && (
                       <div className="text-xs text-red-600">
-                        ⏰ 24h 내 처리
+                        처벌: {report.resolution.penalty === 'warning' ? '경고' :
+                               report.resolution.penalty === 'temporary_ban' ? '정지' : '영구정지'}
+                      </div>
+                    )}
+                  </div>
+                </td>
+
+                {/* 접수일 */}
+                <td className="px-4 py-4 text-sm text-gray-500">
+                  <div className="space-y-1">
+                    <div className="font-medium">
+                      {new Date(report.createdAt).toLocaleDateString('ko-KR')}
+                    </div>
+                    <div className="text-xs text-gray-400">
+                      {getTimeDifference(report.createdAt)}
+                    </div>
+                    {isUrgent(report) && report.type === 'direct_trade' && (
+                      <div className="text-xs text-red-600 font-medium">
+                        24시간 내 처리
                       </div>
                     )}
                   </div>

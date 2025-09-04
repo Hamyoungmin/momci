@@ -42,7 +42,7 @@ export default function Hero() {
                 이용권 구매하고 시작하기
               </Link>
               <Link
-                href="/guide"
+                href="/faq"
                 className="border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-900 px-8 py-4 rounded-2xl font-semibold text-lg transition-colors"
               >
                 서비스 이용방법 보기

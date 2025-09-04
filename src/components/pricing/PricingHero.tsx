@@ -69,7 +69,7 @@ export default function PricingHero() {
               요금제 선택하기
             </a>
             <a
-              href="/guide"
+              href="/pricing"
               className="border-2 border-white text-white hover:bg-white hover:text-blue-600 px-8 py-4 rounded-lg font-semibold text-lg transition-colors"
             >
               서비스 자세히 보기

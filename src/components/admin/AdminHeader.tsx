@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useAdminStats, useFallbackAdminStats } from '@/hooks/useAdminStats';
+import { useAdminStats } from '@/hooks/useAdminStats';
 
 interface AdminHeaderProps {
   isAdmin: boolean;

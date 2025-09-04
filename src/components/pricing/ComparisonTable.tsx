@@ -243,7 +243,7 @@ export default function ComparisonTable() {
                 7일 무료 체험 시작
               </a>
               <a
-                href="/guide"
+                href="/pricing"
                 className="border-2 border-white text-white hover:bg-white hover:text-blue-600 px-8 py-3 rounded-lg font-semibold transition-colors"
               >
                 서비스 자세히 보기

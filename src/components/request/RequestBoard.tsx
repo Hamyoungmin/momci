@@ -2,9 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { collection, addDoc, getDocs, onSnapshot, orderBy, query, serverTimestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-
 // 게시글 타입 정의
 interface Post {
   id: string;

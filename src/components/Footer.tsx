@@ -7,11 +7,8 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* 브랜드 정보 */}
           <div className="col-span-1 md:col-span-2">
-            <div className="flex items-center space-x-2 mb-4">
-              <div className="w-8 h-8 bg-blue-500 rounded-2xl flex items-center justify-center">
-                <span className="text-white font-bold text-sm">더</span>
-              </div>
-              <span className="text-xl font-bold">모든별 키즈</span>
+            <div className="flex items-center mb-4">
+              <span className="text-xl font-bold text-blue-700">모든별 키즈</span>
             </div>
             <p className="text-gray-300 mb-4 leading-relaxed">
               모든별 키즈는 전문 치료사와 학부모를 안전하게 연결하는<br />
@@ -30,7 +27,7 @@ export default function Footer() {
             <h3 className="font-semibold mb-4">서비스</h3>
             <ul className="space-y-2 text-sm text-gray-300">
               <li>
-                <Link href="/guide" className="hover:text-white transition-colors">
+                <Link href="/parent-guide" className="hover:text-white transition-colors">
                   이용안내
                 </Link>
               </li>

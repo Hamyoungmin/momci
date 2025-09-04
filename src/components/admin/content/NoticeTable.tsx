@@ -9,11 +9,11 @@ interface Notice {
   isActive: boolean;
   startDate: string;
   endDate?: string;
-  views: number;
-  createdAt: string;
-  updatedAt: string;
+  views?: number;
+  createdAt: any;
+  updatedAt: any;
   createdBy: string;
-  priority: number;
+  priority?: number;
   targetAudience: 'all' | 'parents' | 'teachers';
 }
 
@@ -119,9 +119,13 @@ export default function NoticeTable({ notices, onNoticeSelect }: NoticeTableProp
             {notices
               .sort((a, b) => {
                 // 우선순위 -> 활성 상태 -> 생성일 순으로 정렬
-                if (a.priority !== b.priority) return a.priority - b.priority;
+                const priorityA = a.priority || 999;
+                const priorityB = b.priority || 999;
+                if (priorityA !== priorityB) return priorityA - priorityB;
                 if (a.isActive !== b.isActive) return b.isActive ? 1 : -1;
-                return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+                const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt);
+                const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt);
+                return dateB.getTime() - dateA.getTime();
               })
               .map((notice) => (
               <tr
@@ -138,7 +142,7 @@ export default function NoticeTable({ notices, onNoticeSelect }: NoticeTableProp
               >
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   <div className="flex items-center space-x-2">
-                    <span className="font-bold text-lg">#{notice.priority}</span>
+                    <span className="font-bold text-lg">#{notice.priority || '-'}</span>
                     {notice.type === 'urgent' && (
                       <span className="text-red-500">긴급</span>
                     )}
@@ -186,7 +190,9 @@ export default function NoticeTable({ notices, onNoticeSelect }: NoticeTableProp
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-500">
                   <div className="space-y-1">
-                    <div>{new Date(notice.startDate).toLocaleDateString('ko-KR')}</div>
+                    <div>
+                      {notice.startDate ? new Date(notice.startDate).toLocaleDateString('ko-KR') : '-'}
+                    </div>
                     {notice.endDate && (
                       <div className="text-xs">
                         ~ {new Date(notice.endDate).toLocaleDateString('ko-KR')}
@@ -200,20 +206,31 @@ export default function NoticeTable({ notices, onNoticeSelect }: NoticeTableProp
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   <div className="flex items-center">
                     <span className="text-xs text-gray-500 mr-1">조회</span>
-                    <span className="font-medium">{notice.views.toLocaleString()}</span>
+                    <span className="font-medium">{(notice.views || 0).toLocaleString()}</span>
                   </div>
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-500">
                   <div className="space-y-1">
-                    <div className="font-medium">{notice.createdBy}</div>
+                    <div className="font-medium">{notice.createdBy || '관리자'}</div>
                     <div className="text-xs">
-                      {new Date(notice.createdAt).toLocaleDateString('ko-KR')}
+                      {notice.createdAt ? (
+                        notice.createdAt instanceof Date ? 
+                          notice.createdAt.toLocaleDateString('ko-KR') :
+                          new Date(notice.createdAt).toLocaleDateString('ko-KR')
+                      ) : '-'}
                     </div>
                     <div className="text-xs">
-                      {new Date(notice.createdAt).toLocaleTimeString('ko-KR', { 
-                        hour: '2-digit', 
-                        minute: '2-digit' 
-                      })}
+                      {notice.createdAt ? (
+                        notice.createdAt instanceof Date ? 
+                          notice.createdAt.toLocaleTimeString('ko-KR', { 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                          }) :
+                          new Date(notice.createdAt).toLocaleTimeString('ko-KR', { 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                          })
+                      ) : '-'}
                     </div>
                   </div>
                 </td>

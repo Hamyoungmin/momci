@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React from 'react';
 import StatsCards from './dashboard/StatsCards';
 import AlertCenter from './dashboard/AlertCenter';
 import RecentActivities from './dashboard/RecentActivities';

@@ -1,6 +1,7 @@
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -24,5 +25,8 @@ export const auth = getAuth(app);
 
 // Firestore 인스턴스  
 export const db = getFirestore(app);
+
+// Storage 인스턴스
+export const storage = getStorage(app);
 
 export default app;

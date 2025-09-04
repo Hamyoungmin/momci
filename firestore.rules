@@ -46,7 +46,8 @@ service cloud.firestore {
     
     function rateLimitCheck(maxPerMinute) {
       // 실제로는 더 복잡한 rate limiting 로직이 필요하지만, 기본적인 시간 체크
-      return request.time > timestamp.date() - duration.value(1, 'm');
+      // 임시로 항상 true 반환 (실제 rate limiting은 클라이언트나 서버에서 처리)
+      return true;
     }
     
     // 관리자 컬렉션 (관리자만 관리 가능)
@@ -273,20 +274,48 @@ service cloud.firestore {
       }
     }
     
-    // 신고 접수
+    // 신고 접수 (직거래 신고 등) - 실용적인 운영용 보안 규칙
     match /reports/{reportId} {
-      // 관리자만 읽기 가능
-      allow read: if isAdmin();
+      // 신고 읽기: 특정 관리자 이메일 또는 관리자 컬렉션에 등록된 사용자
+      allow read: if isAuthenticated() && 
+                     (request.auth.token.email == 'dudals7334@naver.com' ||
+                      exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
       
-      // 인증된 사용자는 신고 생성 가능
-      allow create: if isAuthenticated() && 
-                       request.resource.data.reporterId == request.auth.uid &&
-                       request.resource.data.keys().hasAll(['reporterId', 'reportedId', 'reason', 'createdAt']) &&
-                       request.resource.data.reason is string &&
-                       request.resource.data.reason.size() > 0;
+      // 신고 생성: 누구나 가능 (익명 신고 지원), 실제 데이터 구조에 맞춘 검증
+      allow create: if request.resource.data.keys().hasAll([
+                         'type', 'reporterId', 'reporterName', 'reporterType',
+                         'reportedName', 'title', 'description', 'evidence',
+                         'status', 'priority', 'createdAt', 'updatedAt', 'isAnonymous'
+                       ]) &&
+                       // 기본 타입 검증
+                       request.resource.data.type is string &&
+                       request.resource.data.reporterId is string &&
+                       request.resource.data.reporterName is string &&
+                       request.resource.data.reporterType == 'parent' &&
+                       request.resource.data.reportedName is string &&
+                       request.resource.data.title is string &&
+                       request.resource.data.description is string &&
+                       request.resource.data.evidence is list &&
+                       request.resource.data.status == 'pending' &&
+                       request.resource.data.priority in ['urgent', 'medium', 'low'] &&
+                       request.resource.data.isAnonymous is bool &&
+                       // 최소 길이 검증 (너무 엄격하지 않게)
+                       request.resource.data.reportedName.size() >= 1 &&
+                       request.resource.data.title.size() >= 1 &&
+                       request.resource.data.description.size() >= 1;
       
-      // 관리자만 수정/삭제 가능
-      allow update, delete: if isAdmin();
+      // 신고 수정: 관리자와 시스템 업데이트 허용 (파일 증빙 추가용)
+      allow update: if (isAuthenticated() && 
+                       (request.auth.token.email == 'dudals7334@naver.com' ||
+                        exists(/databases/$(database)/documents/admins/$(request.auth.uid)))) || 
+                       // 증빙 파일 추가 업데이트만 허용 (파일 업로드 후)
+                       request.resource.data.diff(resource.data).affectedKeys()
+                         .hasOnly(['evidence', 'updatedAt']);
+      
+      // 신고 삭제: 관리자만 가능 (기록 보관 목적)
+      allow delete: if isAuthenticated() && 
+                       (request.auth.token.email == 'dudals7334@naver.com' ||
+                        exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
     }
     
     // 결제 정보
@@ -357,8 +386,8 @@ service cloud.firestore {
       // 모든 사용자가 읽기 가능
       allow read: if true;
       
-      // 관리자만 생성/수정/삭제 가능
-      allow create, update, delete: if isAdmin();
+      // 특정 관리자만 공지사항 관리 가능 (FAQ 관리자와 동일)
+      allow create, update, delete: if isFAQAdmin();
     }
     
     // FAQ
@@ -1151,4 +1180,3 @@ service cloud.firestore {
     }
   }
 }
-

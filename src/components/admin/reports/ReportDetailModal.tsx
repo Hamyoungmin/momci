@@ -8,20 +8,19 @@ interface Report {
   reporterId: string;
   reporterName: string;
   reporterType: 'parent' | 'teacher';
-  reportedId: string;
   reportedName: string;
-  reportedType: 'parent' | 'teacher';
   title: string;
   description: string;
   evidence: {
-    type: 'chat' | 'screenshot' | 'document';
-    url?: string;
-    description: string;
+    url: string;
+    filename: string;
+    type: string;
   }[];
-  status: 'pending' | 'investigating' | 'completed' | 'dismissed';
+  status: 'pending' | 'investigating' | 'resolved' | 'closed';
   priority: 'low' | 'medium' | 'high' | 'urgent';
-  createdAt: string;
-  updatedAt: string;
+  createdAt: any; // Firestore Timestamp
+  updatedAt: any; // Firestore Timestamp
+  isAnonymous: boolean;
   assignedTo?: string;
   resolution?: {
     action: string;
@@ -41,7 +40,7 @@ interface ReportDetailModalProps {
   report: Report;
   onReportAction: (
     reportId: string, 
-    action: 'assign' | 'investigate' | 'complete' | 'dismiss',
+    action: 'assign' | 'investigate' | 'resolve' | 'close',
     data: {
       assignee?: string;
       resolution?: {
@@ -56,7 +55,7 @@ interface ReportDetailModalProps {
 
 export default function ReportDetailModal({ isOpen, onClose, report, onReportAction }: ReportDetailModalProps) {
   const [activeTab, setActiveTab] = useState('details');
-  const [actionType, setActionType] = useState<'assign' | 'investigate' | 'complete' | 'dismiss' | null>(null);
+  const [actionType, setActionType] = useState<'assign' | 'investigate' | 'resolve' | 'close' | null>(null);
   const [assignee, setAssignee] = useState('');
   const [resolutionAction, setResolutionAction] = useState('');
   const [resolutionReason, setResolutionReason] = useState('');
@@ -78,16 +77,16 @@ export default function ReportDetailModal({ isOpen, onClose, report, onReportAct
     
     if (actionType === 'assign') {
       data.assignee = assignee;
-    } else if (actionType === 'complete') {
+    } else if (actionType === 'resolve') {
       data.resolution = {
         action: resolutionAction,
         reason: resolutionReason,
         ...(penalty && { penalty }),
         ...(giveReward && { reward: 'subscription_1month' })
       };
-    } else if (actionType === 'dismiss') {
+    } else if (actionType === 'close') {
       data.resolution = {
-        action: 'dismissed',
+        action: 'closed',
         reason: resolutionReason
       };
     }
@@ -112,9 +111,17 @@ export default function ReportDetailModal({ isOpen, onClose, report, onReportAct
     }
   };
 
-  const getTimeDifference = (timestamp: string) => {
+  // Firestore Timestamp를 Date로 변환하는 헬퍼 함수
+  const convertTimestamp = (timestamp: any) => {
+    if (!timestamp) return new Date();
+    if (timestamp.toDate) return timestamp.toDate(); // Firestore Timestamp
+    if (timestamp.seconds) return new Date(timestamp.seconds * 1000); // Timestamp object
+    return new Date(timestamp); // 이미 Date 객체거나 문자열인 경우
+  };
+
+  const getTimeDifference = (timestamp: any) => {
     const now = new Date();
-    const past = new Date(timestamp);
+    const past = convertTimestamp(timestamp);
     const diffMs = now.getTime() - past.getTime();
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     
@@ -128,48 +135,47 @@ export default function ReportDetailModal({ isOpen, onClose, report, onReportAct
                   (report.type === 'direct_trade' && report.status === 'pending');
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-        {/* 배경 오버레이 */}
-        <div className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onClick={onClose}></div>
-
-        {/* 모달 */}
-        <div className="inline-block w-full max-w-4xl p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-lg">
+    <>
+      {/* 모달 */}
+      <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50">
+        <div className="bg-white rounded-lg p-8 max-w-6xl w-[95vw] shadow-xl border-4 border-blue-500 max-h-[90vh] overflow-y-auto">
           {/* 헤더 */}
-          <div className="flex items-center justify-between pb-4 border-b border-gray-200">
+          <div className="flex justify-between items-center mb-6">
             <div>
-              <h3 className="text-lg font-medium text-gray-900">신고 상세 처리</h3>
-              <p className="text-sm text-gray-600">신고 ID: {report.id}</p>
+              <h2 className="text-2xl font-bold text-gray-900">신고 상세 처리</h2>
+              <p className="text-sm text-gray-500 mt-1">
+                신고 ID: {report.id}
+                {isUrgent && (
+                  <span className="ml-2 px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">
+                    긴급 처리
+                  </span>
+                )}
+                {report.type === 'direct_trade' && (
+                  <span className="ml-2 px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">
+                    🚫 직거래 신고
+                  </span>
+                )}
+              </p>
             </div>
-            <div className="flex items-center space-x-4">
-              {isUrgent && (
-                <span className="px-3 py-1 text-sm font-medium bg-red-100 text-red-800 rounded-full">
-                  긴급 처리
-                </span>
-              )}
-              {report.type === 'direct_trade' && (
-                <span className="px-3 py-1 text-sm font-medium bg-red-100 text-red-800 rounded-full">
-                  🚫 직거래 신고
-                </span>
-              )}
-              <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600 text-2xl"
+              type="button"
+            >
+              ✕
+            </button>
           </div>
 
-          {/* 기본 정보 */}
-          <div className="mt-4 bg-gray-50 rounded-lg p-4">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
+          {/* 기본 정보 요약 */}
+          <div className="bg-gray-50 rounded-lg p-4 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
               <div>
-                <span className="text-gray-600">신고 유형:</span>
-                <span className="font-medium ml-2">{getTypeDescription(report.type)}</span>
+                <span className="text-gray-600 block">신고 유형</span>
+                <span className="font-medium text-gray-900">{getTypeDescription(report.type)}</span>
               </div>
               <div>
-                <span className="text-gray-600">우선순위:</span>
-                <span className={`font-medium ml-2 ${
+                <span className="text-gray-600 block">우선순위</span>
+                <span className={`font-medium ${
                   report.priority === 'urgent' ? 'text-red-600' :
                   report.priority === 'high' ? 'text-orange-600' :
                   report.priority === 'medium' ? 'text-yellow-600' : 'text-green-600'
@@ -180,37 +186,36 @@ export default function ReportDetailModal({ isOpen, onClose, report, onReportAct
                 </span>
               </div>
               <div>
-                <span className="text-gray-600">현재 상태:</span>
-                <span className="font-medium ml-2">
-                  {report.status === 'pending' ? '접수' :
+                <span className="text-gray-600 block">현재 상태</span>
+                <span className="font-medium text-gray-900">
+                  {report.status === 'pending' ? '접수 대기' :
                    report.status === 'investigating' ? '조사 중' :
-                   report.status === 'completed' ? '완료' : '기각'}
+                   report.status === 'resolved' ? '해결됨' : 
+                   report.status === 'closed' ? '종료됨' : '처리됨'}
                 </span>
               </div>
               <div>
-                <span className="text-gray-600">경과 시간:</span>
-                <span className={`font-medium ml-2 ${isUrgent ? 'text-red-600' : 'text-gray-900'}`}>
-                  {getTimeDifference(report.createdAt)}
+                <span className="text-gray-600 block">접수일</span>
+                <span className="font-medium text-gray-900">
+                  {convertTimestamp(report.createdAt).toLocaleDateString('ko-KR')}
                 </span>
               </div>
             </div>
+            
+            {/* 긴급 알림 */}
+            {isUrgent && report.status === 'pending' && (
+              <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-md">
+                <div className="flex items-center">
+                  <svg className="w-4 h-4 text-red-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  <span className="text-xs font-medium text-red-800">
+                    {report.type === 'direct_trade' ? '직거래 신고 - 24시간 내 처리 필요' : '긴급 처리 필요'}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
-
-          {/* 긴급 처리 알림 */}
-          {isUrgent && report.status === 'pending' && (
-            <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <div className="flex items-center">
-                <svg className="w-5 h-5 text-red-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                </svg>
-                <span className="text-sm font-medium text-red-800">
-                  {report.type === 'direct_trade' ? 
-                    '직거래 신고는 24시간 내 처리해야 합니다. 신속한 조치가 필요합니다.' :
-                    '긴급 신고입니다. 우선 처리해 주세요.'}
-                </span>
-              </div>
-            </div>
-          )}
 
           {/* 탭 네비게이션 */}
           <div className="mt-6">
@@ -232,7 +237,7 @@ export default function ReportDetailModal({ isOpen, onClose, report, onReportAct
           </div>
 
           {/* 탭 컨텐츠 */}
-          <div className="mt-6 max-h-96 overflow-y-auto">
+          <div className="mt-6">
             {activeTab === 'details' && (
               <div className="space-y-6">
                 {/* 신고자 정보 */}
@@ -259,19 +264,18 @@ export default function ReportDetailModal({ isOpen, onClose, report, onReportAct
                 {/* 피신고자 정보 */}
                 <div className="bg-red-50 rounded-lg p-4">
                   <h4 className="text-sm font-medium text-red-900 mb-3">피신고자 정보</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                     <div>
-                      <span className="text-red-700">이름:</span>
+                      <span className="text-red-700">신고 대상:</span>
                       <span className="font-medium ml-2">{report.reportedName}</span>
                     </div>
                     <div>
-                      <span className="text-red-700">ID:</span>
-                      <span className="font-medium ml-2">{report.reportedId}</span>
-                    </div>
-                    <div>
-                      <span className="text-red-700">유형:</span>
+                      <span className="text-red-700">신고 유형:</span>
                       <span className="font-medium ml-2">
-                        {report.reportedType === 'parent' ? '학부모' : '치료사'}
+                        {report.type === 'direct_trade' ? '직거래 신고' :
+                         report.type === 'inappropriate_behavior' ? '부적절한 행동' :
+                         report.type === 'false_profile' ? '허위 프로필' :
+                         report.type === 'service_complaint' ? '서비스 불만' : '기타'}
                       </span>
                     </div>
                   </div>
@@ -326,13 +330,13 @@ export default function ReportDetailModal({ isOpen, onClose, report, onReportAct
                     <div>
                       <span className="text-gray-600">접수일:</span>
                       <span className="font-medium ml-2">
-                        {new Date(report.createdAt).toLocaleString('ko-KR')}
+                        {convertTimestamp(report.createdAt).toLocaleString('ko-KR')}
                       </span>
                     </div>
                     <div>
                       <span className="text-gray-600">수정일:</span>
                       <span className="font-medium ml-2">
-                        {new Date(report.updatedAt).toLocaleString('ko-KR')}
+                        {convertTimestamp(report.updatedAt).toLocaleString('ko-KR')}
                       </span>
                     </div>
                   </div>
@@ -345,33 +349,36 @@ export default function ReportDetailModal({ isOpen, onClose, report, onReportAct
                 <h4 className="text-base font-medium text-gray-900">제출된 증거 자료</h4>
                 
                 <div className="space-y-4">
-                  {report.evidence.map((evidence, index) => (
+                  {report.evidence && report.evidence.length > 0 ? report.evidence.map((evidence, index) => (
                     <div key={index} className="border border-gray-200 rounded-lg p-4">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center space-x-2 mb-2">
-                            <span className="text-lg">
-                              {evidence.type === 'chat' ? '채팅' :
-                               evidence.type === 'screenshot' ? '스크린샷' : '파일'}
-                            </span>
+                            <span className="text-lg">📎</span>
                             <span className="font-medium text-gray-900">
-                              {evidence.type === 'chat' ? '채팅 내역' :
-                               evidence.type === 'screenshot' ? '스크린샷' : '문서'}
+                              {evidence.filename || `첨부파일 ${index + 1}`}
+                            </span>
+                            <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded">
+                              {evidence.type || '파일'}
                             </span>
                           </div>
-                          <p className="text-sm text-gray-700">{evidence.description}</p>
                           {evidence.url && (
-                            <button className="mt-2 text-blue-600 hover:text-blue-800 underline text-sm">
-                              파일 보기
-                            </button>
+                            <a 
+                              href={evidence.url} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="mt-2 text-blue-600 hover:text-blue-800 underline text-sm inline-block"
+                            >
+                              파일 다운로드
+                            </a>
                           )}
                         </div>
                       </div>
                     </div>
-                  ))}
+                  )) : null}
                 </div>
 
-                {report.evidence.length === 0 && (
+                {(!report.evidence || report.evidence.length === 0) && (
                   <div className="text-center py-8">
                     <p className="text-gray-500">제출된 증거 자료가 없습니다.</p>
                   </div>
@@ -392,7 +399,8 @@ export default function ReportDetailModal({ isOpen, onClose, report, onReportAct
                       <span className="font-medium ml-2">
                         {report.status === 'pending' ? '접수 대기' :
                          report.status === 'investigating' ? '조사 진행 중' :
-                         report.status === 'completed' ? '처리 완료' : '기각'}
+                         report.status === 'resolved' ? '해결 완료' : 
+                         report.status === 'closed' ? '종료됨' : '처리됨'}
                       </span>
                     </div>
                     <div>
@@ -439,7 +447,7 @@ export default function ReportDetailModal({ isOpen, onClose, report, onReportAct
                       <div>
                         <span className="text-green-700">처리일:</span>
                         <span className="font-medium ml-2">
-                          {new Date(report.resolution.processedAt).toLocaleString('ko-KR')}
+                          {convertTimestamp(report.resolution.processedAt).toLocaleString('ko-KR')}
                         </span>
                       </div>
                     </div>
@@ -485,23 +493,23 @@ export default function ReportDetailModal({ isOpen, onClose, report, onReportAct
                             <input
                               type="radio"
                               name="action"
-                              value="complete"
-                              checked={actionType === 'complete'}
-                              onChange={(e) => setActionType(e.target.value as 'complete')}
+                              value="resolve"
+                              checked={actionType === 'resolve'}
+                              onChange={(e) => setActionType(e.target.value as 'resolve')}
                               className="w-4 h-4 text-green-600 border-gray-300 focus:ring-green-500"
                             />
-                            <span className="ml-2 text-sm text-gray-900">처리 완료</span>
+                            <span className="ml-2 text-sm text-gray-900">문제 해결</span>
                           </label>
                           <label className="flex items-center">
                             <input
                               type="radio"
                               name="action"
-                              value="dismiss"
-                              checked={actionType === 'dismiss'}
-                              onChange={(e) => setActionType(e.target.value as 'dismiss')}
+                              value="close"
+                              checked={actionType === 'close'}
+                              onChange={(e) => setActionType(e.target.value as 'close')}
                               className="w-4 h-4 text-red-600 border-gray-300 focus:ring-red-500"
                             />
-                            <span className="ml-2 text-sm text-gray-900">신고 기각</span>
+                            <span className="ml-2 text-sm text-gray-900">신고 종료</span>
                           </label>
                         </div>
                       </div>
@@ -522,7 +530,7 @@ export default function ReportDetailModal({ isOpen, onClose, report, onReportAct
                         </div>
                       )}
 
-                      {(actionType === 'complete' || actionType === 'dismiss') && (
+                      {(actionType === 'resolve' || actionType === 'close') && (
                         <>
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">처리 내용</label>
@@ -546,7 +554,7 @@ export default function ReportDetailModal({ isOpen, onClose, report, onReportAct
                             />
                           </div>
 
-                          {actionType === 'complete' && (
+                          {actionType === 'resolve' && (
                             <>
                               <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">처벌 조치</label>
@@ -580,19 +588,28 @@ export default function ReportDetailModal({ isOpen, onClose, report, onReportAct
                         </>
                       )}
 
-                      <button
-                        onClick={handleAction}
-                        disabled={!actionType || 
-                          (actionType === 'assign' && !assignee) ||
-                          ((actionType === 'complete' || actionType === 'dismiss') && !resolutionReason.trim())
-                        }
-                        className="w-full px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {actionType === 'assign' ? '담당자 배정' :
-                         actionType === 'investigate' ? '조사 시작' :
-                         actionType === 'complete' ? '처리 완료' :
-                         actionType === 'dismiss' ? '신고 기각' : '작업 실행'}
-                      </button>
+                      <div className="flex gap-2 justify-end">
+                        <button
+                          type="button"
+                          onClick={onClose}
+                          className="px-4 py-2 text-gray-600 hover:bg-gray-50 border border-gray-300 rounded-md transition-colors"
+                        >
+                          취소
+                        </button>
+                        <button
+                          onClick={handleAction}
+                          disabled={!actionType || 
+                            (actionType === 'assign' && !assignee) ||
+                            ((actionType === 'resolve' || actionType === 'close') && !resolutionReason.trim())
+                          }
+                          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {actionType === 'assign' ? '담당자 배정' :
+                           actionType === 'investigate' ? '조사 시작' :
+                           actionType === 'resolve' ? '문제 해결' :
+                           actionType === 'close' ? '신고 종료' : '작업 실행'}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -601,19 +618,19 @@ export default function ReportDetailModal({ isOpen, onClose, report, onReportAct
           </div>
 
           {/* 푸터 */}
-          <div className="mt-6 pt-4 border-t border-gray-200 flex justify-between">
+          <div className="flex justify-between pt-6 border-t border-gray-200 mt-6">
             <div className="text-sm text-gray-500">
-              마지막 업데이트: {new Date(report.updatedAt).toLocaleString('ko-KR')}
+              마지막 업데이트: {convertTimestamp(report.updatedAt).toLocaleString('ko-KR')}
             </div>
             <button
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300"
+              className="px-4 py-2 text-gray-600 hover:bg-gray-50 border border-gray-300 rounded-md transition-colors"
             >
               닫기
             </button>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
