@@ -11,11 +11,11 @@ interface Notice {
   isActive: boolean;
   startDate: string;
   endDate?: string;
-  views: number;
+  views?: number;
   createdAt: string;
   updatedAt: string;
   createdBy: string;
-  priority: number;
+  priority?: number;
   targetAudience: 'all' | 'parents' | 'teachers';
 }
 
@@ -56,7 +56,7 @@ export default function NoticeEditModal({
       setTargetAudience(notice.targetAudience);
       setIsActive(notice.isActive);
       setStartDate(notice.startDate.split(' ')[0]);
-      setPriority(notice.priority);
+              setPriority(notice.priority || 1);
       
       if (notice.endDate) {
         setEndDate(notice.endDate.split(' ')[0]);

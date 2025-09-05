@@ -148,7 +148,7 @@ export default function NoticeManagement() {
 
   const activeNotices = notices.filter(n => n.isActive);
   const urgentNotices = notices.filter(n => n.type === 'urgent' && n.isActive);
-  const totalViews = notices.reduce((sum, n) => sum + n.views, 0);
+  const totalViews = notices.reduce((sum, n) => sum + (n.views || 0), 0);
 
   return (
     <div className="space-y-6">

@@ -208,7 +208,7 @@ export async function createReport(
     // 성공 정보 반환
     const result = {
       reportId,
-      fileUploadError: fileUploadError ? fileUploadError.message : null,
+      fileUploadError: fileUploadError ? (fileUploadError instanceof Error ? fileUploadError.message : String(fileUploadError)) : null,
       filesUploaded: evidenceFiles.length,
       totalFiles: files.length
     };

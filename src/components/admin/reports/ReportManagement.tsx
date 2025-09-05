@@ -4,40 +4,7 @@ import { useState, useEffect } from 'react';
 import ReportStatusCards from './ReportStatusCards';
 import ReportTable from './ReportTable';
 import ReportDetailModal from './ReportDetailModal';
-import { getAllReports, updateReportStatus, resolveReport } from '@/lib/reports';
-
-interface Report {
-  id: string;
-  type: 'direct_trade' | 'inappropriate_behavior' | 'false_profile' | 'service_complaint' | 'other';
-  reporterId: string;
-  reporterName: string;
-  reporterType: 'parent' | 'teacher';
-  reportedId: string;
-  reportedName: string;
-  reportedType: 'parent' | 'teacher';
-  title: string;
-  description: string;
-  evidence: {
-    type: 'chat' | 'screenshot' | 'document';
-    url?: string;
-    description: string;
-  }[];
-  status: 'pending' | 'investigating' | 'completed' | 'dismissed';
-  priority: 'low' | 'medium' | 'high' | 'urgent';
-  createdAt: string;
-  updatedAt: string;
-  assignedTo?: string;
-  resolution?: {
-    action: string;
-    reason: string;
-    penalty?: 'warning' | 'temporary_ban' | 'permanent_ban';
-    reward?: 'subscription_1month';
-    processedBy: string;
-    processedAt: string;
-  };
-  relatedChatId?: string;
-  relatedMatchingId?: string;
-}
+import { getAllReports, updateReportStatus, resolveReport, Report } from '@/lib/reports';
 
 export default function ReportManagement() {
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);

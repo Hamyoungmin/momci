@@ -1,38 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-
-interface Report {
-  id: string;
-  type: 'direct_trade' | 'inappropriate_behavior' | 'false_profile' | 'service_complaint' | 'other';
-  reporterId: string;
-  reporterName: string;
-  reporterType: 'parent' | 'teacher';
-  reportedName: string;
-  title: string;
-  description: string;
-  evidence: {
-    url: string;
-    filename: string;
-    type: string;
-  }[];
-  status: 'pending' | 'investigating' | 'resolved' | 'closed';
-  priority: 'low' | 'medium' | 'high' | 'urgent';
-  createdAt: any; // Firestore Timestamp
-  updatedAt: any; // Firestore Timestamp
-  isAnonymous: boolean;
-  assignedTo?: string;
-  resolution?: {
-    action: string;
-    reason: string;
-    penalty?: 'warning' | 'temporary_ban' | 'permanent_ban';
-    reward?: 'subscription_1month';
-    processedBy: string;
-    processedAt: string;
-  };
-  relatedChatId?: string;
-  relatedMatchingId?: string;
-}
+import { Report } from '@/lib/reports';
+import { Timestamp } from 'firebase/firestore';
 
 interface ReportDetailModalProps {
   isOpen: boolean;
@@ -40,7 +10,7 @@ interface ReportDetailModalProps {
   report: Report;
   onReportAction: (
     reportId: string, 
-    action: 'assign' | 'investigate' | 'resolve' | 'close',
+    action: 'assign' | 'investigate' | 'complete' | 'dismiss',
     data: {
       assignee?: string;
       resolution?: {
@@ -55,7 +25,7 @@ interface ReportDetailModalProps {
 
 export default function ReportDetailModal({ isOpen, onClose, report, onReportAction }: ReportDetailModalProps) {
   const [activeTab, setActiveTab] = useState('details');
-  const [actionType, setActionType] = useState<'assign' | 'investigate' | 'resolve' | 'close' | null>(null);
+  const [actionType, setActionType] = useState<'assign' | 'investigate' | 'complete' | 'dismiss' | null>(null);
   const [assignee, setAssignee] = useState('');
   const [resolutionAction, setResolutionAction] = useState('');
   const [resolutionReason, setResolutionReason] = useState('');
@@ -77,16 +47,16 @@ export default function ReportDetailModal({ isOpen, onClose, report, onReportAct
     
     if (actionType === 'assign') {
       data.assignee = assignee;
-    } else if (actionType === 'resolve') {
+    } else if (actionType === 'complete') {
       data.resolution = {
         action: resolutionAction,
         reason: resolutionReason,
         ...(penalty && { penalty }),
         ...(giveReward && { reward: 'subscription_1month' })
       };
-    } else if (actionType === 'close') {
+    } else if (actionType === 'dismiss') {
       data.resolution = {
-        action: 'closed',
+        action: 'dismissed',
         reason: resolutionReason
       };
     }
@@ -112,14 +82,14 @@ export default function ReportDetailModal({ isOpen, onClose, report, onReportAct
   };
 
   // Firestore Timestamp를 Date로 변환하는 헬퍼 함수
-  const convertTimestamp = (timestamp: any) => {
+  const convertTimestamp = (timestamp: Timestamp | any) => {
     if (!timestamp) return new Date();
     if (timestamp.toDate) return timestamp.toDate(); // Firestore Timestamp
     if (timestamp.seconds) return new Date(timestamp.seconds * 1000); // Timestamp object
     return new Date(timestamp); // 이미 Date 객체거나 문자열인 경우
   };
 
-  const getTimeDifference = (timestamp: any) => {
+  const getTimeDifference = (timestamp: Timestamp | any) => {
     const now = new Date();
     const past = convertTimestamp(timestamp);
     const diffMs = now.getTime() - past.getTime();
@@ -190,8 +160,8 @@ export default function ReportDetailModal({ isOpen, onClose, report, onReportAct
                 <span className="font-medium text-gray-900">
                   {report.status === 'pending' ? '접수 대기' :
                    report.status === 'investigating' ? '조사 중' :
-                   report.status === 'resolved' ? '해결됨' : 
-                   report.status === 'closed' ? '종료됨' : '처리됨'}
+                   report.status === 'completed' ? '처리완료' : 
+                   report.status === 'dismissed' ? '기각' : '처리됨'}
                 </span>
               </div>
               <div>
@@ -399,8 +369,8 @@ export default function ReportDetailModal({ isOpen, onClose, report, onReportAct
                       <span className="font-medium ml-2">
                         {report.status === 'pending' ? '접수 대기' :
                          report.status === 'investigating' ? '조사 진행 중' :
-                         report.status === 'resolved' ? '해결 완료' : 
-                         report.status === 'closed' ? '종료됨' : '처리됨'}
+                         report.status === 'completed' ? '처리 완료' : 
+                         report.status === 'dismissed' ? '기각됨' : '처리됨'}
                       </span>
                     </div>
                     <div>
@@ -493,23 +463,23 @@ export default function ReportDetailModal({ isOpen, onClose, report, onReportAct
                             <input
                               type="radio"
                               name="action"
-                              value="resolve"
-                              checked={actionType === 'resolve'}
-                              onChange={(e) => setActionType(e.target.value as 'resolve')}
+                              value="complete"
+                              checked={actionType === 'complete'}
+                              onChange={(e) => setActionType(e.target.value as 'complete')}
                               className="w-4 h-4 text-green-600 border-gray-300 focus:ring-green-500"
                             />
-                            <span className="ml-2 text-sm text-gray-900">문제 해결</span>
+                            <span className="ml-2 text-sm text-gray-900">처리 완료</span>
                           </label>
                           <label className="flex items-center">
                             <input
                               type="radio"
                               name="action"
-                              value="close"
-                              checked={actionType === 'close'}
-                              onChange={(e) => setActionType(e.target.value as 'close')}
+                              value="dismiss"
+                              checked={actionType === 'dismiss'}
+                              onChange={(e) => setActionType(e.target.value as 'dismiss')}
                               className="w-4 h-4 text-red-600 border-gray-300 focus:ring-red-500"
                             />
-                            <span className="ml-2 text-sm text-gray-900">신고 종료</span>
+                            <span className="ml-2 text-sm text-gray-900">신고 기각</span>
                           </label>
                         </div>
                       </div>
@@ -530,7 +500,7 @@ export default function ReportDetailModal({ isOpen, onClose, report, onReportAct
                         </div>
                       )}
 
-                      {(actionType === 'resolve' || actionType === 'close') && (
+                      {(actionType === 'complete' || actionType === 'dismiss') && (
                         <>
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">처리 내용</label>
@@ -554,7 +524,7 @@ export default function ReportDetailModal({ isOpen, onClose, report, onReportAct
                             />
                           </div>
 
-                          {actionType === 'resolve' && (
+                          {actionType === 'complete' && (
                             <>
                               <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">처벌 조치</label>
@@ -600,14 +570,14 @@ export default function ReportDetailModal({ isOpen, onClose, report, onReportAct
                           onClick={handleAction}
                           disabled={!actionType || 
                             (actionType === 'assign' && !assignee) ||
-                            ((actionType === 'resolve' || actionType === 'close') && !resolutionReason.trim())
+                            ((actionType === 'complete' || actionType === 'dismiss') && !resolutionReason.trim())
                           }
                           className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {actionType === 'assign' ? '담당자 배정' :
                            actionType === 'investigate' ? '조사 시작' :
-                           actionType === 'resolve' ? '문제 해결' :
-                           actionType === 'close' ? '신고 종료' : '작업 실행'}
+                           actionType === 'complete' ? '처리 완료' :
+                           actionType === 'dismiss' ? '신고 기각' : '작업 실행'}
                         </button>
                       </div>
                     </div>

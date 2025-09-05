@@ -1,37 +1,7 @@
 'use client';
 
-interface Report {
-  id: string;
-  type: 'direct_trade' | 'inappropriate_behavior' | 'false_profile' | 'service_complaint' | 'other';
-  reporterId: string;
-  reporterName: string;
-  reporterType: 'parent' | 'teacher';
-  reportedId: string;
-  reportedName: string;
-  reportedType: 'parent' | 'teacher';
-  title: string;
-  description: string;
-  evidence: {
-    type: 'chat' | 'screenshot' | 'document';
-    url?: string;
-    description: string;
-  }[];
-  status: 'pending' | 'investigating' | 'completed' | 'dismissed';
-  priority: 'low' | 'medium' | 'high' | 'urgent';
-  createdAt: string;
-  updatedAt: string;
-  assignedTo?: string;
-  resolution?: {
-    action: string;
-    reason: string;
-    penalty?: 'warning' | 'temporary_ban' | 'permanent_ban';
-    reward?: 'subscription_1month';
-    processedBy: string;
-    processedAt: string;
-  };
-  relatedChatId?: string;
-  relatedMatchingId?: string;
-}
+import { Report } from '@/lib/reports';
+import { Timestamp } from 'firebase/firestore';
 
 interface ReportTableProps {
   reports: Report[];
@@ -97,9 +67,16 @@ export default function ReportTable({ reports, onReportSelect }: ReportTableProp
     }
   };
 
-  const getTimeDifference = (timestamp: string) => {
+  const convertTimestamp = (timestamp: Timestamp | any) => {
+    if (!timestamp) return new Date();
+    if (timestamp.toDate) return timestamp.toDate();
+    if (timestamp.seconds) return new Date(timestamp.seconds * 1000);
+    return new Date(timestamp);
+  };
+
+  const getTimeDifference = (timestamp: Timestamp | any) => {
     const now = new Date();
-    const past = new Date(timestamp);
+    const past = convertTimestamp(timestamp);
     const diffMs = now.getTime() - past.getTime();
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
@@ -215,7 +192,7 @@ export default function ReportTable({ reports, onReportSelect }: ReportTableProp
                 <td className="px-4 py-4 text-sm text-gray-500">
                   <div className="space-y-1">
                     <div className="font-medium">
-                      {new Date(report.createdAt).toLocaleDateString('ko-KR')}
+                      {convertTimestamp(report.createdAt).toLocaleDateString('ko-KR')}
                     </div>
                     <div className="text-xs text-gray-400">
                       {getTimeDifference(report.createdAt)}

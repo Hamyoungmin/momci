@@ -1,25 +1,24 @@
 'use client';
 
-interface Report {
-  status: 'pending' | 'investigating' | 'completed' | 'dismissed';
-  type: 'direct_trade' | 'inappropriate_behavior' | 'false_profile' | 'service_complaint' | 'other';
-  priority: 'low' | 'medium' | 'high' | 'urgent';
-  createdAt: string;
-  resolution?: {
-    penalty?: 'warning' | 'temporary_ban' | 'permanent_ban';
-    reward?: 'subscription_1month';
-  };
-}
+import { Report } from '@/lib/reports';
+import { Timestamp } from 'firebase/firestore';
 
 interface ReportStatusCardsProps {
   reports: Report[];
 }
 
 export default function ReportStatusCards({ reports }: ReportStatusCardsProps) {
+  const convertTimestamp = (timestamp: Timestamp | any) => {
+    if (!timestamp) return new Date();
+    if (timestamp.toDate) return timestamp.toDate();
+    if (timestamp.seconds) return new Date(timestamp.seconds * 1000);
+    return new Date(timestamp);
+  };
+
   // 오늘 신고 건수
   const todayReports = reports.filter(r => {
     const today = new Date().toDateString();
-    const reportDate = new Date(r.createdAt).toDateString();
+    const reportDate = convertTimestamp(r.createdAt).toDateString();
     return today === reportDate;
   });
 
