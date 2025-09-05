@@ -4,55 +4,30 @@ export default function Home() {
   return (
     <div className="min-h-screen">
       {/* 히어로 섹션 */}
-      <section className="relative bg-gradient-to-br from-blue-50 via-white to-orange-50 min-h-screen">
+      <section className="relative bg-blue-50 min-h-screen">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-20">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center min-h-[80vh]">
             {/* 왼쪽 텍스트 영역 */}
             <div className="space-y-8">
               <div className="space-y-6">
                 <h1 className="text-5xl lg:text-6xl xl:text-7xl font-bold text-gray-900 leading-tight">
-                  아이에게 딱 맞는<br />
-                  <span className="text-orange-500">전문 치료사</span>들을<br />
-                  찾아보세요
+                  우리 아이의 빛나는 잠재력,<br />
+                  <span className="text-blue-400">최고의 전문가가</span><br />
+                  함께 찾아요.
                 </h1>
                 
                 <p className="text-xl lg:text-2xl text-gray-600 leading-relaxed max-w-2xl">
-                  <span className="text-blue-700 font-bold">모든별 키즈</span>는 검증된 전문 치료사와 학부모를 안전하게 연결하는<br />
-                  홈티칭 매칭 플랫폼입니다. 아이에게 꼭 필요한 가장 효과적인 도움을<br />
-                  제공합니다.
+                  <span className="text-gray-600 font-bold">대한민국 No.1 아동 발달 전문가 매칭 플랫폼</span>
                 </p>
               </div>
 
-              {/* 특징 포인트들 */}
-              <div className="flex flex-wrap gap-6">
-                <div className="flex items-center space-x-3">
-                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                  <span className="text-lg font-medium text-gray-700">수수료 9%</span>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                  <span className="text-lg font-medium text-gray-700">안전결제 시스템</span>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                  <span className="text-lg font-medium text-gray-700">검증된 전문가</span>
-                </div>
-              </div>
 
-              {/* CTA 버튼들과 알림 배지 */}
+              {/* CTA 버튼들 */}
               <div className="space-y-4">
-                <div className="flex items-center gap-4">
-                  <div className="bg-red-500 text-white px-4 py-2 rounded-full text-sm font-bold flex items-center gap-2">
-                    <span>N</span>
-                    <span>1 Issue</span>
-                    <span>×</span>
-                  </div>
-                </div>
-                
                 <div className="flex flex-col sm:flex-row gap-4">
                   <Link
                     href="/request"
-                    className="bg-orange-500 hover:bg-orange-600 text-white px-8 py-5 rounded-2xl font-bold text-xl transition-all transform hover:scale-105 shadow-xl"
+                    className="bg-blue-400 hover:bg-blue-500 text-white px-8 py-5 rounded-2xl font-bold text-xl transition-all transform hover:scale-105 shadow-xl"
                   >
                     선생님께 신청하고 시작하기!
                   </Link>
@@ -70,10 +45,10 @@ export default function Home() {
             <div className="flex justify-center lg:justify-end">
               <div className="relative">
                 <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-sm transform rotate-2 hover:rotate-0 transition-transform duration-500">
-                  <div className="bg-gradient-to-br from-blue-100 via-purple-50 to-orange-100 rounded-2xl p-8">
+                  <div className="bg-gradient-to-br from-blue-100 via-blue-50 to-blue-100 rounded-2xl p-8">
                     <div className="text-center space-y-4">
                       {/* 프로필 이미지 */}
-                      <div className="w-32 h-32 bg-orange-300 rounded-full mx-auto flex items-center justify-center">
+                      <div className="w-32 h-32 bg-blue-300 rounded-full mx-auto flex items-center justify-center">
                         <span className="text-5xl">👩‍⚕️</span>
                       </div>
                       
@@ -100,7 +75,7 @@ export default function Home() {
                 </div>
                 
                 {/* 배경 장식 */}
-                <div className="absolute -bottom-6 -left-6 w-32 h-32 bg-orange-200 rounded-full opacity-30"></div>
+                <div className="absolute -bottom-6 -left-6 w-32 h-32 bg-blue-200 rounded-full opacity-30"></div>
               </div>
             </div>
           </div>

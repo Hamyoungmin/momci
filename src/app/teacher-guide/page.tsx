@@ -45,7 +45,7 @@ export default function TeacherGuidePage() {
 
               <div className="bg-yellow-50 p-4 rounded-lg">
                 <p className="text-amber-700">
-                  💡 <span className="text-amber-700 font-bold">신뢰를 위한 약속</span>: 첫 소통부터 매칭 확정까지는 반드시 플랫폼 시스템을 이용해 주세요. 이는 양측 보호와 <span className="text-blue-700 font-semibold">'인증 선생님'</span> 자격을 위한 필수 과정입니다.
+                  💡 <span className="text-amber-700 font-bold">신뢰를 위한 약속</span>: 첫 소통부터 매칭 확정까지는 반드시 플랫폼 시스템을 이용해 주세요. 이는 양측 보호와 <span className="text-blue-700 font-semibold">&apos;인증 선생님&apos;</span> 자격을 위한 필수 과정입니다.
                 </p>
               </div>
             </div>

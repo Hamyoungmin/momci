@@ -44,7 +44,7 @@ export default function ProgramGuidePage() {
                   <div>
                     <h4 className="text-xl font-bold text-blue-600 mb-2">놀이치료</h4>
                     <p className="text-gray-500 mb-2">
-                      가장 편안한 언어인 '놀이'로 마음을 표현하고 건강한 성장을 지원합니다.
+                      가장 편안한 언어인 &apos;놀이&apos;로 마음을 표현하고 건강한 성장을 지원합니다.
                     </p>
                     <p className="text-gray-700 mb-2">
                       <span className="font-semibold">이런 아이에게:</span> 불안감이 높거나 감정 조절이 어렵고, 사회성에 도움이 필요한 아이

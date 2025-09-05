@@ -74,7 +74,7 @@ export default function TeacherPricingPlans() {
                       신뢰의 성장
                     </h3>
                     <p className="text-gray-600 leading-relaxed">
-                      솔직한 후기 중심의 '모든별 키즈 인증' 배지가 지속적이고 안정적인 수업들과 더 많은 기회를 만듭니다.
+                      솔직한 후기 중심의 &apos;모든별 키즈 인증&apos; 배지가 지속적이고 안정적인 수업들과 더 많은 기회를 만듭니다.
                     </p>
                   </div>
                 </div>

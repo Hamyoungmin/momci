@@ -1,7 +1,5 @@
 ﻿'use client';
 
-import type { Metadata } from "next";
-import { redirect } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect, useState } from "react";
 import AdminSidebar from "@/components/admin/AdminSidebar";

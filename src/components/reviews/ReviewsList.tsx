@@ -6,7 +6,7 @@ import { db, auth } from '@/lib/firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 
 export default function ReviewsList() {
-  const [selectedCategory, setSelectedCategory] = useState('전체');
+  const [selectedCategory] = useState('전체');
   const [reviews, setReviews] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showWriteModal, setShowWriteModal] = useState(false);

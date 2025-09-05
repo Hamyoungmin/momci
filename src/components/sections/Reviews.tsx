@@ -98,7 +98,7 @@ export default function Reviews() {
                     
                     {/* 제목 */}
                     <h3 className="text-xl md:text-2xl font-bold text-gray-900 text-center mb-4">
-                      "{review.title}"
+                      &ldquo;{review.title}&rdquo;
                     </h3>
                     
                     {/* 내용 */}

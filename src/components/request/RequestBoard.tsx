@@ -2,17 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-// 게시글 타입 정의
-interface Post {
-  id: string;
-  treatment: string;
-  category: string;
-  title: string;
-  details: string;
-  applications: number;
-  region: string;
-  createdAt: any;
-}
 
 export default function RequestBoard() {
   const [selectedSidebarItem, setSelectedSidebarItem] = useState('서울');

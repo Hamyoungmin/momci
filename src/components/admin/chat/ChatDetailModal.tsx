@@ -232,7 +232,7 @@ export default function ChatDetailModal({ isOpen, onClose, chatRoom, onChatActio
                   <div className="space-y-2">
                     {detectedKeywords.map((item, index) => (
                       <div key={index} className="flex items-center justify-between">
-                        <span className="text-sm text-red-700">"{item.keyword}"</span>
+                        <span className="text-sm text-red-700">&ldquo;{item.keyword}&rdquo;</span>
                         <div className="flex items-center space-x-2">
                           <span className="text-sm text-red-600">{item.count}회</span>
                           <span className={`px-2 py-1 text-xs rounded-full ${
