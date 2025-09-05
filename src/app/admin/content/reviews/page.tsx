@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc, where } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc, where, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 interface Review {
@@ -14,7 +14,7 @@ interface Review {
   rating: number;
   helpfulCount: number;
   status: 'pending' | 'approved' | 'rejected';
-  createdAt: any;
+  createdAt: Date | Timestamp | null;
   userId?: string;
   userEmail?: string;
 }
@@ -297,9 +297,13 @@ export default function ReviewsManagePage() {
                       )}
                       <div>
                         <span className="font-medium">작성일:</span> {
-                          review.createdAt ? 
-                            review.createdAt.toLocaleDateString('ko-KR') : 
-                            '날짜정보없음'
+                          review.createdAt ? (
+                            review.createdAt instanceof Date ? 
+                              review.createdAt.toLocaleDateString('ko-KR') :
+                              (review.createdAt && typeof review.createdAt === 'object' && 'toDate' in review.createdAt && typeof review.createdAt.toDate === 'function') 
+                              ? review.createdAt.toDate().toLocaleDateString('ko-KR') :
+                              new Date(review.createdAt as unknown as string | number).toLocaleDateString('ko-KR')
+                          ) : '날짜정보없음'
                         }
                       </div>
                       <div>

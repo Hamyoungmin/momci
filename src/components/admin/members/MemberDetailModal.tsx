@@ -2,10 +2,21 @@
 
 import { useState } from 'react';
 
+interface Member {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  region: string;
+  joinDate: string;
+  lastActivity: string;
+  status: 'active' | 'suspended' | 'withdrawn';
+}
+
 interface MemberDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
-  member: any;
+  member: Member;
   memberType: 'parent' | 'teacher';
 }
 

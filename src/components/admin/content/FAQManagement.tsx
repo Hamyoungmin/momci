@@ -64,24 +64,25 @@ export default function FAQManagement() {
       }
       await loadFAQs(); // 데이터 새로고침
       handleCloseModal();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('FAQ 저장 오류 상세:', error);
       
       let errorMessage = 'FAQ 저장 중 오류가 발생했습니다.';
       
-      if (error.message) {
-        if (error.message.includes('사용자가 인증되지 않았습니다')) {
+      const err = error as { message?: string; code?: string };
+      if (err.message) {
+        if (err.message.includes('사용자가 인증되지 않았습니다')) {
           errorMessage = '❌ 로그인이 필요합니다.\n페이지를 새로고침하고 다시 로그인해주세요.';
-        } else if (error.message.includes('필수 필드가 누락되었습니다')) {
+        } else if (err.message.includes('필수 필드가 누락되었습니다')) {
           errorMessage = '❌ 필수 항목을 모두 입력해주세요.\n(카테고리, 질문, 답변)';
-        } else if (error.code === 'permission-denied') {
+        } else if (err.code === 'permission-denied') {
           errorMessage = '❌ 권한이 없습니다.\n관리자 계정으로 로그인했는지 확인해주세요.';
-        } else if (error.code === 'unauthenticated') {
+        } else if (err.code === 'unauthenticated') {
           errorMessage = '❌ 인증이 만료되었습니다.\n페이지를 새로고침하고 다시 로그인해주세요.';
-        } else if (error.message.includes('Network')) {
+        } else if (err.message.includes('Network')) {
           errorMessage = '❌ 네트워크 오류입니다.\n인터넷 연결을 확인해주세요.';
         } else {
-          errorMessage = `❌ 오류: ${error.message}`;
+          errorMessage = `❌ 오류: ${err.message}`;
         }
       }
       
@@ -259,7 +260,7 @@ export default function FAQManagement() {
                   </svg>
                 </div>
                 <span className="text-sm font-medium text-blue-800">
-                  가장 많이 조회된 FAQ: "{faqs.sort((a, b) => b.views - a.views)[0]?.question}"
+                  가장 많이 조회된 FAQ: &ldquo;{faqs.sort((a, b) => b.views - a.views)[0]?.question}&rdquo;
                 </span>
               </div>
               <span className="text-sm text-blue-600 font-semibold">

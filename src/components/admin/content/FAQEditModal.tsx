@@ -104,7 +104,7 @@ export default function FAQEditModal({
   };
 
   // 입력값 변경 핸들러
-  const handleInputChange = (field: string, value: any) => {
+  const handleInputChange = (field: string, value: string | number | boolean) => {
     setFormData(prev => ({
       ...prev,
       [field]: value

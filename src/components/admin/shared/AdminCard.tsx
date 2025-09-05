@@ -14,7 +14,7 @@ interface AdminCardProps {
 export default function AdminCard({ 
   title, 
   subtitle, 
-  icon, 
+  icon: _icon, 
   children, 
   className = '', 
   headerActions 

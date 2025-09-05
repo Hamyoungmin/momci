@@ -208,7 +208,7 @@ export default function SuccessStories() {
               {/* 학부모 후기 */}
               <div className="bg-white rounded-lg p-4">
                 <h4 className="font-semibold text-gray-900 mb-2">💬 학부모 후기</h4>
-                <p className="text-gray-700 text-sm italic">"{caseItem.parentReview}"</p>
+                <p className="text-gray-700 text-sm italic">&ldquo;{caseItem.parentReview}&rdquo;</p>
               </div>
             </div>
           ))}

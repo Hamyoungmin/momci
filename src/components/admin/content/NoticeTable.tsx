@@ -1,5 +1,7 @@
 'use client';
 
+import { Timestamp } from 'firebase/firestore';
+
 interface Notice {
   id: string;
   title: string;
@@ -10,8 +12,8 @@ interface Notice {
   startDate: string;
   endDate?: string;
   views?: number;
-  createdAt: any;
-  updatedAt: any;
+  createdAt: Date | Timestamp | null;
+  updatedAt: Date | Timestamp | null;
   createdBy: string;
   priority?: number;
   targetAudience: 'all' | 'parents' | 'teachers';
@@ -23,6 +25,18 @@ interface NoticeTableProps {
 }
 
 export default function NoticeTable({ notices, onNoticeSelect }: NoticeTableProps) {
+  // 타임스탬프를 Date로 변환하는 헬퍼 함수
+  const convertToDate = (timestamp: unknown) => {
+    if (!timestamp) return new Date();
+    if (timestamp instanceof Date) return timestamp;
+    if (timestamp && typeof timestamp === 'object' && 'toDate' in timestamp && typeof timestamp.toDate === 'function') {
+      return timestamp.toDate();
+    }
+    if (typeof timestamp === 'string' || typeof timestamp === 'number') {
+      return new Date(timestamp);
+    }
+    return new Date();
+  };
   const getTypeBadge = (type: Notice['type']) => {
     switch (type) {
       case 'general':
@@ -123,8 +137,8 @@ export default function NoticeTable({ notices, onNoticeSelect }: NoticeTableProp
                 const priorityB = b.priority || 999;
                 if (priorityA !== priorityB) return priorityA - priorityB;
                 if (a.isActive !== b.isActive) return b.isActive ? 1 : -1;
-                const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt);
-                const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt);
+                const dateA = convertToDate(a.createdAt);
+                const dateB = convertToDate(b.createdAt);
                 return dateB.getTime() - dateA.getTime();
               })
               .map((notice) => (
@@ -214,22 +228,15 @@ export default function NoticeTable({ notices, onNoticeSelect }: NoticeTableProp
                     <div className="font-medium">{notice.createdBy || '관리자'}</div>
                     <div className="text-xs">
                       {notice.createdAt ? (
-                        notice.createdAt instanceof Date ? 
-                          notice.createdAt.toLocaleDateString('ko-KR') :
-                          new Date(notice.createdAt).toLocaleDateString('ko-KR')
+                        convertToDate(notice.createdAt).toLocaleDateString('ko-KR')
                       ) : '-'}
                     </div>
                     <div className="text-xs">
                       {notice.createdAt ? (
-                        notice.createdAt instanceof Date ? 
-                          notice.createdAt.toLocaleTimeString('ko-KR', { 
-                            hour: '2-digit', 
-                            minute: '2-digit' 
-                          }) :
-                          new Date(notice.createdAt).toLocaleTimeString('ko-KR', { 
-                            hour: '2-digit', 
-                            minute: '2-digit' 
-                          })
+                        convertToDate(notice.createdAt).toLocaleTimeString('ko-KR', { 
+                          hour: '2-digit', 
+                          minute: '2-digit' 
+                        })
                       ) : '-'}
                     </div>
                   </div>

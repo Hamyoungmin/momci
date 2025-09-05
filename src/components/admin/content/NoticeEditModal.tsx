@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { Timestamp } from 'firebase/firestore';
 
 interface Notice {
   id: string;
@@ -12,8 +13,8 @@ interface Notice {
   startDate: string;
   endDate?: string;
   views?: number;
-  createdAt: string;
-  updatedAt: string;
+  createdAt: Date | Timestamp | null;
+  updatedAt: Date | Timestamp | null;
   createdBy: string;
   priority?: number;
   targetAudience: 'all' | 'parents' | 'teachers';
@@ -158,7 +159,7 @@ export default function NoticeEditModal({
                 </label>
                 <select
                   value={type}
-                  onChange={(e) => setType(e.target.value as any)}
+                  onChange={(e) => setType(e.target.value as 'general' | 'important' | 'urgent')}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="general">일반</option>
@@ -173,7 +174,7 @@ export default function NoticeEditModal({
                 </label>
                 <select
                   value={displayLocation}
-                  onChange={(e) => setDisplayLocation(e.target.value as any)}
+                  onChange={(e) => setDisplayLocation(e.target.value as 'main' | 'mypage' | 'popup')}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="main">메인 페이지</option>
@@ -188,7 +189,7 @@ export default function NoticeEditModal({
                 </label>
                 <select
                   value={targetAudience}
-                  onChange={(e) => setTargetAudience(e.target.value as any)}
+                  onChange={(e) => setTargetAudience(e.target.value as 'all' | 'parents' | 'teachers')}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="all">전체</option>

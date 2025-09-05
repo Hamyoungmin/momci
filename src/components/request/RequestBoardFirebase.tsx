@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { collection, addDoc, onSnapshot, orderBy, query, serverTimestamp, where, limit } from 'firebase/firestore';
 import { db, auth } from '@/lib/firebase';
 
@@ -20,7 +21,7 @@ interface Post {
   timeDetails: string;
   price: string;
   additionalInfo: string;
-  createdAt: any;
+  createdAt: unknown;
   // 치료사 정보
   teacherUserId?: string; // 매칭된 치료사의 실제 사용자 ID
   teacherName?: string;
@@ -47,7 +48,7 @@ interface Review {
   parentId: string;
   content: string;
   rating: number;
-  createdAt: any;
+  createdAt: unknown;
   parentName?: string;
 }
 
@@ -402,7 +403,7 @@ export default function RequestBoardFirebase() {
         {/* 사이드바 */}
         <div className="w-64 bg-white shadow-lg min-h-screen">
           <div className="p-4">
-            {sidebarItems.map((item, index) => (
+            {sidebarItems.map((item) => (
               <div key={item} className={item === '홈티매칭' ? 'mb-6' : 'mb-1'}>
                 <button
                   onClick={() => handleSidebarClick(item)}
@@ -441,7 +442,7 @@ export default function RequestBoardFirebase() {
           {/* 탭 네비게이션 */}
           <div className="mb-6">
             <div className="bg-gray-50 rounded-3xl p-2 flex gap-1">
-              {tabs.map((tab, index) => (
+              {tabs.map((tab) => (
                 <button
                   key={tab}
                   onClick={() => {
@@ -639,7 +640,7 @@ export default function RequestBoardFirebase() {
                   등록된 게시글이 없습니다.
                 </div>
               ) : (
-                currentPosts.map((post, index) => (
+                currentPosts.map((post) => (
                   <div key={post.id} className="bg-white rounded-2xl border-2 border-blue-100 p-6 hover:shadow-lg transition-all duration-200 hover:border-blue-200">
                     <div className="flex items-start justify-between">
                       {/* 왼쪽: 프로필 정보 */}
@@ -647,9 +648,11 @@ export default function RequestBoardFirebase() {
                           {/* 프로필 이미지 */}
                         <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden relative">
                           {post.teacherProfileImage ? (
-                            <img 
+                            <Image 
                               src={post.teacherProfileImage} 
                               alt={`${post.teacherName || '치료사'} 프로필`}
+                              width={64}
+                              height={64}
                               className="w-full h-full object-cover rounded-full"
                               onError={(e) => {
                                 e.currentTarget.style.display = 'none';
@@ -747,7 +750,11 @@ export default function RequestBoardFirebase() {
                         {/* 작성일 */}
                         <div className="text-xs text-gray-400">
                           {post.createdAt ? 
-                            new Date(post.createdAt.toDate ? post.createdAt.toDate() : post.createdAt).toLocaleDateString('ko-KR', {
+                            new Date(
+                              (post.createdAt && typeof post.createdAt === 'object' && 'toDate' in post.createdAt && typeof post.createdAt.toDate === 'function') 
+                                ? post.createdAt.toDate() 
+                                : post.createdAt as string | number
+                            ).toLocaleDateString('ko-KR', {
                               month: 'long',
                               day: 'numeric'
                               }) : '9월 2일'
@@ -1027,9 +1034,11 @@ export default function RequestBoardFirebase() {
                 {/* 프로필 이미지 */}
                 <div className="w-20 h-20 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden relative">
                   {selectedProfile?.teacherProfileImage ? (
-                    <img 
+                    <Image 
                       src={selectedProfile.teacherProfileImage} 
                       alt={`${selectedProfile.teacherName || '치료사'} 프로필`}
+                      width={80}
+                      height={80}
                       className="w-full h-full object-cover rounded-full"
                       onError={(e) => {
                         e.currentTarget.style.display = 'none';
@@ -1254,7 +1263,7 @@ export default function RequestBoardFirebase() {
                       후기를 불러오는 중...
                     </div>
                   ) : teacherReviews.length > 0 ? (
-                    teacherReviews.map((review, index) => (
+                    teacherReviews.map((review) => (
                       <div key={review.id} className="bg-gray-50 p-4 rounded-lg border">
                         <div className="flex items-center mb-2">
                           <div className="flex items-center">
@@ -1267,12 +1276,16 @@ export default function RequestBoardFirebase() {
                           </div>
                         </div>
                         <p className="text-sm text-gray-700 mb-2 leading-relaxed">
-                          "{review.content}"
+                          &quot;{review.content}&quot;
                         </p>
                         <div className="text-xs text-gray-500 text-right">
                           - {review.parentName || '학부모'} (
                           {review.createdAt ? 
-                            new Date(review.createdAt.toDate ? review.createdAt.toDate() : review.createdAt).toLocaleDateString('ko-KR') : 
+                            new Date(
+                              (review.createdAt && typeof review.createdAt === 'object' && 'toDate' in review.createdAt && typeof review.createdAt.toDate === 'function') 
+                                ? review.createdAt.toDate() 
+                                : review.createdAt as string | number
+                            ).toLocaleDateString('ko-KR') : 
                             '날짜정보없음'
                           })
                         </div>

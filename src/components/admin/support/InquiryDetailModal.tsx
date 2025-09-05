@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 
 interface Inquiry {
   id: string;
@@ -61,7 +62,12 @@ export default function InquiryDetailModal({ isOpen, onClose, inquiry, onInquiry
   const handleAction = () => {
     if (!actionType) return;
 
-    const data: any = {};
+    interface ActionData {
+      assignee?: string;
+      answer?: string;
+      priority?: string;
+    }
+    const data: ActionData = {};
     if (actionType === 'assign') {
       data.assignee = assignee;
     } else if (actionType === 'answer') {
@@ -355,10 +361,12 @@ export default function InquiryDetailModal({ isOpen, onClose, inquiry, onInquiry
                         </div>
                         {attachment.type === 'image' && (
                           <div className="mt-3">
-                            <img 
+                            <Image 
                               src={attachment.url} 
                               alt={attachment.name}
-                              className="max-w-full h-auto rounded border"
+                              width={400}
+                              height={300}
+                              className="max-w-full h-auto rounded border object-contain"
                               style={{ maxHeight: '300px' }}
                             />
                           </div>
@@ -386,7 +394,7 @@ export default function InquiryDetailModal({ isOpen, onClose, inquiry, onInquiry
                   <h5 className="text-sm font-medium text-yellow-900 mb-3">우선순위 조정</h5>
                   <select
                     value={newPriority}
-                    onChange={(e) => setNewPriority(e.target.value as any)}
+                    onChange={(e) => setNewPriority(e.target.value as 'low' | 'medium' | 'high' | 'urgent')}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="low">낮음</option>

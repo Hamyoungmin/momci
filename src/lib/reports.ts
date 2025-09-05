@@ -79,7 +79,10 @@ export async function uploadReportEvidence(
         setTimeout(() => reject(new Error('파일 업로드 타임아웃 (60초)')), 60000)
       );
       
-      const snapshot = await Promise.race([uploadPromise, timeoutPromise]) as any;
+      interface UploadTaskSnapshot {
+        ref: { getDownloadURL: () => Promise<string> };
+      }
+      const snapshot = await Promise.race([uploadPromise, timeoutPromise]) as UploadTaskSnapshot;
       console.log(`✅ 파일 ${index + 1} 업로드 완료:`, fileName);
       
       // 다운로드 URL 가져오기
@@ -146,7 +149,7 @@ export async function createReport(
     reportedName: reportData.reportedName,
     title: reportData.title,
     description: reportData.description,
-    evidence: [] as any[], // 나중에 파일 업로드 후 업데이트
+    evidence: [] as { url: string; name: string; type: string }[], // 나중에 파일 업로드 후 업데이트
     status: 'pending' as const,
     priority: reportData.type === 'direct_trade' ? 'urgent' as const : 'medium' as const,
     createdAt: serverTimestamp(),
@@ -241,9 +244,10 @@ export async function createReport(
     }
     
     // Firebase 에러 코드 확인
-    if ((error as any)?.code) {
-      console.error('Firebase 에러 코드:', (error as any).code);
-      errorMessage += `\n에러 코드: ${(error as any).code}`;
+    const firestoreError = error as { code?: string };
+    if (firestoreError?.code) {
+      console.error('Firebase 에러 코드:', firestoreError.code);
+      errorMessage += `\n에러 코드: ${firestoreError.code}`;
     }
     
     throw new Error(errorMessage);
@@ -332,7 +336,13 @@ export async function updateReportStatus(
 ): Promise<void> {
   try {
     const reportRef = doc(db, 'reports', reportId);
-    const updateData: any = {
+    interface UpdateData {
+      status: string;
+      updatedAt: unknown;
+      assignedTo?: string;
+    }
+
+    const updateData: UpdateData = {
       status,
       updatedAt: serverTimestamp()
     };

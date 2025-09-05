@@ -43,7 +43,17 @@ export default function ReportDetailModal({ isOpen, onClose, report, onReportAct
   const handleAction = () => {
     if (!actionType) return;
 
-    const data: any = {};
+    interface ActionData {
+      assignee?: string;
+      resolution?: {
+        action: string;
+        reason: string;
+        penalty?: 'warning' | 'temporary_ban' | 'permanent_ban';
+        reward?: 'subscription_1month';
+      };
+    }
+    
+    const data: ActionData = {};
     
     if (actionType === 'assign') {
       data.assignee = assignee;
@@ -82,24 +92,13 @@ export default function ReportDetailModal({ isOpen, onClose, report, onReportAct
   };
 
   // Firestore Timestamp를 Date로 변환하는 헬퍼 함수
-  const convertTimestamp = (timestamp: Timestamp | any) => {
+  const convertTimestamp = (timestamp: Timestamp | Date | { seconds: number } | string | null | undefined) => {
     if (!timestamp) return new Date();
     if (timestamp.toDate) return timestamp.toDate(); // Firestore Timestamp
     if (timestamp.seconds) return new Date(timestamp.seconds * 1000); // Timestamp object
     return new Date(timestamp); // 이미 Date 객체거나 문자열인 경우
   };
 
-  const getTimeDifference = (timestamp: Timestamp | any) => {
-    const now = new Date();
-    const past = convertTimestamp(timestamp);
-    const diffMs = now.getTime() - past.getTime();
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    
-    if (diffHours >= 24) {
-      return `${Math.floor(diffHours / 24)}일 ${diffHours % 24}시간 경과`;
-    }
-    return `${diffHours}시간 경과`;
-  };
 
   const isUrgent = report.priority === 'urgent' || 
                   (report.type === 'direct_trade' && report.status === 'pending');
@@ -530,7 +529,7 @@ export default function ReportDetailModal({ isOpen, onClose, report, onReportAct
                                 <label className="block text-sm font-medium text-gray-700 mb-2">처벌 조치</label>
                                 <select
                                   value={penalty}
-                                  onChange={(e) => setPenalty(e.target.value as any)}
+                                  onChange={(e) => setPenalty(e.target.value as 'warning' | 'temporary_ban' | 'permanent_ban' | '')}
                                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 >
                                   <option value="">처벌 없음</option>

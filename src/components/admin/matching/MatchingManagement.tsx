@@ -29,19 +29,19 @@ export default function MatchingManagement() {
   const [statusFilter, setStatusFilter] = useState('all');
 
   const [matchings, setMatchings] = useState<Matching[]>([]);
-  const [loading, setLoading] = useState(true);
+  // const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchMatchings = async () => {
       try {
-        setLoading(true);
+        // setLoading(true);
         // TODO: Firebase에서 실제 매칭 데이터 조회
         // const matchingsData = await getMatchings();
         setMatchings([]);
       } catch (error) {
         console.error('매칭 데이터 로딩 실패:', error);
       } finally {
-        setLoading(false);
+        // setLoading(false);
       }
     };
 

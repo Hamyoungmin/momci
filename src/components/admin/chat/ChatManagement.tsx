@@ -35,19 +35,19 @@ export default function ChatManagement() {
   const [riskFilter, setRiskFilter] = useState('all');
 
   const [chatRooms, setChatRooms] = useState<ChatRoom[]>([]);
-  const [loading, setLoading] = useState(true);
+  // const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchChatRooms = async () => {
       try {
-        setLoading(true);
+        // setLoading(true);
         // TODO: Firebase에서 실제 채팅방 데이터 조회
         // const chatRoomsData = await getChatRooms();
         setChatRooms([]);
       } catch (error) {
         console.error('채팅방 데이터 로딩 실패:', error);
       } finally {
-        setLoading(false);
+        // setLoading(false);
       }
     };
 

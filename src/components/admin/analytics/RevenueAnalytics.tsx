@@ -13,6 +13,13 @@ interface Performer {
   transactions: number;
 }
 
+interface MonthlyRevenueTrend {
+  month: string;
+  total: number;
+  subscription: number;
+  commission: number;
+}
+
 interface RevenueAnalyticsProps {
   period: string;
 }
@@ -28,7 +35,7 @@ export default function RevenueAnalytics({ period }: RevenueAnalyticsProps) {
       total: 0
     },
     commissionRevenue: 0,
-    monthlyTrend: [] as any[]
+    monthlyTrend: [] as MonthlyRevenueTrend[]
   };
 
   const subscriptionStats = {

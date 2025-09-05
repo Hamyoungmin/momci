@@ -191,7 +191,7 @@ export default function ProfileDisplayModal({ isOpen, onClose, profile, onProfil
                           name="action"
                           value={profile.isVisible ? 'hide' : 'show'}
                           checked={actionType === (profile.isVisible ? 'hide' : 'show')}
-                          onChange={(e) => setActionType(e.target.value as any)}
+                          onChange={(e) => setActionType(e.target.value as 'show' | 'hide')}
                           className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
                         />
                         <span className="ml-2 text-sm text-gray-900">
@@ -204,7 +204,7 @@ export default function ProfileDisplayModal({ isOpen, onClose, profile, onProfil
                           name="action"
                           value={profile.isFeatured ? 'unfeature' : 'feature'}
                           checked={actionType === (profile.isFeatured ? 'unfeature' : 'feature')}
-                          onChange={(e) => setActionType(e.target.value as any)}
+                          onChange={(e) => setActionType(e.target.value as 'feature' | 'unfeature')}
                           className="w-4 h-4 text-purple-600 border-gray-300 focus:ring-purple-500"
                         />
                         <span className="ml-2 text-sm text-gray-900">

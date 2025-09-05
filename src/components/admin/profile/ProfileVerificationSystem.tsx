@@ -33,19 +33,19 @@ export default function ProfileVerificationSystem() {
   const [isDetailViewOpen, setIsDetailViewOpen] = useState(false);
 
   const [profiles, setProfiles] = useState<ProfileSubmission[]>([]);
-  const [loading, setLoading] = useState(true);
+  // const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchProfiles = async () => {
       try {
-        setLoading(true);
+        // setLoading(true);
         // TODO: Firebase에서 실제 프로필 검증 데이터 조회
         // const profilesData = await getProfileSubmissions();
         setProfiles([]);
       } catch (error) {
         console.error('프로필 검증 데이터 로딩 실패:', error);
       } finally {
-        setLoading(false);
+        // setLoading(false);
       }
     };
 

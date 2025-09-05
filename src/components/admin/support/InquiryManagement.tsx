@@ -41,12 +41,13 @@ export default function InquiryManagement() {
   const [priorityFilter, setPriorityFilter] = useState('all');
   
   // Firebase에서 실제 데이터 가져오기
-  const [inquiries, setInquiries] = useState<Inquiry[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [inquiries] = useState<Inquiry[]>([]);
+  // const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // TODO: Firebase에서 실제 문의 데이터 가져오기
-    setLoading(false);
+    // setInquiries(inquiriesData);
+    // setLoading(false);
   }, []);
 
   const handleInquirySelect = (inquiry: Inquiry) => {

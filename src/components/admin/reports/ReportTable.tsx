@@ -41,40 +41,35 @@ export default function ReportTable({ reports, onReportSelect }: ReportTableProp
     }
   };
 
-  const getPriorityBadge = (priority: Report['priority']) => {
-    switch (priority) {
-      case 'urgent':
-        return <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">긴급</span>;
-      case 'high':
-        return <span className="px-2 py-1 text-xs font-medium bg-orange-100 text-orange-800 rounded-full">높음</span>;
-      case 'medium':
-        return <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">보통</span>;
-      case 'low':
-        return <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">낮음</span>;
-      default:
-        return <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">알 수 없음</span>;
-    }
-  };
 
-  const getUserTypeBadge = (userType: 'parent' | 'teacher') => {
-    switch (userType) {
-      case 'parent':
-        return <span className="px-2 py-1 text-xs font-medium bg-pink-100 text-pink-800 rounded-full">학부모</span>;
-      case 'teacher':
-        return <span className="px-2 py-1 text-xs font-medium bg-cyan-100 text-cyan-800 rounded-full">치료사</span>;
-      default:
-        return <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">알 수 없음</span>;
-    }
-  };
-
-  const convertTimestamp = (timestamp: Timestamp | any) => {
+  const convertTimestamp = (timestamp: Timestamp | Date | { seconds: number } | string | null | undefined) => {
     if (!timestamp) return new Date();
-    if (timestamp.toDate) return timestamp.toDate();
-    if (timestamp.seconds) return new Date(timestamp.seconds * 1000);
-    return new Date(timestamp);
+    
+    // Timestamp 타입 (Firebase)
+    if (typeof timestamp === 'object' && timestamp !== null && 'toDate' in timestamp && typeof timestamp.toDate === 'function') {
+      return timestamp.toDate();
+    }
+    
+    // Date 타입
+    if (timestamp instanceof Date) {
+      return timestamp;
+    }
+    
+    // { seconds: number } 타입
+    if (typeof timestamp === 'object' && timestamp !== null && 'seconds' in timestamp) {
+      return new Date(timestamp.seconds * 1000);
+    }
+    
+    // string 타입
+    if (typeof timestamp === 'string') {
+      return new Date(timestamp);
+    }
+    
+    // 기본값
+    return new Date();
   };
 
-  const getTimeDifference = (timestamp: Timestamp | any) => {
+  const getTimeDifference = (timestamp: Timestamp | Date | { seconds: number } | string | null | undefined) => {
     const now = new Date();
     const past = convertTimestamp(timestamp);
     const diffMs = now.getTime() - past.getTime();

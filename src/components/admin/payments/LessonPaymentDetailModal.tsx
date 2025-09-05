@@ -242,9 +242,9 @@ export default function LessonPaymentDetailModal({
                   <strong>다음 작업이 자동으로 실행됩니다:</strong>
                 </p>
                 <ul className="text-sm text-blue-700 mb-4 ml-4 space-y-1">
-                  <li>• 결제 상태를 '완료'로 변경</li>
+                  <li>• 결제 상태를 &apos;완료&apos;로 변경</li>
                   <li>• 학부모와 치료사에게 서로의 연락처 공개</li>
-                  <li>• 해당 요청 게시글 상태를 '매칭 완료'로 변경</li>
+                  <li>• 해당 요청 게시글 상태를 &apos;매칭 완료&apos;로 변경</li>
                   <li>• 양측에게 매칭 완료 알림톡 발송</li>
                 </ul>
                 

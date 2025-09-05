@@ -97,7 +97,7 @@ export default function MyPage() {
                 {userData?.createdAt ? 
                   (userData.createdAt instanceof Timestamp ? 
                     userData.createdAt.toDate().toLocaleDateString('ko-KR') :
-                    new Date(userData.createdAt as any).toLocaleDateString('ko-KR')
+                    new Date(userData.createdAt as Date | string | number).toLocaleDateString('ko-KR')
                   ) : 
                   currentUser?.metadata?.creationTime ? 
                     new Date(currentUser.metadata.creationTime).toLocaleDateString('ko-KR') : 

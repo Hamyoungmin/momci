@@ -66,7 +66,7 @@ export default function PaymentStatusCards({ payments, type }: PaymentStatusCard
   // 이용권별 추가 정보
   if (type === 'subscription') {
     const parentCount = payments.filter(p => p.userType === 'parent' && p.status === 'completed').length;
-    const teacherCount = payments.filter(p => p.userType === 'teacher' && p.status === 'completed').length;
+    // const teacherCount = payments.filter(p => p.userType === 'teacher' && p.status === 'completed').length;
     
     statusCards.push({
       title: '학부모 이용권',

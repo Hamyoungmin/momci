@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { collection, query, where, onSnapshot, orderBy, limit } from 'firebase/firestore';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 interface AdminStats {
@@ -18,7 +18,7 @@ export function useAdminStats(): AdminStats {
     activeUsers: 0,
     loading: true,
   });
-  const [hasError, setHasError] = useState(false);
+  const [, setHasError] = useState(false);
 
   useEffect(() => {
     // 클라이언트에서만 실행

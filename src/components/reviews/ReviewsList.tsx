@@ -1,13 +1,23 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
+import { useState, useEffect, useMemo } from 'react';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '@/lib/firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 
 export default function ReviewsList() {
   const [selectedCategory] = useState('전체');
-  const [reviews, setReviews] = useState<any[]>([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
+
+  interface Review {
+    id: number;
+    title: string;
+    content: string;
+    rating: number;
+    author: string;
+    date: string;
+    category?: string;
+  }
   const [loading, setLoading] = useState(true);
   const [showWriteModal, setShowWriteModal] = useState(false);
   const [isModalClosing, setIsModalClosing] = useState(false);
@@ -26,7 +36,7 @@ export default function ReviewsList() {
   }, []);
 
   // 더미 데이터 추가 (첫 번째 이미지 스타일 확인용)
-  const dummyReviews = [
+  const dummyReviews = useMemo(() => [
     {
       id: 1,
       title: "놀기만 하는 아이, 선생님께서 놀이를 치료로 바뀌니깐 차근차근 치료받고 있습니다^^",
@@ -99,12 +109,12 @@ export default function ReviewsList() {
       author: "양천구 한**님",
       date: "2025.01.02"
     }
-  ];
+  ], []);
 
   // Firebase에서 실제 후기 데이터 가져오기 (임시 비활성화)
   useEffect(() => {
     // 더미 데이터로 설정
-    setReviews(dummyReviews);
+    setReviews(dummyReviews as Review[]);
     setLoading(false);
     
     // 실제 Firebase 연동 (나중에 활성화)
@@ -126,7 +136,7 @@ export default function ReviewsList() {
 
     return () => unsubscribe();
     */
-  }, []);
+  }, [dummyReviews]);
 
   // 후기 작성 모달 열기/닫기
   const openWriteModal = () => {
@@ -143,7 +153,7 @@ export default function ReviewsList() {
   };
 
   // 후기 작성 제출 - 바로 승인됨
-  const handleSubmitReview = async (reviewData: any) => {
+  const handleSubmitReview = async (reviewData: Partial<Review>) => {
     try {
       await addDoc(collection(db, 'reviews'), {
         ...reviewData,
@@ -185,9 +195,6 @@ export default function ReviewsList() {
   // currentSlide가 초기화되었는지 확인
   const effectiveCurrentSlide = Math.max(0, Math.min(currentSlide, maxSlide));
 
-  const getVisibleReviews = () => {
-    return filteredReviews.slice(effectiveCurrentSlide, effectiveCurrentSlide + visibleItems);
-  };
 
   const renderStars = (rating: number) => {
     return Array.from({ length: 5 }, (_, index) => (
@@ -385,14 +392,23 @@ export default function ReviewsList() {
 }
 
 // 후기 작성 모달 컴포넌트
+interface ReviewFormData {
+  title: string;
+  content: string;
+  category: string;
+  therapist: string;
+  rating: number;
+  author: string;
+}
+
 function ReviewWriteModal({ isOpen, isClosing, onClose, onSubmit, categories }: {
   isOpen: boolean;
   isClosing: boolean;
   onClose: () => void;
-  onSubmit: (data: any) => void;
+  onSubmit: (data: ReviewFormData) => void;
   categories: string[];
 }) {
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<ReviewFormData>({
     title: '',
     content: '',
     category: '',

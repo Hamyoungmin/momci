@@ -33,7 +33,7 @@ export default function AnalyticsOverview() {
   const [activeTab, setActiveTab] = useState('operational');
   
   // Firebase에서 실제 데이터 가져오기
-  const [overviewStats, setOverviewStats] = useState<OverviewStats>({
+  const [overviewStats] = useState<OverviewStats>({
     totalMembers: 0,
     memberGrowth: '0%',
     monthlyMatches: 0,
@@ -43,7 +43,7 @@ export default function AnalyticsOverview() {
     avgResponseTime: '0시간',
     slaStatus: '대기 중'
   });
-  const [realTimeData, setRealTimeData] = useState<RealTimeData>({
+  const [realTimeData] = useState<RealTimeData>({
     newSignups: 0,
     matchRequests: 0,
     inquiries: 0,
@@ -53,10 +53,12 @@ export default function AnalyticsOverview() {
     processedReports: 0,
     answeredInquiries: 0
   });
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
 
   useEffect(() => {
     // TODO: Firebase에서 실제 분석 데이터 가져오기
+    // setOverviewStats({ ... });
+    // setRealTimeData({ ... });
     setLoading(false);
   }, [selectedPeriod]);
 

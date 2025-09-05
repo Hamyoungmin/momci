@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 interface Notice {
@@ -13,7 +13,7 @@ interface Notice {
   isImportant?: boolean;
   type?: 'general' | 'important' | 'urgent';
   content: string;
-  createdAt?: any;
+  createdAt?: Date | Timestamp | null;
 }
 
 export default function NoticePage() {

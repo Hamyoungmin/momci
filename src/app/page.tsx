@@ -26,16 +26,19 @@ export default function Home() {
               <div className="space-y-4">
                 <div className="flex flex-col sm:flex-row gap-4">
                   <Link
-                    href="/request"
-                    className="bg-blue-400 hover:bg-blue-500 text-white px-8 py-5 rounded-2xl font-bold text-xl transition-all transform hover:scale-105 shadow-xl"
+                    href="/browse"
+                    className="bg-blue-400 hover:bg-blue-500 text-white px-8 py-5 rounded-2xl font-bold text-xl transition-all transform hover:scale-105 shadow-xl flex items-center justify-center"
                   >
-                    선생님께 신청하고 시작하기!
+                    <svg className="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    우리 아이 맞춤 전문가 찾기
                   </Link>
                   <Link
-                    href="/browse"
+                    href="/register-teacher"
                     className="border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-900 px-8 py-5 rounded-2xl font-bold text-xl transition-all"
                   >
-                    선생님 직접방법 보기
+                    전문가로 활동하기
                   </Link>
                 </div>
               </div>
@@ -82,36 +85,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 모든별 키즈 소개 섹션 */}
-      <section className="py-20 bg-white">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-blue-50 rounded-3xl p-12">
-            <div className="text-center space-y-8">
-              <h2 className="text-4xl lg:text-5xl font-bold text-gray-900">
-                우리 아이의 빛나는 집중력
-              </h2>
-              <h3 className="text-2xl lg:text-3xl font-bold text-blue-600">
-                청각의 전문가가 함께 찾아요.
-              </h3>
-              
-              <div className="flex justify-center items-center space-x-4 my-8">
-                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
-                  <span className="text-3xl">👂</span>
-                </div>
-                <button className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-4 rounded-2xl font-bold text-lg transition-colors">
-                  우리 아이에 집중 전문가와 함께하기
-                </button>
-              </div>
-              
-              <div className="flex justify-center">
-                <button className="border-2 border-blue-500 text-blue-500 hover:bg-blue-50 px-8 py-4 rounded-2xl font-bold text-lg transition-colors">
-                  전문가의 둘러보기
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* 통계 섹션 */}
       <section className="py-20 bg-gray-50">

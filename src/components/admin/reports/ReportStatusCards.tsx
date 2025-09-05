@@ -8,7 +8,7 @@ interface ReportStatusCardsProps {
 }
 
 export default function ReportStatusCards({ reports }: ReportStatusCardsProps) {
-  const convertTimestamp = (timestamp: Timestamp | any) => {
+  const convertTimestamp = (timestamp: Timestamp | Date | { seconds: number } | string | null | undefined) => {
     if (!timestamp) return new Date();
     if (timestamp.toDate) return timestamp.toDate();
     if (timestamp.seconds) return new Date(timestamp.seconds * 1000);
@@ -24,7 +24,7 @@ export default function ReportStatusCards({ reports }: ReportStatusCardsProps) {
 
   // 직거래 신고 통계
   const directTradeReports = reports.filter(r => r.type === 'direct_trade');
-  const directTradeProcessed = directTradeReports.filter(r => r.status === 'completed').length;
+  // const directTradeProcessed = directTradeReports.filter(r => r.status === 'completed').length;
 
   // 포상금 지급 건수
   const rewardGiven = reports.filter(r => 

@@ -23,19 +23,19 @@ export default function ParentMemberManagement() {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
   const [members, setMembers] = useState<ParentMember[]>([]);
-  const [loading, setLoading] = useState(true);
+  // const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchMembers = async () => {
       try {
-        setLoading(true);
+        // setLoading(true);
         // TODO: Firebase에서 실제 학부모 회원 데이터 조회
         // const membersData = await getParentMembers();
         setMembers([]);
       } catch (error) {
         console.error('학부모 회원 데이터 로딩 실패:', error);
       } finally {
-        setLoading(false);
+        // setLoading(false);
       }
     };
 
@@ -84,8 +84,8 @@ export default function ParentMemberManagement() {
     { key: 'phone', label: '연락처' },
     { key: 'region', label: '지역' },
     { key: 'joinDate', label: '가입일' },
-    { key: 'status', label: '상태', render: (value: ParentMember['status']) => getStatusBadge(value) },
-    { key: 'subscriptionStatus', label: '이용권', render: (value: ParentMember['subscriptionStatus']) => getSubscriptionBadge(value) },
+    { key: 'status', label: '상태', render: (value: unknown) => getStatusBadge(value as ParentMember['status']) },
+    { key: 'subscriptionStatus', label: '이용권', render: (value: unknown) => getSubscriptionBadge(value as ParentMember['subscriptionStatus']) },
     { key: 'totalMatches', label: '매칭수' },
     { key: 'lastActivity', label: '최근 활동' }
   ];
@@ -143,8 +143,8 @@ export default function ParentMemberManagement() {
         
         <MemberTable
           columns={columns}
-          data={members}
-          onRowClick={handleMemberSelect}
+          data={members as any[]}
+          onRowClick={(row) => handleMemberSelect(row as ParentMember)}
         />
       </div>
 

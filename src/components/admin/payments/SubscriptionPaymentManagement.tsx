@@ -35,19 +35,19 @@ export default function SubscriptionPaymentManagement() {
   const [userTypeFilter, setUserTypeFilter] = useState('all');
 
   const [payments, setPayments] = useState<SubscriptionPayment[]>([]);
-  const [loading, setLoading] = useState(true);
+  // const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchPayments = async () => {
       try {
-        setLoading(true);
+        // setLoading(true);
         // TODO: Firebase에서 실제 결제 데이터 조회
         // const paymentsData = await getSubscriptionPayments();
         setPayments([]);
       } catch (error) {
         console.error('결제 데이터 로딩 실패:', error);
       } finally {
-        setLoading(false);
+        // setLoading(false);
       }
     };
 

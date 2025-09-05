@@ -2,16 +2,20 @@
 
 import { useState } from 'react';
 
+interface TableRow {
+  [key: string]: unknown;
+}
+
 interface Column {
   key: string;
   label: string;
-  render?: (value: any, row: any) => React.ReactNode;
+  render?: (value: unknown, row: TableRow) => React.ReactNode;
 }
 
 interface MemberTableProps {
   columns: Column[];
-  data: any[];
-  onRowClick?: (row: any) => void;
+  data: TableRow[];
+  onRowClick?: (row: TableRow) => void;
 }
 
 export default function MemberTable({ columns, data, onRowClick }: MemberTableProps) {
@@ -36,9 +40,18 @@ export default function MemberTable({ columns, data, onRowClick }: MemberTablePr
     const aValue = a[sortBy];
     const bValue = b[sortBy];
     
-    if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
-    if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
-    return 0;
+    // 타입 안전한 비교
+    if (typeof aValue === 'string' && typeof bValue === 'string') {
+      return sortOrder === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
+    }
+    if (typeof aValue === 'number' && typeof bValue === 'number') {
+      return sortOrder === 'asc' ? aValue - bValue : bValue - aValue;
+    }
+    
+    // 기본적인 비교 (문자열로 변환)
+    const aStr = String(aValue || '');
+    const bStr = String(bValue || '');
+    return sortOrder === 'asc' ? aStr.localeCompare(bStr) : bStr.localeCompare(aStr);
   });
 
   // 페이지네이션 로직
@@ -125,7 +138,7 @@ export default function MemberTable({ columns, data, onRowClick }: MemberTablePr
               >
                 {columns.map((column) => (
                   <td key={column.key} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 group-hover:font-medium transition-all duration-200">
-                    {column.render ? column.render(row[column.key], row) : row[column.key]}
+                    {column.render ? column.render(row[column.key], row) : String(row[column.key] || '')}
                   </td>
                 ))}
               </tr>

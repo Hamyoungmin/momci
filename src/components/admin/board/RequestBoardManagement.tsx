@@ -35,19 +35,19 @@ export default function RequestBoardManagement() {
   const [treatmentFilter, setTreatmentFilter] = useState('all');
 
   const [posts, setPosts] = useState<RequestPost[]>([]);
-  const [loading, setLoading] = useState(true);
+  // const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchPosts = async () => {
       try {
-        setLoading(true);
+        // setLoading(true);
         // TODO: Firebase에서 실제 요청글 데이터 조회
         // const postsData = await getRequestPosts();
         setPosts([]);
       } catch (error) {
         console.error('요청글 데이터 로딩 실패:', error);
       } finally {
-        setLoading(false);
+        // setLoading(false);
       }
     };
 

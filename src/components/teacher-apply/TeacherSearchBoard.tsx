@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 
 // 치료사 타입 정의
 interface Teacher {
@@ -16,7 +17,7 @@ interface Teacher {
 
 export default function TeacherSearchBoard() {
   const [selectedSidebarItem, setSelectedSidebarItem] = useState('치료사등록');
-  const [selectedTab, setSelectedTab] = useState('서울');
+  // const [selectedTab, setSelectedTab] = useState('서울');
   const [selectedPriceRange, setSelectedPriceRange] = useState('치료비');
   const [selectedStatus, setSelectedStatus] = useState('상태');
   const [searchKeyword, setSearchKeyword] = useState('');
@@ -136,7 +137,7 @@ export default function TeacherSearchBoard() {
   };
 
   // 폼 데이터 핸들러
-  const handleFormChange = (field: string, value: any) => {
+  const handleFormChange = (field: string, value: string | number | boolean | string[]) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -267,9 +268,9 @@ export default function TeacherSearchBoard() {
 
   const filteredTeachers = getCurrentTeachers();
 
-  const handleFilterSelect = () => {
-    setShowFilterPopup(true);
-  };
+  // const handleFilterSelect = () => {
+  //   setShowFilterPopup(true);
+  // };
 
   const handleTherapyTypeChange = (therapyId: string) => {
     setSelectedTherapyTypes(prev => 
@@ -313,7 +314,7 @@ export default function TeacherSearchBoard() {
         {/* 사이드바 */}
         <div className="w-64 bg-white shadow-lg">
           <div className="p-4">
-            {sidebarItems.map((item, index) => (
+            {sidebarItems.map((item) => (
               <div key={item} className={item === '치료사등록' ? 'mb-4' : 'mb-1'}>
                 <button
                   onClick={() => handleSidebarClick(item)}
@@ -464,7 +465,7 @@ export default function TeacherSearchBoard() {
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {filteredTeachers.length > 0 ? (
-                      filteredTeachers.map((teacher, index) => (
+                      filteredTeachers.map((teacher) => (
                         <tr key={teacher.id} className="hover:bg-gray-50">
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             {teacher.id}
@@ -652,9 +653,11 @@ export default function TeacherSearchBoard() {
                       <label className="block text-sm font-medium text-gray-700 mb-2">프로필 사진 *</label>
                       <div className="w-40 h-40 bg-gray-200 rounded-full flex items-center justify-center mx-auto relative cursor-pointer hover:bg-gray-300 transition-colors">
                         {profileImagePreview ? (
-                          <img 
+                          <Image 
                             src={profileImagePreview} 
                             alt="프로필 미리보기" 
+                            width={160}
+                            height={160}
                             className="w-full h-full object-cover rounded-full"
                           />
                         ) : (

@@ -27,19 +27,19 @@ export default function TeacherMemberManagement() {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
   const [members, setMembers] = useState<TeacherMember[]>([]);
-  const [loading, setLoading] = useState(true);
+  // const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchMembers = async () => {
       try {
-        setLoading(true);
+        // setLoading(true);
         // TODO: Firebase에서 실제 치료사 회원 데이터 조회
         // const membersData = await getTeacherMembers();
         setMembers([]);
       } catch (error) {
         console.error('치료사 회원 데이터 로딩 실패:', error);
       } finally {
-        setLoading(false);
+        // setLoading(false);
       }
     };
 
@@ -103,16 +103,16 @@ export default function TeacherMemberManagement() {
     { 
       key: 'specialties', 
       label: '전문분야', 
-      render: (value: string[]) => (
+      render: (value: unknown) => (
         <div className="flex flex-wrap gap-1">
-          {value.slice(0, 2).map((specialty, index) => (
+          {(value as string[])?.slice(0, 2).map((specialty, index) => (
             <span key={index} className="px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded">
               {specialty}
             </span>
           ))}
-          {value.length > 2 && (
+          {(value as string[])?.length > 2 && (
             <span className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded">
-              +{value.length - 2}
+              +{(value as string[]).length - 2}
             </span>
           )}
         </div>
@@ -125,9 +125,9 @@ export default function TeacherMemberManagement() {
       render: (value: number) => value > 0 ? `${value}` : '-' 
     },
     { key: 'joinDate', label: '가입일' },
-    { key: 'status', label: '상태', render: (value: TeacherMember['status']) => getStatusBadge(value) },
-    { key: 'profileStatus', label: '프로필', render: (value: TeacherMember['profileStatus']) => getProfileStatusBadge(value) },
-    { key: 'certificationBadge', label: '인증', render: (value: TeacherMember['certificationBadge']) => getCertificationBadge(value) },
+    { key: 'status', label: '상태', render: (value: unknown) => getStatusBadge(value as TeacherMember['status']) },
+    { key: 'profileStatus', label: '프로필', render: (value: unknown) => getProfileStatusBadge(value as TeacherMember['profileStatus']) },
+    { key: 'certificationBadge', label: '인증', render: (value: unknown) => getCertificationBadge(value as TeacherMember['certificationBadge']) },
     { key: 'totalMatches', label: '매칭수' },
     { key: 'lastActivity', label: '최근 활동' }
   ];
@@ -222,8 +222,8 @@ export default function TeacherMemberManagement() {
         
         <MemberTable
           columns={columns}
-          data={members}
-          onRowClick={handleMemberSelect}
+          data={members as any[]}
+          onRowClick={(row) => handleMemberSelect(row as TeacherMember)}
         />
       </div>
 

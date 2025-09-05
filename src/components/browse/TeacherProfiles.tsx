@@ -22,7 +22,7 @@ interface Teacher {
   isOnline: boolean;
   responseTime: string;
   availability: string;
-  createdAt: any;
+  createdAt: Date | string | number;
 }
 
 export default function TeacherProfiles() {

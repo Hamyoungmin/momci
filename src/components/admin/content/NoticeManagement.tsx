@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { collection, query, orderBy, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import NoticeTable from './NoticeTable';
 import NoticeEditModal from './NoticeEditModal';
@@ -16,8 +16,8 @@ interface Notice {
   startDate: string;
   endDate?: string;
   views?: number;
-  createdAt: any;
-  updatedAt: any;
+  createdAt: Date | Timestamp | null;
+  updatedAt: Date | Timestamp | null;
   createdBy: string;
   priority?: number;
   targetAudience: 'all' | 'parents' | 'teachers';
@@ -103,22 +103,23 @@ export default function NoticeManagement() {
       }
       
       handleCloseModal();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('공지사항 저장 오류:', error);
       
       let errorMessage = '공지사항 저장 중 오류가 발생했습니다.';
       
-      if (error.message) {
-        if (error.message.includes('사용자가 인증되지 않았습니다')) {
+      const err = error as { message?: string; code?: string };
+      if (err.message) {
+        if (err.message.includes('사용자가 인증되지 않았습니다')) {
           errorMessage = '❌ 로그인이 필요합니다.\n페이지를 새로고침하고 다시 로그인해주세요.';
-        } else if (error.code === 'permission-denied') {
+        } else if (err.code === 'permission-denied') {
           errorMessage = '❌ 권한이 없습니다.\n관리자 계정으로 로그인했는지 확인해주세요.';
-        } else if (error.code === 'unauthenticated') {
+        } else if (err.code === 'unauthenticated') {
           errorMessage = '❌ 인증이 만료되었습니다.\n페이지를 새로고침하고 다시 로그인해주세요.';
-        } else if (error.message.includes('Network')) {
+        } else if (err.message.includes('Network')) {
           errorMessage = '❌ 네트워크 오류입니다.\n인터넷 연결을 확인해주세요.';
         } else {
-          errorMessage = `❌ 오류: ${error.message}`;
+          errorMessage = `❌ 오류: ${err.message}`;
         }
       }
       
@@ -133,7 +134,7 @@ export default function NoticeManagement() {
       await deleteDoc(doc(db, 'notices', noticeId));
       alert('✅ 공지사항이 삭제되었습니다.');
       handleCloseModal();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('공지사항 삭제 오류:', error);
       alert('❌ 삭제에 실패했습니다. 다시 시도해주세요.');
     }

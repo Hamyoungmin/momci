@@ -56,7 +56,7 @@ export default function RequestBoard() {
       '대구 중구', '대구 동구', '대구 서구', '대구 남구', '대구 북구', '대구 수성구', '광주 동구', '광주 서구', '광주 남구', '광주 북구'
     ]
   };
-  const times = ['희망시간을 입력하세요', '09:00-12:00', '13:00-16:00', '17:00-20:00'];
+  // const times = ['희망시간을 입력하세요', '09:00-12:00', '13:00-16:00', '17:00-20:00'];
   const treatments = [
     '희망치료를 선택하세요', '전체', '언어치료', '놀이치료', '감각통합치료', 
     '인지학습치료', '작업치료', '물리/운동치료', 'ABA치료', '음악치료', 
@@ -365,11 +365,6 @@ export default function RequestBoard() {
     }, 300); // 애니메이션 시간과 맞춤
   };
 
-  // 자동 제목 생성 함수 (치료종류 지역 연령 성별 빈도 홈티)
-  const generateAutoTitle = (treatment: string, region: string, detailLocation: string, age: string, gender: string, frequency: string) => {
-    const location = detailLocation || region;
-    return `${treatment} ${location} ${age} ${gender} ${frequency} 홈티`;
-  };
 
   // 새 게시글 추가 함수
   const addNewPost = (postData: typeof newPost) => {
@@ -452,7 +447,7 @@ export default function RequestBoard() {
         {/* 사이드바 */}
         <div className="w-64 bg-white shadow-lg">
           <div className="p-4">
-            {sidebarItems.map((item, index) => (
+            {sidebarItems.map((item) => (
               <div key={item} className={item === '홈티매칭' ? 'mb-6' : 'mb-1'}>
                 <button
                   onClick={() => handleSidebarClick(item)}
@@ -491,7 +486,7 @@ export default function RequestBoard() {
           {/* 탭 네비게이션 */}
           <div className="mb-6">
             <div className="bg-gray-50 rounded-3xl p-2 flex gap-1">
-              {tabs.map((tab, index) => (
+              {tabs.map((tab) => (
                 <button
                   key={tab}
                   onClick={() => {
@@ -686,7 +681,7 @@ export default function RequestBoard() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredPosts.map((post, index) => (
+                {filteredPosts.map((post) => (
                   <tr key={post.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {post.id}

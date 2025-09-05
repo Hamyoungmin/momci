@@ -32,12 +32,13 @@ export default function ProfileBoardManagement() {
   const [specialtyFilter, setSpecialtyFilter] = useState('all');
   
   // Firebase에서 실제 데이터 가져오기
-  const [profiles, setProfiles] = useState<TeacherProfile[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [profiles] = useState<TeacherProfile[]>([]);
+  // const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // TODO: Firebase에서 실제 치료사 프로필 데이터 가져오기
-    setLoading(false);
+    // setProfiles(profilesData);
+    // setLoading(false);
   }, []);
 
   const handleProfileSelect = (profile: TeacherProfile) => {
@@ -70,11 +71,6 @@ export default function ProfileBoardManagement() {
 
   const specialtyTypes = ['언어치료', '감각통합치료', '놀이치료', '인지학습치료', '미술치료', '음악치료'];
 
-  const getQualityScoreColor = (score: number) => {
-    if (score >= 90) return 'text-green-600';
-    if (score >= 70) return 'text-yellow-600';
-    return 'text-red-600';
-  };
 
   const visibleProfiles = profiles.filter(p => p.isVisible);
   const featuredProfiles = profiles.filter(p => p.isFeatured);

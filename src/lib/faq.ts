@@ -15,7 +15,6 @@ import {
   Timestamp
 } from 'firebase/firestore';
 import { db, auth } from './firebase';
-import { onAuthStateChanged } from 'firebase/auth';
 
 // FAQ 데이터 타입 정의
 export interface FAQ {
@@ -162,11 +161,12 @@ export async function addFAQ(faqData: Omit<FAQ, 'id' | 'createdAt' | 'updatedAt'
     return docRef.id;
   } catch (error) {
     console.error('FAQ 추가 오류 상세:', error);
-    if (error && typeof error === 'object' && 'code' in error) {
-      console.error('오류 코드:', (error as any).code);
+    const firestoreError = error as { code?: string; message?: string };
+    if (firestoreError.code) {
+      console.error('오류 코드:', firestoreError.code);
     }
-    if (error && typeof error === 'object' && 'message' in error) {
-      console.error('오류 메시지:', (error as any).message);
+    if (firestoreError.message) {
+      console.error('오류 메시지:', firestoreError.message);
     }
     throw error;
   }

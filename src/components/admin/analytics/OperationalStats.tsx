@@ -12,6 +12,12 @@ interface TreatmentStat {
   percentage: number;
 }
 
+interface MonthlyTrend {
+  month: string;
+  matches: number;
+  success: number;
+}
+
 interface OperationalStatsProps {
   period: string;
 }
@@ -37,7 +43,7 @@ export default function OperationalStats({ period }: OperationalStatsProps) {
     successRate: 0,
     avgMatchingTime: 0,
     popularTreatments: [] as TreatmentStat[],
-    monthlyTrend: [] as any[]
+    monthlyTrend: [] as MonthlyTrend[]
   };
 
   const getPeriodLabel = (period: string) => {

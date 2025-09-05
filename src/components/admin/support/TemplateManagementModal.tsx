@@ -186,7 +186,7 @@ export default function TemplateManagementModal({ isOpen, onClose }: TemplateMan
                         </label>
                         <select
                           value={category}
-                          onChange={(e) => setCategory(e.target.value as any)}
+                          onChange={(e) => setCategory(e.target.value as 'service' | 'payment' | 'technical' | 'account')}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         >
                           <option value="service">서비스 이용</option>

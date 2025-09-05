@@ -22,6 +22,13 @@ interface CategoryRating {
   rating: number;
 }
 
+interface BehaviorInsight {
+  title: string;
+  value: string | number;
+  insight: string;
+  trend: string;
+}
+
 interface UserBehaviorAnalyticsProps {
   period: string;
 }
@@ -47,7 +54,7 @@ export default function UserBehaviorAnalytics({ period }: UserBehaviorAnalyticsP
     categoryRatings: [] as CategoryRating[]
   };
 
-  const behaviorInsights: any[] = [];
+  const behaviorInsights: BehaviorInsight[] = [];
 
   const getPeriodLabel = (period: string) => {
     switch (period) {

@@ -13,12 +13,12 @@ interface Alert {
 
 export default function AlertCenter() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
-  const [loading, setLoading] = useState(true);
+  // const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchAlerts = async () => {
       try {
-        setLoading(true);
+        // setLoading(true);
         // TODO: Firebase에서 실제 알림 데이터 조회
         // const alertsData = await getAdminAlerts();
         
@@ -56,7 +56,7 @@ export default function AlertCenter() {
       } catch (error) {
         console.error('알림 데이터 로딩 실패:', error);
       } finally {
-        setLoading(false);
+        // setLoading(false);
       }
     };
 
@@ -76,18 +76,6 @@ export default function AlertCenter() {
     }
   };
 
-  const getCountColor = (type: Alert['type']) => {
-    switch (type) {
-      case 'urgent':
-        return 'bg-red-500 text-white';
-      case 'warning':
-        return 'bg-yellow-500 text-white';
-      case 'info':
-        return 'bg-blue-500 text-white';
-      default:
-        return 'bg-gray-500 text-white';
-    }
-  };
 
   return (
     <div className="bg-white rounded-xl border-2 border-blue-100 p-8 shadow-sm">

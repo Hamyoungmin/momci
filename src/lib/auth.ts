@@ -77,11 +77,12 @@ export const signUp = async (
       user: user,
       userData: userDocData 
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('회원가입 오류:', error);
+    const authError = error as { code?: string };
     return { 
       success: false, 
-      error: getAuthErrorMessage(error.code) 
+      error: getAuthErrorMessage(authError.code || 'unknown') 
     };
   }
 };
@@ -110,13 +111,14 @@ export const signIn = async (email: string, password: string) => {
       user: user,
       userData: userData 
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('로그인 오류 상세:', error);
-    console.error('에러 코드:', error.code);
-    console.error('에러 메시지:', error.message);
+    const authError = error as { code?: string; message?: string };
+    console.error('에러 코드:', authError.code);
+    console.error('에러 메시지:', authError.message);
     return { 
       success: false, 
-      error: getAuthErrorMessage(error.code) 
+      error: getAuthErrorMessage(authError.code || 'unknown') 
     };
   }
 };
@@ -126,7 +128,7 @@ export const signOutUser = async () => {
   try {
     await signOut(auth);
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('로그아웃 오류:', error);
     return { 
       success: false, 
@@ -143,11 +145,12 @@ export const resetPassword = async (email: string) => {
       success: true, 
       message: '비밀번호 재설정 이메일이 전송되었습니다.' 
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('비밀번호 재설정 오류:', error);
+    const authError = error as { code?: string };
     return { 
       success: false, 
-      error: getAuthErrorMessage(error.code) 
+      error: getAuthErrorMessage(authError.code || 'unknown') 
     };
   }
 };
