@@ -10,9 +10,17 @@ interface ReportStatusCardsProps {
 export default function ReportStatusCards({ reports }: ReportStatusCardsProps) {
   const convertTimestamp = (timestamp: Timestamp | Date | { seconds: number } | string | null | undefined) => {
     if (!timestamp) return new Date();
-    if (timestamp.toDate) return timestamp.toDate();
-    if (timestamp.seconds) return new Date(timestamp.seconds * 1000);
-    return new Date(timestamp);
+    if (timestamp instanceof Date) return timestamp;
+    if (typeof timestamp === 'object' && timestamp !== null && 'toDate' in timestamp && typeof timestamp.toDate === 'function') {
+      return timestamp.toDate(); // Firestore Timestamp
+    }
+    if (typeof timestamp === 'object' && timestamp !== null && 'seconds' in timestamp) {
+      return new Date(timestamp.seconds * 1000); // Timestamp object
+    }
+    if (typeof timestamp === 'string' || typeof timestamp === 'number') {
+      return new Date(timestamp); // 문자열이나 숫자인 경우
+    }
+    return new Date();
   };
 
   // 오늘 신고 건수

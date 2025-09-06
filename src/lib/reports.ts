@@ -14,8 +14,7 @@ import {
 } from 'firebase/firestore';
 import { 
   ref, 
-  uploadBytes, 
-  getDownloadURL 
+  uploadBytes
 } from 'firebase/storage';
 import { db, storage, auth } from './firebase';
 
@@ -86,7 +85,7 @@ export async function uploadReportEvidence(
       console.log(`✅ 파일 ${index + 1} 업로드 완료:`, fileName);
       
       // 다운로드 URL 가져오기
-      const downloadURL = await getDownloadURL(snapshot.ref);
+      const downloadURL = await snapshot.ref.getDownloadURL();
       console.log(`🔗 파일 ${index + 1} URL 생성 완료`);
       
       // 파일 타입 결정
@@ -351,7 +350,7 @@ export async function updateReportStatus(
       updateData.assignedTo = assignedTo;
     }
 
-    await updateDoc(reportRef, updateData);
+    await updateDoc(reportRef, updateData as any);
   } catch (error) {
     console.error('신고 상태 업데이트 실패:', error);
     throw new Error('신고 상태 업데이트에 실패했습니다.');
