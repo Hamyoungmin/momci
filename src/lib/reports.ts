@@ -350,7 +350,7 @@ export async function updateReportStatus(
       updateData.assignedTo = assignedTo;
     }
 
-    await updateDoc(reportRef, updateData as any);
+    await updateDoc(reportRef, updateData as Partial<Report>);
   } catch (error) {
     console.error('신고 상태 업데이트 실패:', error);
     throw new Error('신고 상태 업데이트에 실패했습니다.');
