@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 
-interface TableRow {
+export interface TableRow {
   [key: string]: unknown;
 }
 

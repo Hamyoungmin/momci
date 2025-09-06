@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import SearchFilters from './SearchFilters';
-import MemberTable from './MemberTable';
+import MemberTable, { TableRow } from './MemberTable';
 import MemberDetailModal from './MemberDetailModal';
 
 interface TeacherMember {
@@ -118,11 +118,11 @@ export default function TeacherMemberManagement() {
         </div>
       )
     },
-    { key: 'experience', label: '경력', render: (value: number) => `${value}년` },
+    { key: 'experience', label: '경력', render: (value: unknown) => `${value}년` },
     { 
       key: 'rating', 
       label: '평점', 
-      render: (value: number) => value > 0 ? `${value}` : '-' 
+      render: (value: unknown) => (value as number) > 0 ? `${value}` : '-' 
     },
     { key: 'joinDate', label: '가입일' },
     { key: 'status', label: '상태', render: (value: unknown) => getStatusBadge(value as TeacherMember['status']) },
@@ -222,8 +222,8 @@ export default function TeacherMemberManagement() {
         
         <MemberTable
           columns={columns}
-          data={members as any[]}
-          onRowClick={(row) => handleMemberSelect(row as TeacherMember)}
+          data={members as unknown as TableRow[]}
+          onRowClick={(row) => handleMemberSelect(row as unknown as TeacherMember)}
         />
       </div>
 

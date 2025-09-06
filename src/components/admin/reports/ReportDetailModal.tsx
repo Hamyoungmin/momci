@@ -94,9 +94,17 @@ export default function ReportDetailModal({ isOpen, onClose, report, onReportAct
   // Firestore Timestamp를 Date로 변환하는 헬퍼 함수
   const convertTimestamp = (timestamp: Timestamp | Date | { seconds: number } | string | null | undefined) => {
     if (!timestamp) return new Date();
-    if (timestamp.toDate) return timestamp.toDate(); // Firestore Timestamp
-    if (timestamp.seconds) return new Date(timestamp.seconds * 1000); // Timestamp object
-    return new Date(timestamp); // 이미 Date 객체거나 문자열인 경우
+    if (timestamp instanceof Date) return timestamp;
+    if (typeof timestamp === 'object' && timestamp !== null && 'toDate' in timestamp && typeof timestamp.toDate === 'function') {
+      return timestamp.toDate(); // Firestore Timestamp
+    }
+    if (typeof timestamp === 'object' && timestamp !== null && 'seconds' in timestamp) {
+      return new Date(timestamp.seconds * 1000); // Timestamp object
+    }
+    if (typeof timestamp === 'string' || typeof timestamp === 'number') {
+      return new Date(timestamp); // 문자열이나 숫자인 경우
+    }
+    return new Date();
   };
 
 

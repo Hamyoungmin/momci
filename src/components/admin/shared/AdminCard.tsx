@@ -19,6 +19,8 @@ export default function AdminCard({
   className = '', 
   headerActions 
 }: AdminCardProps) {
+  // 사용하지 않는 icon 파라미터 무시
+  void _icon;
   return (
     <div className={`bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow ${className}`}>
       {(title || subtitle || headerActions) && (

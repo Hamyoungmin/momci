@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import SearchFilters from './SearchFilters';
-import MemberTable from './MemberTable';
+import MemberTable, { TableRow } from './MemberTable';
 import MemberDetailModal from './MemberDetailModal';
 
 interface ParentMember {
@@ -143,8 +143,8 @@ export default function ParentMemberManagement() {
         
         <MemberTable
           columns={columns}
-          data={members as any[]}
-          onRowClick={(row) => handleMemberSelect(row as ParentMember)}
+          data={members as unknown as TableRow[]}
+          onRowClick={(row) => handleMemberSelect(row as unknown as ParentMember)}
         />
       </div>
 
