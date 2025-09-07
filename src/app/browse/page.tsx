@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import TeacherProfiles from '@/components/browse/TeacherProfiles';
-import SearchFilters from '@/components/browse/SearchFilters';
+import BrowseBoard from '@/components/browse/BrowseBoard';
 
 export const metadata: Metadata = {
   title: "선생님 둘러보기 - 모든별 키즈",
@@ -10,11 +9,8 @@ export const metadata: Metadata = {
 export default function BrowsePage() {
   return (
     <div>
-      {/* 검색 필터 */}
-      <SearchFilters />
-      
-      {/* 치료사 프로필 목록 */}
-      <TeacherProfiles />
+      {/* 선생님 둘러보기 보드 */}
+      <BrowseBoard />
     </div>
   );
 }

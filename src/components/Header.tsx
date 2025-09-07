@@ -233,11 +233,6 @@ export default function Header() {
                   onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
                   className="flex items-center space-x-2 text-gray-700 hover:text-blue-500 px-4 py-2 rounded-2xl text-base font-medium transition-colors"
                 >
-                  <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                    <span className="text-white text-sm font-medium">
-                      {userData?.name?.charAt(0) || currentUser.email?.charAt(0)?.toUpperCase()}
-                    </span>
-                  </div>
                   <span>{userData?.name || currentUser.email}</span>
                   <svg className={`w-4 h-4 transition-transform ${isUserDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -521,13 +516,8 @@ export default function Header() {
                   // 모바일 로그인된 경우
                   <div className="flex flex-col space-y-2">
                     <div className="px-4 py-2 text-center">
-                      <div className="inline-flex items-center space-x-2 text-gray-700">
-                        <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                          <span className="text-white text-sm font-medium">
-                            {userData?.name?.charAt(0) || currentUser.email?.charAt(0)?.toUpperCase()}
-                          </span>
-                        </div>
-                        <div className="text-left">
+                      <div className="text-gray-700">
+                        <div className="text-center">
                           <p className="text-sm font-medium">{userData?.name || currentUser.email}</p>
                           <p className="text-xs text-gray-500">
                             {userData?.userType === 'parent' ? '학부모' : 

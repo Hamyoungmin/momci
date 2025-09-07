@@ -9,7 +9,7 @@ import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from './firebase';
 
 // 사용자 유형
-export type UserType = 'parent' | 'therapist';
+export type UserType = 'parent' | 'therapist' | 'admin';
 
 // 사용자 데이터 인터페이스
 export interface UserData {

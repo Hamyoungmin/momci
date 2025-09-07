@@ -25,16 +25,29 @@ export default function RegisterGuide() {
     {
       step: "01",
       title: "프로필 등록 및 검증",
-      icon: "📋",
+      icon: (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" fill="#E3F2FD" stroke="#1976D2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          <polyline points="14,2 14,8 20,8" stroke="#1976D2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          <line x1="16" y1="13" x2="8" y2="13" stroke="#1976D2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          <line x1="16" y1="17" x2="8" y2="17" stroke="#1976D2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          <polyline points="10,9 9,9 8,9" stroke="#1976D2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      ),
       descriptions: [
         "[치료사 회원]으로 가입 후 프로필(학력/경력/자격증)과 관련 서류를 제출하면,\\n관리자 검토 후 [등록완료] 처리됩니다.",
-        "( * 서류 누락 시 [등록보류], 임상 경력 1년 미만 시 [자격미달] 처리될 수 있으니 유의 바랍니다.)"
+        "( ※ 서류 누락 시 [등록보류], 임상 경력 1년 미만 시 [자격미달] 처리될 수 있으니 유의 바랍니다.)"
       ]
     },
     {
       step: "02", 
       title: "매칭 활동 시작",
-      icon: "🔍",
+      icon: (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="11" cy="11" r="8" fill="#E3F2FD" stroke="#1976D2" strokeWidth="2"/>
+          <path d="m21 21-4.35-4.35" stroke="#1976D2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      ),
       descriptions: [
         "[선생님 요청하기]에서 학부모님의 요청글에 직접 지원하거나,",
         "[선생님 둘러보기]에 등록된 프로필을 보고 학부모님의 제안을 받습니다."
@@ -43,7 +56,14 @@ export default function RegisterGuide() {
     {
       step: "03",
       title: "인터뷰 및 수업 확정", 
-      icon: "💬",
+      icon: (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" fill="#E3F2FD" stroke="#1976D2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          <circle cx="9" cy="10" r="1" fill="#1976D2"/>
+          <circle cx="12" cy="10" r="1" fill="#1976D2"/>
+          <circle cx="15" cy="10" r="1" fill="#1976D2"/>
+        </svg>
+      ),
       descriptions: [
         "연결된 학부모님과 {1:1 실시간 채팅}으로 인터뷰를 조율합니다.",
         "수업이 확정되면 학부모님이 첫 수업료를 결제하고, 이후 연락처가 공개됩니다."
@@ -52,11 +72,16 @@ export default function RegisterGuide() {
     {
       step: "04",
       title: "투명한 수익 구조",
-      icon: "🚀", 
+      icon: (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="12" cy="12" r="3" fill="#E3F2FD" stroke="#1976D2" strokeWidth="2"/>
+          <path d="m12 1 3 6 6 3-6 3-3 6-3-6-6-3 6-3 3-6z" fill="#E3F2FD" stroke="#1976D2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      ), 
       descriptions: [
         "첫 매칭 수수료를 제외한 {모든 수업료는 100% 선생님의 수익}입니다.",
         "플랫폼 내에서 안전하게 활동하고 {'인증 선생님'}으로 성장하세요.",
-        "( * 외부 직거래는 금지되며, 더모든 키즈의 선생님은 독립적인 전문가(프리랜서)로 활동합니다.)"
+        "( ※ 외부 직거래는 금지되며, 더모든 키즈의 선생님은 독립적인 전문가(프리랜서)로 활동합니다.)"
       ]
     }
   ];
@@ -80,7 +105,7 @@ export default function RegisterGuide() {
                 {/* 스텝 아이콘 */}
                 <div className="flex-shrink-0">
                   <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                    <span className="text-2xl">{step.icon}</span>
+                    {step.icon}
                   </div>
                 </div>
                 

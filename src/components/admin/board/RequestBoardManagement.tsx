@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import RequestPostTable from './RequestPostTable';
 import RequestPostDetailModal from './RequestPostDetailModal';
 
@@ -35,23 +37,67 @@ export default function RequestBoardManagement() {
   const [treatmentFilter, setTreatmentFilter] = useState('all');
 
   const [posts, setPosts] = useState<RequestPost[]>([]);
-  // const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchPosts = async () => {
-      try {
-        // setLoading(true);
-        // TODO: Firebase에서 실제 요청글 데이터 조회
-        // const postsData = await getRequestPosts();
-        setPosts([]);
-      } catch (error) {
-        console.error('요청글 데이터 로딩 실패:', error);
-      } finally {
-        // setLoading(false);
-      }
-    };
+    console.log('🔥 관리자 페이지 - Firebase 실시간 게시글 데이터 로딩 시작');
 
-    fetchPosts();
+    // posts 컬렉션에서 모든 게시글을 실시간으로 가져오기 (요청글 + 선생님 둘러보기)
+    const postsQuery = query(
+      collection(db, 'posts'),
+      orderBy('createdAt', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(postsQuery, (snapshot) => {
+      console.log('📥 관리자 실시간 게시글 데이터 업데이트:', snapshot.size, '개의 문서');
+      
+      const postsData: RequestPost[] = [];
+      
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        console.log('📝 게시글 데이터:', doc.id, data);
+
+        // Firebase 데이터를 RequestPost 인터페이스에 맞게 변환
+        const post: RequestPost = {
+          id: doc.id,
+          parentId: data.authorId || 'unknown',
+          parentName: data.title || `${data.age || ''} ${data.gender || ''} ${data.treatment || '치료'} 요청`,
+          title: data.title || `${data.age || ''} ${data.gender || ''} ${data.treatment || '치료'} 요청`,
+          content: data.additionalInfo || data.details || '상세 내용 없음',
+          childInfo: {
+            age: data.age || '정보 없음',
+            gender: data.gender === '남' ? 'male' : data.gender === '여' ? 'female' : 'male',
+            condition: data.treatment || '정보 없음'
+          },
+          treatmentTypes: [data.treatment || '기타'],
+          location: data.region || '정보 없음',
+          schedule: data.timeDetails || '협의',
+          budget: data.price || '협의',
+          status: data.status === 'active' ? 'recruiting' : data.status === 'matched' ? 'matched' : 'closed',
+          applicants: data.applications || 0,
+          createdAt: data.createdAt ? 
+            (data.createdAt.toDate ? data.createdAt.toDate().toISOString() : new Date(data.createdAt).toISOString()) :
+            new Date().toISOString(),
+          updatedAt: data.updatedAt ? 
+            (data.updatedAt.toDate ? data.updatedAt.toDate().toISOString() : new Date(data.updatedAt).toISOString()) :
+            new Date().toISOString(),
+          views: 0, // 조회수는 현재 저장하지 않음
+          premium: false, // 프리미엄 여부는 현재 저장하지 않음
+          urgent: false // 급구 여부는 현재 저장하지 않음
+        };
+
+        postsData.push(post);
+      });
+
+      console.log('✅ 관리자 페이지 게시글 데이터 로딩 완료:', postsData.length, '건');
+      setPosts(postsData);
+    }, (error) => {
+      console.error('❌ 관리자 페이지 게시글 데이터 로딩 오류:', error);
+    });
+
+    return () => {
+      console.log('🧹 관리자 페이지 게시글 구독 해제');
+      unsubscribe();
+    };
   }, []);
 
   const handlePostSelect = (post: RequestPost) => {

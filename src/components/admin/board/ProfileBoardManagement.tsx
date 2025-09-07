@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import ProfileBoardTable from './ProfileBoardTable';
 import ProfileDisplayModal from './ProfileDisplayModal';
 
@@ -32,13 +34,66 @@ export default function ProfileBoardManagement() {
   const [specialtyFilter, setSpecialtyFilter] = useState('all');
   
   // Firebase에서 실제 데이터 가져오기
-  const [profiles] = useState<TeacherProfile[]>([]);
-  // const [loading, setLoading] = useState(true);
+  const [profiles, setProfiles] = useState<TeacherProfile[]>([]);
 
   useEffect(() => {
-    // TODO: Firebase에서 실제 치료사 프로필 데이터 가져오기
-    // setProfiles(profilesData);
-    // setLoading(false);
+    console.log('🔥 관리자 프로필 관리 - Firebase 실시간 치료사 프로필 데이터 로딩 시작');
+
+    // therapistProfiles 컬렉션에서 모든 치료사 프로필을 실시간으로 가져오기
+    const profilesQuery = query(
+      collection(db, 'therapistProfiles'),
+      orderBy('createdAt', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(profilesQuery, (snapshot) => {
+      console.log('📥 관리자 실시간 치료사 프로필 데이터 업데이트:', snapshot.size, '개의 프로필');
+      
+      const profilesData: TeacherProfile[] = [];
+      
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        console.log('👨‍⚕️ 치료사 프로필 데이터:', doc.id, data);
+
+        // Firebase 데이터를 TeacherProfile 인터페이스에 맞게 변환
+        const profile: TeacherProfile = {
+          id: doc.id,
+          teacherId: data.userId || 'unknown',
+          teacherName: data.name || '이름 없음',
+          profileImage: data.profileImage || '/default-profile.jpg',
+          title: data.title || `${data.experience || 0}년 경력 ${data.specialties?.[0] || '치료사'}`,
+          experience: `${data.experience || 0}년`,
+          specialties: Array.isArray(data.specialties) ? data.specialties : [data.specialties || '기타'],
+          location: data.location || data.regions?.[0] || '정보 없음',
+          rating: data.rating || 0,
+          reviewCount: data.reviewCount || 0,
+          hourlyRate: data.hourlyRate || data.price || '협의',
+          verified: data.status === 'approved' || data.verified === true,
+          displayOrder: data.displayOrder || 0,
+          isVisible: data.isVisible !== false && data.status === 'approved',
+          isFeatured: data.isFeatured === true,
+          qualityScore: data.qualityScore || (data.rating * 20) || 70, // 기본 70점
+          lastUpdated: data.updatedAt ? 
+            (data.updatedAt.toDate ? data.updatedAt.toDate().toISOString() : new Date(data.updatedAt).toISOString()) :
+            (data.createdAt ? 
+              (data.createdAt.toDate ? data.createdAt.toDate().toISOString() : new Date(data.createdAt).toISOString()) :
+              new Date().toISOString()),
+          profileCompleteness: data.profileCompleteness || 
+            (data.name && data.specialties && data.experience ? 90 : 60) // 기본 완성도 계산
+        };
+
+        profilesData.push(profile);
+      });
+
+      console.log('✅ 관리자 치료사 프로필 데이터 로딩 완료:', profilesData.length, '개');
+      setProfiles(profilesData);
+    }, (error) => {
+      console.error('❌ 관리자 치료사 프로필 데이터 로딩 오류:', error);
+    });
+
+    return () => {
+      console.log('🧹 관리자 치료사 프로필 구독 해제');
+      unsubscribe();
+    };
   }, []);
 
   const handleProfileSelect = (profile: TeacherProfile) => {
@@ -78,29 +133,22 @@ export default function ProfileBoardManagement() {
   const avgQualityScore = profiles.length > 0 ? Math.round(profiles.reduce((sum, p) => sum + p.qualityScore, 0) / profiles.length) : 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* 헤더 섹션 */}
-      <div className="bg-gradient-to-r from-violet-50 to-purple-50 border-2 border-violet-100 rounded-xl p-6">
+      <div className="bg-white rounded-xl border-2 border-blue-100 p-8 shadow-sm">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div className="p-3 bg-gradient-to-r from-violet-500 to-purple-500 rounded-lg">
-              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">프로필 노출 관리</h1>
-              <p className="text-gray-600 mt-1">치료사 프로필의 노출 순서와 상태를 관리합니다</p>
-            </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">프로필 노출 관리</h1>
+            <p className="text-gray-600 mt-1">치료사 프로필의 노출 순서와 상태를 관리합니다</p>
           </div>
-          <div className="flex items-center space-x-6 text-sm">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-violet-600">{visibleProfiles.length}</div>
-              <div className="text-gray-500">노출 중</div>
+          <div className="flex items-center space-x-4">
+            <div className="text-right">
+              <div className="text-2xl font-bold text-blue-600">{visibleProfiles.length}</div>
+              <div className="text-sm text-gray-500">노출 중</div>
             </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600">{featuredProfiles.length}</div>
-              <div className="text-gray-500">추천</div>
+            <div className="text-right">
+              <div className="text-2xl font-bold text-green-600">{featuredProfiles.length}</div>
+              <div className="text-sm text-gray-500">추천</div>
             </div>
           </div>
         </div>
@@ -138,17 +186,17 @@ export default function ProfileBoardManagement() {
       </div>
 
       {/* 필터 및 검색 */}
-      <div className="bg-white rounded-xl shadow-sm border-2 border-violet-100 p-6">
+      <div className="bg-white rounded-xl border-2 border-blue-100 p-6 shadow-sm">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900">프로필 필터 및 관리</h2>
+            <h2 className="text-xl font-bold text-gray-900">필터 및 검색</h2>
           </div>
           <div className="flex items-center space-x-4">
             {/* 노출 상태 필터 */}
             <select
               value={visibilityFilter}
               onChange={(e) => setVisibilityFilter(e.target.value)}
-              className="px-3 py-2 text-sm border-2 border-violet-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
+              className="px-4 py-2 text-sm border border-blue-200 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all font-medium"
             >
               <option value="all">전체</option>
               <option value="visible">노출 중</option>
@@ -160,7 +208,7 @@ export default function ProfileBoardManagement() {
             <select
               value={specialtyFilter}
               onChange={(e) => setSpecialtyFilter(e.target.value)}
-              className="px-3 py-2 text-sm border-2 border-violet-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
+              className="px-4 py-2 text-sm border border-blue-200 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all font-medium"
             >
               <option value="all">전체 분야</option>
               {specialtyTypes.map(type => (
@@ -168,7 +216,7 @@ export default function ProfileBoardManagement() {
               ))}
             </select>
 
-            <button className="px-4 py-2 bg-gradient-to-r from-violet-600 to-purple-600 text-white text-sm font-medium rounded-lg hover:from-violet-700 hover:to-purple-700 transition-all duration-200 transform hover:scale-105">
+            <button className="px-6 py-2 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white text-sm font-semibold rounded-lg hover:from-emerald-600 hover:to-emerald-700 transition-all duration-300 shadow-md hover:shadow-lg">
               노출 순서 일괄 수정
             </button>
           </div>
@@ -193,28 +241,25 @@ export default function ProfileBoardManagement() {
       </div>
 
       {/* 프로필 목록 */}
-      <div className="bg-white rounded-xl shadow-sm border-2 border-violet-100">
-        <div className="bg-gradient-to-r from-violet-50 to-purple-50 px-6 py-4 border-b border-violet-100 rounded-t-xl">
+      <div className="bg-white rounded-xl border-2 border-blue-100 shadow-sm overflow-hidden">
+        <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-emerald-50 to-cyan-50">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="p-2 bg-gradient-to-r from-violet-500 to-purple-500 rounded-lg">
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
+            <div>
+              <h2 className="text-xl font-bold text-gray-900">프로필 목록</h2>
+            </div>
+            <div className="flex items-center space-x-4">
+              <div className="px-4 py-2 bg-white rounded-lg border border-emerald-200 shadow-sm">
+                <span className="text-sm font-semibold text-gray-700">총 </span>
+                <span className="text-lg font-bold text-emerald-600">{filteredProfiles.length}</span>
+                <span className="text-sm font-semibold text-gray-700">개</span>
               </div>
-              <h3 className="text-lg font-semibold text-gray-900">프로필 목록</h3>
-              <span className="px-3 py-1 bg-violet-100 text-violet-700 text-sm font-semibold rounded-full">
-                총 {filteredProfiles.length}개
-              </span>
             </div>
           </div>
         </div>
-        <div className="p-6">
-          <ProfileBoardTable
-            profiles={filteredProfiles}
-            onProfileSelect={handleProfileSelect}
-          />
-        </div>
+        <ProfileBoardTable
+          profiles={filteredProfiles}
+          onProfileSelect={handleProfileSelect}
+        />
       </div>
 
       {/* 프로필 노출 관리 모달 */}

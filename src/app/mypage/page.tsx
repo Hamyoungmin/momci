@@ -2,18 +2,126 @@
 
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
-import { Timestamp } from 'firebase/firestore';
+import { useEffect, useState } from 'react';
+import { Timestamp, collection, query, where, onSnapshot } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 export default function MyPage() {
   const { currentUser, userData, loading } = useAuth();
   const router = useRouter();
+
+  // 통계 데이터 상태
+  const [stats, setStats] = useState({
+    postsCount: 0,
+    matchesCount: 0,
+    reviewsCount: 0
+  });
+  const [statsLoading, setStatsLoading] = useState(true);
 
   useEffect(() => {
     if (!loading && !currentUser) {
       router.push('/auth/login');
     }
   }, [currentUser, loading, router]);
+
+  // 실시간 통계 데이터 가져오기
+  useEffect(() => {
+    if (!currentUser) return;
+
+    console.log('📊 통계 데이터 가져오기 시작 - 사용자:', currentUser.uid);
+    setStatsLoading(true);
+
+    const unsubscribes: (() => void)[] = [];
+
+    try {
+      // 1. 작성한 게시글 수 가져오기
+      const postsQuery = query(
+        collection(db, 'posts'),
+        where('authorId', '==', currentUser.uid)
+      );
+
+      const unsubscribePosts = onSnapshot(postsQuery, (snapshot) => {
+        const postsCount = snapshot.size;
+        console.log('📝 작성한 게시글 수:', postsCount);
+        setStats(prev => ({ ...prev, postsCount }));
+      }, (error) => {
+        console.error('❌ 게시글 수 조회 오류:', error);
+      });
+      unsubscribes.push(unsubscribePosts);
+
+      // 2. 매칭 성공 수 가져오기
+      // successful-matches 컬렉션이 있는지 확인하고, 없으면 matchings 컬렉션에서 가져오기
+      const matchesQuery = query(
+        collection(db, 'successful-matches'),
+        where(userData?.userType === 'parent' ? 'parentId' : 'therapistId', '==', currentUser.uid)
+      );
+
+      const unsubscribeMatches = onSnapshot(matchesQuery, (snapshot) => {
+        const matchesCount = snapshot.size;
+        console.log('🤝 매칭 성공 수:', matchesCount);
+        setStats(prev => ({ ...prev, matchesCount }));
+      }, (error) => {
+        console.error('❌ 매칭 수 조회 오류 (successful-matches에서):', error);
+        // successful-matches 컬렉션이 없거나 오류가 있으면 matchings에서 시도
+        console.log('🔄 matchings 컬렉션에서 재시도...');
+        
+        const backupMatchesQuery = query(
+          collection(db, 'matchings'),
+          where(userData?.userType === 'parent' ? 'parentId' : 'therapistId', '==', currentUser.uid)
+        );
+        
+        const unsubscribeBackupMatches = onSnapshot(backupMatchesQuery, (backupSnapshot) => {
+          const matchesCount = backupSnapshot.size;
+          console.log('🤝 매칭 수 (matchings에서):', matchesCount);
+          setStats(prev => ({ ...prev, matchesCount }));
+        }, (backupError) => {
+          console.error('❌ matchings 컬렉션 조회도 실패:', backupError);
+          setStats(prev => ({ ...prev, matchesCount: 0 }));
+        });
+        
+        unsubscribes.push(unsubscribeBackupMatches);
+      });
+      unsubscribes.push(unsubscribeMatches);
+
+      // 3. 작성한 후기 수 가져오기 
+      let reviewsQuery;
+      if (userData?.userType === 'parent') {
+        // 학부모는 치료사에 대한 후기 작성
+        reviewsQuery = query(
+          collection(db, 'therapist-reviews'),
+          where('parentId', '==', currentUser.uid)
+        );
+      } else {
+        // 일반 후기 또는 치료사가 작성하는 후기 (있다면)
+        reviewsQuery = query(
+          collection(db, 'reviews'),
+          where('userId', '==', currentUser.uid)
+        );
+      }
+
+      const unsubscribeReviews = onSnapshot(reviewsQuery, (snapshot) => {
+        const reviewsCount = snapshot.size;
+        console.log('⭐ 작성한 후기 수:', reviewsCount);
+        setStats(prev => ({ ...prev, reviewsCount }));
+        setStatsLoading(false);
+      }, (error) => {
+        console.error('❌ 후기 수 조회 오류:', error);
+        setStats(prev => ({ ...prev, reviewsCount: 0 }));
+        setStatsLoading(false);
+      });
+      unsubscribes.push(unsubscribeReviews);
+
+    } catch (error) {
+      console.error('❌ 통계 데이터 조회 전체 오류:', error);
+      setStatsLoading(false);
+    }
+
+    // 클린업 함수
+    return () => {
+      console.log('🧹 통계 데이터 구독 정리');
+      unsubscribes.forEach(unsubscribe => unsubscribe());
+    };
+  }, [currentUser, userData?.userType]);
 
   if (loading) {
     return (
@@ -123,17 +231,35 @@ export default function MyPage() {
           <h2 className="text-xl font-bold text-gray-900 mb-6">서비스 이용 현황</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="text-center p-6 bg-blue-50 rounded-2xl">
-              <div className="text-3xl font-bold text-blue-600">0</div>
+              {statsLoading ? (
+                <div className="text-3xl font-bold text-blue-600">
+                  <div className="animate-pulse">...</div>
+                </div>
+              ) : (
+                <div className="text-3xl font-bold text-blue-600">{stats.postsCount}</div>
+              )}
               <div className="text-sm text-gray-600 mt-2">
-                {userData?.userType === 'parent' ? '요청한 게시글' : '지원한 게시글'}
+                {userData?.userType === 'parent' ? '요청한 게시글' : '작성한 게시글'}
               </div>
             </div>
             <div className="text-center p-6 bg-green-50 rounded-2xl">
-              <div className="text-3xl font-bold text-green-600">0</div>
+              {statsLoading ? (
+                <div className="text-3xl font-bold text-green-600">
+                  <div className="animate-pulse">...</div>
+                </div>
+              ) : (
+                <div className="text-3xl font-bold text-green-600">{stats.matchesCount}</div>
+              )}
               <div className="text-sm text-gray-600 mt-2">매칭 성공</div>
             </div>
             <div className="text-center p-6 bg-purple-50 rounded-2xl">
-              <div className="text-3xl font-bold text-purple-600">0</div>
+              {statsLoading ? (
+                <div className="text-3xl font-bold text-purple-600">
+                  <div className="animate-pulse">...</div>
+                </div>
+              ) : (
+                <div className="text-3xl font-bold text-purple-600">{stats.reviewsCount}</div>
+              )}
               <div className="text-sm text-gray-600 mt-2">작성한 후기</div>
             </div>
           </div>
@@ -149,14 +275,12 @@ export default function MyPage() {
                   href="/request" 
                   className="flex flex-col items-center p-6 bg-blue-50 rounded-2xl hover:bg-blue-100 transition-colors"
                 >
-                  <div className="text-2xl mb-2">📝</div>
                   <span className="text-sm font-medium text-gray-900">요청하기</span>
                 </a>
                 <a 
                   href="/browse" 
                   className="flex flex-col items-center p-6 bg-green-50 rounded-2xl hover:bg-green-100 transition-colors"
                 >
-                  <div className="text-2xl mb-2">🔍</div>
                   <span className="text-sm font-medium text-gray-900">치료사 찾기</span>
                 </a>
               </>
@@ -166,14 +290,12 @@ export default function MyPage() {
                   href="/browse" 
                   className="flex flex-col items-center p-6 bg-blue-50 rounded-2xl hover:bg-blue-100 transition-colors"
                 >
-                  <div className="text-2xl mb-2">🔍</div>
                   <span className="text-sm font-medium text-gray-900">요청글 보기</span>
                 </a>
                 <a 
                   href="/teacher-apply" 
                   className="flex flex-col items-center p-6 bg-green-50 rounded-2xl hover:bg-green-100 transition-colors"
                 >
-                  <div className="text-2xl mb-2">📋</div>
                   <span className="text-sm font-medium text-gray-900">프로필 등록</span>
                 </a>
               </>
@@ -182,14 +304,12 @@ export default function MyPage() {
               href="/reviews" 
               className="flex flex-col items-center p-6 bg-purple-50 rounded-2xl hover:bg-purple-100 transition-colors"
             >
-              <div className="text-2xl mb-2">⭐</div>
               <span className="text-sm font-medium text-gray-900">후기 보기</span>
             </a>
             <a 
               href="/support" 
               className="flex flex-col items-center p-6 bg-orange-50 rounded-2xl hover:bg-orange-100 transition-colors"
             >
-              <div className="text-2xl mb-2">💬</div>
               <span className="text-sm font-medium text-gray-900">고객센터</span>
             </a>
           </div>

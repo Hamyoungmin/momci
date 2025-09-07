@@ -85,29 +85,22 @@ export default function InquiryManagement() {
   const urgentInquiries = inquiries.filter(i => i.priority === 'urgent');
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* 헤더 섹션 */}
-      <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border-2 border-purple-100 rounded-xl p-6">
+      <div className="bg-white rounded-xl border-2 border-blue-100 p-8 shadow-sm">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div className="p-3 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg">
-              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192L5.636 18.364M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
-              </svg>
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">고객지원 관리</h1>
-              <p className="text-gray-600 mt-1">고객 문의 및 지원 요청을 관리합니다</p>
-            </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">고객지원 관리</h1>
+            <p className="text-gray-600 mt-1">고객 문의 및 지원 요청을 관리합니다</p>
           </div>
-          <div className="flex items-center space-x-6 text-sm">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600">{pendingInquiries.length}</div>
-              <div className="text-gray-500">대기 중</div>
+          <div className="flex items-center space-x-4">
+            <div className="text-right">
+              <div className="text-2xl font-bold text-blue-600">{pendingInquiries.length}</div>
+              <div className="text-sm text-gray-500">대기 중</div>
             </div>
-            <div className="text-center">
+            <div className="text-right">
               <div className="text-2xl font-bold text-red-600">{urgentInquiries.length}</div>
-              <div className="text-gray-500">긴급</div>
+              <div className="text-sm text-gray-500">긴급</div>
             </div>
           </div>
         </div>

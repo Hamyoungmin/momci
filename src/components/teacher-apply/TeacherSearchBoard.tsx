@@ -359,7 +359,7 @@ export default function TeacherSearchBoard() {
 
           {/* 메인 배너 - 치료사 등록 관련 페이지에서만 표시 */}
           {(selectedSidebarItem === '치료사등록' || selectedSidebarItem === '정식(경력)치료사 등록' || selectedSidebarItem === '예비(학생)치료사 등록') && (
-            <div className="bg-gray-100 rounded-lg p-8 mb-4 flex items-center justify-between">
+            <div className="bg-gray-100 rounded-lg p-8 mb-4">
               <div>
                 <h2 className="text-3xl font-bold text-gray-900 mb-4">
                   {selectedSidebarItem === '예비(학생)치료사 등록' 
@@ -373,11 +373,6 @@ export default function TeacherSearchBoard() {
                     : '이력을 등록하고 가치를 치료사로 활동해보세요!'
                   }
                 </p>
-              </div>
-              <div className="flex-shrink-0 ml-8">
-                <div className="w-48 h-32 bg-green-200 rounded-lg flex items-center justify-center">
-                  <span className="text-6xl">👩‍⚕️</span>
-                </div>
               </div>
             </div>
           )}

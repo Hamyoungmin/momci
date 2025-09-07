@@ -114,27 +114,20 @@ export default function FAQManagement() {
   return (
     <div className="space-y-6">
       {/* 헤더 섹션 */}
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-100 rounded-xl p-6">
+      <div className="bg-white rounded-xl border-2 border-blue-100 p-8 shadow-sm">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div className="p-3 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-lg">
-              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">FAQ 관리</h1>
-              <p className="text-gray-600 mt-1">자주 묻는 질문을 관리하고 편집합니다</p>
-            </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">FAQ 관리</h1>
+            <p className="text-gray-600 mt-1">자주 묻는 질문을 관리하고 편집합니다</p>
           </div>
-          <div className="flex items-center space-x-6 text-sm">
-            <div className="text-center">
+          <div className="flex items-center space-x-4">
+            <div className="text-right">
               <div className="text-2xl font-bold text-blue-600">{activeFAQs.length}</div>
-              <div className="text-gray-500">활성 FAQ</div>
+              <div className="text-sm text-gray-500">활성 FAQ</div>
             </div>
-            <div className="text-center">
+            <div className="text-right">
               <div className="text-2xl font-bold text-green-600">{totalViews.toLocaleString()}</div>
-              <div className="text-gray-500">총 조회수</div>
+              <div className="text-sm text-gray-500">총 조회수</div>
             </div>
           </div>
         </div>

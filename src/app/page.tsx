@@ -46,41 +46,21 @@ export default function Home() {
               </div>
             </div>
 
-            {/* 오른쪽 치료사 프로필 카드 */}
-            <div className="flex justify-center lg:justify-end">
+            {/* 31.jpg 이미지 (배경 제거됨) */}
+            <div className="flex justify-center lg:justify-center lg:pr-16">
               <div className="relative">
-                <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-sm transform rotate-2 hover:rotate-0 transition-transform duration-500">
-                  <div className="bg-gradient-to-br from-blue-100 via-blue-50 to-blue-100 rounded-2xl p-8">
-                    <div className="text-center" style={{gap: '10px', display: 'flex', flexDirection: 'column'}}>
-                      {/* 프로필 이미지 */}
-                      <div className="w-32 h-32 bg-blue-300 rounded-full mx-auto flex items-center justify-center">
-                        <span className="text-5xl">👩‍⚕️</span>
-                      </div>
-                      
-                      <div>
-                        <h3 className="text-2xl font-bold text-gray-900 mb-2">전문 치료사</h3>
-                        <p className="text-gray-600 text-lg">검증된 자격증 보유</p>
-                      </div>
-                      
-                      {/* 별점 */}
-                      <div className="flex justify-center items-center space-x-1">
-                        {[...Array(5)].map((_, i) => (
-                          <span key={i} className="text-yellow-400 text-xl">⭐</span>
-                        ))}
-                        <span className="text-gray-500 ml-2 font-medium">4.8 (137개)</span>
-                      </div>
-                      
-                      {/* 가격 */}
-                      <div className="space-y-1">
-                        <div className="text-3xl font-bold text-blue-600">65,000원</div>
-                        <p className="text-gray-500">시간당</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                {/* 배경 장식 */}
-                <div className="absolute -bottom-6 -left-6 w-32 h-32 bg-blue-200 rounded-full opacity-30"></div>
+                <Image 
+                  src="/31.jpg" 
+                  alt="여우 캐릭터" 
+                  width={320}
+                  height={320}
+                  className="w-80 h-80 object-contain transition-transform duration-500 hover:scale-105"
+                  style={{
+                    filter: 'drop-shadow(0 10px 25px rgba(0,0,0,0.15))',
+                    background: 'transparent',
+                    mixBlendMode: 'multiply'
+                  }}
+                />
               </div>
             </div>
           </div>
@@ -258,13 +238,13 @@ export default function Home() {
             {/* 2. 1:1 채팅 */}
             <div className="text-center" style={{gap: '10px', display: 'flex', flexDirection: 'column'}}>
               <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto shadow-md border border-gray-100">
-                <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <svg width="50" height="50" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
                   {/* 뒤쪽 큰 말풍선 */}
-                  <ellipse cx="20" cy="14" rx="8" ry="6" fill="#00BFFF"/>
-                  <path d="M15 18l-3 3v-3" fill="#00BFFF"/>
+                  <ellipse cx="20" cy="18" rx="8" ry="6" fill="#00BFFF"/>
+                  <path d="M15 22l-3 3v-3" fill="#00BFFF"/>
                   {/* 앞쪽 작은 말풍선 */}
-                  <ellipse cx="12" cy="8" rx="6" ry="4.5" fill="#1E90FF"/>
-                  <path d="M8 11l-2 2v-2" fill="#1E90FF"/>
+                  <ellipse cx="12" cy="12" rx="6" ry="4.5" fill="#1E90FF"/>
+                  <path d="M8 15l-2 2v-2" fill="#1E90FF"/>
                 </svg>
               </div>
               <h3 className="text-lg font-bold text-gray-900">2. 1:1 채팅</h3>
@@ -299,9 +279,16 @@ export default function Home() {
             {/* 4. 수업 시작 */}
             <div className="text-center" style={{gap: '10px', display: 'flex', flexDirection: 'column'}}>
               <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto shadow-md border border-gray-100">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M12 2l8 6v8l-8 6-8-6V8l8-6z" fill="#00BFFF"/>
-                  <path d="M8 10l4 4 8-8" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <svg width="50" height="50" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" transform="rotate(45)">
+                  {/* 로켓 본체 */}
+                  <ellipse cx="16" cy="14" rx="4" ry="8" fill="#00BFFF"/>
+                  {/* 로켓 머리 (뾰족한 부분) */}
+                  <path d="M16 6l-2 4h4l-2-4z" fill="#1E90FF"/>
+                  {/* 로켓 날개 */}
+                  <path d="M12 18l-3 2v3l3-2z" fill="#00BFFF"/>
+                  <path d="M20 18l3 2v3l-3-2z" fill="#00BFFF"/>
+                  {/* 로켓 창문 */}
+                  <circle cx="16" cy="12" r="1.5" fill="white"/>
                 </svg>
               </div>
               <h3 className="text-lg font-bold text-gray-900">4. 수업 시작</h3>

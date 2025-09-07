@@ -111,8 +111,8 @@ export default function AdminSidebar({ isAdmin }: AdminSidebarProps) {
           <button
             onClick={() => !isDisabled && toggleExpanded(item.title)}
             disabled={isDisabled}
-            className={`w-full flex items-center justify-between px-3 py-2.5 text-left text-sm font-medium rounded-lg transition-colors ${
-              level > 0 ? 'ml-6' : ''
+            className={`w-full flex items-center justify-between px-3 py-2 text-left text-sm font-medium rounded-lg transition-colors ${
+              level > 0 ? 'ml-2' : ''
             } ${
               isDisabled 
                 ? 'text-gray-400 cursor-not-allowed'
@@ -137,7 +137,7 @@ export default function AdminSidebar({ isAdmin }: AdminSidebarProps) {
             )}
           </button>
           {isExpanded && !isDisabled && (
-            <div className="ml-3 mt-1 space-y-1">
+            <div className="ml-4 space-y-0.5">
               {item.children!.map(child => renderMenuItem(child, level + 1))}
             </div>
           )}
@@ -149,8 +149,8 @@ export default function AdminSidebar({ isAdmin }: AdminSidebarProps) {
       return (
         <div
           key={item.title}
-          className={`flex items-center px-3 py-2.5 text-sm font-medium rounded-lg ${
-            level > 0 ? 'ml-6' : ''
+          className={`flex items-center px-3 py-2 text-sm font-medium rounded-lg ${
+            level > 0 ? 'ml-2' : ''
           } text-gray-400 cursor-not-allowed`}
         >
           <span>{item.title}</span>
@@ -163,8 +163,8 @@ export default function AdminSidebar({ isAdmin }: AdminSidebarProps) {
       <Link
         key={item.title}
         href={item.href!}
-        className={`flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors ${
-          level > 0 ? 'ml-6' : ''
+        className={`flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+          level > 0 ? 'ml-2' : ''
         } ${
           isActive(item.href!)
             ? 'bg-blue-100 text-blue-700 shadow-sm border border-blue-200'

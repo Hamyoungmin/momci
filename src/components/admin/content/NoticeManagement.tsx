@@ -152,29 +152,22 @@ export default function NoticeManagement() {
   const totalViews = notices.reduce((sum, n) => sum + (n.views || 0), 0);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* 헤더 섹션 */}
-      <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-100 rounded-xl p-6">
+      <div className="bg-white rounded-xl border-2 border-blue-100 p-8 shadow-sm">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div className="p-3 bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg">
-              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
-              </svg>
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">공지사항 관리</h1>
-              <p className="text-gray-600 mt-1">플랫폼 공지사항을 작성하고 관리합니다</p>
-            </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">공지사항 관리</h1>
+            <p className="text-gray-600 mt-1">플랫폼 공지사항을 작성하고 관리합니다</p>
           </div>
-          <div className="flex items-center space-x-6 text-sm">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">{activeNotices.length}</div>
-              <div className="text-gray-500">활성 공지</div>
+          <div className="flex items-center space-x-4">
+            <div className="text-right">
+              <div className="text-2xl font-bold text-blue-600">{activeNotices.length}</div>
+              <div className="text-sm text-gray-500">활성 공지</div>
             </div>
-            <div className="text-center">
+            <div className="text-right">
               <div className="text-2xl font-bold text-red-600">{urgentNotices.length}</div>
-              <div className="text-gray-500">긴급 공지</div>
+              <div className="text-sm text-gray-500">긴급 공지</div>
             </div>
           </div>
         </div>
