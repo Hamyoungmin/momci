@@ -73,6 +73,7 @@ export default function BrowseBoard() {
 
   // 사용자 권한 체크 (치료사 또는 관리자, 또는 특정 관리자 이메일만 게시글 작성 가능)
   const canCreatePost = currentUser?.email === 'dudals7334@naver.com' || 
+    currentUser?.email === 'everystars@naver.com' ||
     (userData && (userData.userType === 'therapist' || userData.userType === 'admin'));
 
   // 새 게시글 작성용 상태
@@ -958,29 +959,6 @@ export default function BrowseBoard() {
                             회기당 {teacher.price}
                           </div>
 
-                          {/* 실제 사용자가 입력한 세부내용 표시 */}
-                          {teacher.postAdditionalInfo && (
-                            <div className="mb-4">
-                              <div className="bg-gray-50 rounded-lg p-3">
-                                <h4 className="text-sm font-medium text-gray-700 mb-2">세부내용</h4>
-                                <p className="text-sm text-gray-600 leading-relaxed">
-                                  {teacher.postAdditionalInfo.length > 100 
-                                    ? `${teacher.postAdditionalInfo.substring(0, 100)}...` 
-                                    : teacher.postAdditionalInfo}
-                                </p>
-                              </div>
-                            </div>
-                          )}
-
-                          {/* 실제 시간 정보 표시 */}
-                          {teacher.postTimeDetails && (
-                            <div className="mb-4">
-                              <div className="flex items-center text-sm text-gray-600">
-                                <span className="font-medium">희망 시간:</span>
-                                <span className="ml-2">{teacher.postTimeDetails}</span>
-                              </div>
-                            </div>
-                          )}
                           
                           <div className="border-t border-gray-200 pt-3 mb-3"></div>
                           
@@ -1357,16 +1335,7 @@ export default function BrowseBoard() {
                 {/* 기본 정보 */}
                 <div>
                   <h2 className="text-xl font-bold text-gray-900 mb-1">
-                    {/* 게시글 제목과 프로필 정보 결합 */}
-                    {selectedProfile.name}
-                    {selectedProfile.postAge && selectedProfile.postGender && (
-                      <span className="text-base text-gray-600 ml-2">
-                        ({selectedProfile.postAge} {selectedProfile.postGender} {selectedProfile.specialty})
-                      </span>
-                    )}
-                    {selectedProfile.experience > 0 && (
-                      <span className="text-sm text-blue-600 ml-2">• {selectedProfile.experience}년차</span>
-                    )}
+                    {selectedProfile.name} 치료사 ({selectedProfile.experience ? `${selectedProfile.experience}년차` : '경력미상'} {selectedProfile.specialty}사)
                   </h2>
                   <div className="flex items-center mb-2">
                     <span className="text-orange-400 text-lg">★</span>
@@ -1374,7 +1343,14 @@ export default function BrowseBoard() {
                     <span className="text-xs text-gray-500 ml-1">(후기 {selectedProfile.reviewCount}개)</span>
                   </div>
                   <div className="text-2xl font-bold text-blue-600 mb-3">
-                    회기당 {selectedProfile.price}
+                    회기당 {(() => {
+                      if (!selectedProfile.price) return '협의';
+                      const priceStr = selectedProfile.price.toString();
+                      if (priceStr.includes('원')) return priceStr;
+                      const numericPrice = priceStr.replace(/[^0-9]/g, '');
+                      if (!numericPrice) return '협의';
+                      return numericPrice.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '원';
+                    })()}
                   </div>
                 </div>
               </div>
@@ -1389,12 +1365,12 @@ export default function BrowseBoard() {
                 </span>
                 {selectedProfile.postFrequency && (
                   <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
-                    {selectedProfile.postFrequency}
+                    #{selectedProfile.postFrequency}
                   </span>
                 )}
                 {selectedProfile.postAge && (
                   <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200">
-                    {selectedProfile.postAge}
+                    #{selectedProfile.postAge}
                   </span>
                 )}
               </div>
@@ -1425,62 +1401,165 @@ export default function BrowseBoard() {
               {/* 선생님 소개 */}
               <div className="mb-8">
                 <div className="flex items-center mb-4">
-                  <span className="text-blue-500 mr-2">👤</span>
+                  <div className="text-blue-500 mr-2">
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                    </svg>
+                  </div>
                   <h3 className="text-lg font-semibold text-gray-900">선생님 소개</h3>
                 </div>
-                <div className="bg-gray-50 rounded-lg p-4">
-                  {/* 실제 게시글의 세부내용을 우선 표시 */}
-                  {selectedProfile.postAdditionalInfo ? (
-                    <div>
-                      <h4 className="text-sm font-semibold text-gray-800 mb-2">게시글 세부내용</h4>
-                      <p className="text-gray-700 whitespace-pre-line mb-4">
-                        {selectedProfile.postAdditionalInfo}
-                      </p>
-                      {selectedProfile.postTimeDetails && (
-                        <div className="border-t border-gray-200 pt-3">
-                          <p className="text-sm text-gray-600">
-                            <span className="font-medium">희망 시간:</span> {selectedProfile.postTimeDetails}
-                          </p>
+                
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="font-semibold mb-2">치료 철학 및 강점</h4>
+                    <p className="text-gray-700 text-sm leading-relaxed">
+                      {selectedProfile.philosophy || selectedProfile.introduction || "치료 철학 및 강점이 등록되지 않았습니다."}
+                    </p>
+                  </div>
+                  
+                  <div>
+                    <h4 className="font-semibold mb-2">주요 치료경험/사례</h4>
+                    <p className="text-gray-700 text-sm leading-relaxed">
+                      {selectedProfile.services || selectedProfile.career || "주요 치료경험 및 사례가 등록되지 않았습니다."}
+                    </p>
+                  </div>
+                  
+                  <div>
+                    <h4 className="font-semibold mb-2">(선택) 1분 자기소개 영상</h4>
+                    <div className="bg-gray-100 rounded-lg">
+                      {selectedProfile.videoUrl ? (
+                        <video 
+                          src={selectedProfile.videoUrl} 
+                          controls 
+                          className="w-full rounded-lg" 
+                          poster="/placeholder-video.png"
+                        >
+                          영상을 재생할 수 없습니다.
+                        </video>
+                      ) : (
+                        <div className="text-center py-12 text-gray-500 text-sm">
+                          자기소개 영상이 등록되지 않았습니다.
                         </div>
                       )}
                     </div>
-                  ) : (
-                    <p className="text-gray-700">
-                      {selectedProfile.introduction || selectedProfile.philosophy || '안녕하세요! 전문적이고 체계적인 치료 서비스를 제공하겠습니다.'}
-                    </p>
-                  )}
+                  </div>
                 </div>
               </div>
 
-              {/* 교육 및 경력 */}
+              {/* 핵심 정보 한눈에 보기 */}
               <div className="mb-8">
                 <div className="flex items-center mb-4">
-                  <span className="text-blue-500 mr-2">🎓</span>
-                  <h3 className="text-lg font-semibold text-gray-900">교육 및 경력</h3>
+                  <div className="text-blue-500 mr-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900">핵심 정보 한눈에 보기</h3>
                 </div>
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <p className="text-gray-700 mb-2">
-                    <strong>교육:</strong> {selectedProfile.education || '관련 학과 졸업'}
-                  </p>
-                  <p className="text-gray-700">
-                    <strong>경력:</strong> {selectedProfile.career || `${selectedProfile.experience}년 이상의 전문 경력`}
-                  </p>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="text-sm font-medium text-gray-600 mb-1">학력 사항</div>
+                    <div className="text-sm text-gray-900">{selectedProfile.education || '등록되지 않음'}</div>
+                  </div>
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="text-sm font-medium text-gray-600 mb-1">총 경력</div>
+                    <div className="text-sm text-gray-900">{selectedProfile.career || (selectedProfile.experience ? `${selectedProfile.experience}년 이상의 전문 경력` : '등록되지 않음')}</div>
+                  </div>
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="text-sm font-medium text-gray-600 mb-1">활동 가능 지역</div>
+                    <div className="text-sm text-gray-900">
+                      {selectedProfile.regions?.join(', ') || selectedProfile.region || '등록되지 않음'}
+                    </div>
+                  </div>
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="text-sm font-medium text-gray-600 mb-1">치료 가능 시간</div>
+                    <div className="text-sm text-gray-900">{selectedProfile.schedule || selectedProfile.postTimeDetails || '등록되지 않음'}</div>
+                  </div>
                 </div>
               </div>
 
-              {/* 수업 정보 */}
+              {/* 전문 정보 */}
               <div className="mb-8">
                 <div className="flex items-center mb-4">
-                  <span className="text-blue-500 mr-2">📅</span>
-                  <h3 className="text-lg font-semibold text-gray-900">수업 정보</h3>
+                  <div className="text-blue-500 mr-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900">전문 정보</h3>
                 </div>
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <p className="text-gray-700 mb-2">
-                    <strong>수업 시간:</strong> {selectedProfile.schedule || '협의 후 결정'}
-                  </p>
-                  <p className="text-gray-700">
-                    <strong>지역:</strong> {selectedProfile.region}
-                  </p>
+                
+                <div className="space-y-6">
+                  {/* 전문 분야 */}
+                  <div>
+                    <h4 className="font-semibold mb-3 text-gray-900">전문 분야</h4>
+                    <div className="flex flex-wrap gap-2">
+                      <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
+                        #{selectedProfile.specialty}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* 학력 및 경력 */}
+                  <div>
+                    <h4 className="font-semibold mb-3 text-gray-900">학력 및 경력</h4>
+                    <div className="space-y-2">
+                      <div className="flex items-start space-x-2">
+                        <span className="text-blue-500 text-sm">•</span>
+                        <div>
+                          <p className="text-sm text-gray-700">
+                            <span className="font-medium">학력:</span> {selectedProfile.education || '관련 학과 졸업'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-start space-x-2">
+                        <span className="text-blue-500 text-sm">•</span>
+                        <div>
+                          <p className="text-sm text-gray-700">
+                            <span className="font-medium">경력:</span> {selectedProfile.career || (selectedProfile.experience ? `${selectedProfile.experience}년 이상의 전문 경력` : '등록되지 않음')}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 보유 자격증 */}
+                  <div>
+                    <h4 className="font-semibold mb-3 text-gray-900">보유 자격증</h4>
+                    <div className="space-y-2">
+                      {selectedProfile.certifications && selectedProfile.certifications.length > 0 ? (
+                        selectedProfile.certifications.map((cert, index) => (
+                          <div key={index} className="flex items-start space-x-2">
+                            <span className="text-blue-500 text-sm">•</span>
+                            <p className="text-sm text-gray-700">{cert}</p>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="flex items-start space-x-2">
+                          <span className="text-blue-500 text-sm">•</span>
+                          <p className="text-sm text-gray-700">자격증</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 학부모 후기 */}
+              <div className="mb-8">
+                <div className="flex items-center mb-4">
+                  <div className="text-blue-500 mr-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900">학부모 후기 ({selectedProfile.reviewCount || 0}건)</h3>
+                </div>
+                
+                <div className="text-center py-8 text-gray-500">
+                  <p>아직 작성된 후기가 없습니다.</p>
+                  <p className="text-sm mt-1">첫 번째 후기를 작성해보세요!</p>
                 </div>
               </div>
 
@@ -1493,7 +1572,9 @@ export default function BrowseBoard() {
                   }}
                   className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-4 rounded-lg font-medium transition-colors text-lg w-full max-w-md"
                 >
-                  <span className="mr-2">💬</span>
+                  <svg className="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                  </svg>
                   1:1 채팅으로 문의하기
                 </button>
               </div>

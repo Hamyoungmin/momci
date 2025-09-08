@@ -5,7 +5,7 @@ export default function TeacherGuidePage() {
     <div className="min-h-screen bg-gray-50">
       {/* 메인 가이드 섹션 */}
       <section className="py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="bg-white border-4 border-blue-700 rounded-lg p-12">
             <div className="text-center mb-20 mt-20">
               <h2 className="text-5xl font-bold text-gray-900 mb-4">모든별 키즈 치료사 이용 가이드</h2>
@@ -44,9 +44,16 @@ export default function TeacherGuidePage() {
               </p>
 
               <div className="bg-yellow-50 p-4 rounded-lg">
-                <p className="text-amber-700">
-                  💡 <span className="text-amber-700 font-bold">신뢰를 위한 약속</span>: 첫 소통부터 매칭 확정까지는 반드시 플랫폼 시스템을 이용해 주세요. 이는 양측 보호와 <span className="text-blue-700 font-semibold">&apos;인증 선생님&apos;</span> 자격을 위한 필수 과정입니다.
-                </p>
+                <div className="flex items-start space-x-3">
+                  <div className="flex-shrink-0 mt-1">
+                    <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                    </svg>
+                  </div>
+                  <p className="text-amber-700">
+                    <span className="text-amber-700 font-bold">신뢰를 위한 약속</span>: 첫 소통부터 매칭 확정까지는 반드시 플랫폼 시스템을 이용해 주세요. 이는 양측 보호와 <span className="text-blue-700 font-semibold">&apos;인증 선생님&apos;</span> 자격을 위한 필수 과정입니다.
+                  </p>
+                </div>
               </div>
             </div>
 

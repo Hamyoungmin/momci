@@ -10,12 +10,12 @@ service cloud.firestore {
     
     function isAdmin() {
       return request.auth != null && 
-             exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+             (request.auth.token.email == 'dudals7334@naver.com' ||
+              request.auth.token.email == 'everystars@naver.com');
     }
     
     function isFAQAdmin() {
-      return request.auth != null && 
-             request.auth.token.email == 'dudals7334@naver.com';
+      return isAdmin();
     }
     
     function isAuthenticated() {
@@ -276,6 +276,7 @@ service cloud.firestore {
       // 신고 읽기: 특정 관리자 이메일 또는 관리자 컬렉션에 등록된 사용자
       allow read: if isAuthenticated() && 
                      (request.auth.token.email == 'dudals7334@naver.com' ||
+                      request.auth.token.email == 'everystars@naver.com' ||
                       exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
       
       // 신고 생성: 누구나 가능 (익명 신고 지원), 실제 데이터 구조에 맞춘 검증
@@ -304,6 +305,7 @@ service cloud.firestore {
       // 신고 수정: 관리자와 시스템 업데이트 허용 (파일 증빙 추가용)
       allow update: if (isAuthenticated() && 
                        (request.auth.token.email == 'dudals7334@naver.com' ||
+                        request.auth.token.email == 'everystars@naver.com' ||
                         exists(/databases/$(database)/documents/admins/$(request.auth.uid)))) || 
                        // 증빙 파일 추가 업데이트만 허용 (파일 업로드 후)
                        request.resource.data.diff(resource.data).affectedKeys()
@@ -312,6 +314,7 @@ service cloud.firestore {
       // 신고 삭제: 관리자만 가능 (기록 보관 목적)
       allow delete: if isAuthenticated() && 
                        (request.auth.token.email == 'dudals7334@naver.com' ||
+                        request.auth.token.email == 'everystars@naver.com' ||
                         exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
     }
     
@@ -396,9 +399,16 @@ service cloud.firestore {
       allow create, update, delete: if isFAQAdmin();
     }
     
-    // 시스템 통계 (관리자만 접근 가능)
+    // 시스템 통계 (사이트 통계는 모든 사용자 읽기 가능, 관리자만 수정 가능)
     match /statistics/{docId} {
-      allow read, write: if isAdmin();
+      // 사이트 전체 통계는 인증 여부와 관계없이 모든 사용자가 읽기 가능 (메인페이지용)
+      allow read: if docId == 'site-stats';
+      
+      // 관리자는 모든 통계 문서 읽기 가능
+      allow read: if isAdmin();
+      
+      // 통계 생성/수정/삭제는 관리자만 가능
+      allow create, update, delete: if isAdmin();
     }
     
     // 시스템 로그 (관리자만 접근 가능)
@@ -793,7 +803,7 @@ service cloud.firestore {
                        request.resource.data.age is string &&
                        request.resource.data.gender in ['남', '여'] &&
                        request.resource.data.frequency is string &&
-                       request.resource.data.status == 'active' &&
+                       request.resource.data.status in ['active', 'matching'] &&
                        request.resource.data.applications == 0 &&
                        request.resource.data.type in ['request', 'teacher-offer'] &&
                        // 추가 필드들 검증 (title, category, details, additionalInfo)
@@ -805,6 +815,8 @@ service cloud.firestore {
                         request.resource.data.details is string) &&
                        (!request.resource.data.keys().hasAny(['additionalInfo']) || 
                         request.resource.data.additionalInfo is string) &&
+                       // 작성자 정보는 실시간으로 가져오므로 저장하지 않음
+                       (!request.resource.data.keys().hasAny(['authorName'])) &&
                        // 타입별 권한 검증
                        (
                          // 관리자는 모든 타입 게시글 작성 가능
@@ -823,9 +835,9 @@ service cloud.firestore {
                        (isFAQAdmin() || hasRecentActivity()) &&
                        rateLimitCheck(5); // 분당 5개 제한
       
-      // 게시글 수정 - 작성자는 기본 정보만, 치료사/관리자는 치료사 정보 추가 가능
+      // 게시글 수정 - 작성자는 기본 정보와 상태 변경 가능, 치료사/관리자는 치료사 정보 추가 가능
       allow update: if isAuthenticated() && (
-                       // 작성자는 기본 정보만 수정 가능
+                       // 작성자는 기본 정보와 진행 상태만 수정 가능
                        (isOwner(resource.data.authorId) && 
                         request.resource.data.authorId == resource.data.authorId &&
                         !request.resource.data.diff(resource.data).affectedKeys().hasAny([
@@ -833,7 +845,10 @@ service cloud.firestore {
                           'teacherSpecialty', 'teacherRating', 'teacherReviewCount', 'teacherProfileImage',
                           'teacherCertifications', 'teacherEducation', 'teacherCareer', 'teacherRegions',
                           'teacherSchedule', 'teacherIntroduction', 'teacherPhilosophy', 'teacherServices', 'teacherVideoUrl'
-                        ])) ||
+                        ]) &&
+                        // 상태 변경 시 유효한 값 검증
+                        (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['status']) || 
+                         request.resource.data.status in ['active', 'matching', 'meeting', 'completed'])) ||
                        // 치료사는 지원 시 자신의 정보를 추가할 수 있음
                        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
                         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType == 'therapist' &&
@@ -844,7 +859,13 @@ service cloud.firestore {
                         // 지원자 수 증가 허용
                         request.resource.data.applications >= resource.data.applications) ||
                        // 관리자는 모든 필드 수정 가능
-                       isAdmin()
+                       isAdmin() ||
+                       // 관련 치료사가 채팅 시작 시 상태 변경 (meeting)
+                       (isAuthenticated() &&
+                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) &&
+                        request.resource.data.status in ['meeting', 'completed'] &&
+                        (resource.data.teacherUserId == request.auth.uid ||
+                         exists(/databases/$(database)/documents/applications/$(request.auth.uid + '_' + resource.id))))
                      );
       
       // 게시글 삭제 - 작성자와 관리자만

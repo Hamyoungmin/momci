@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import ProfileReviewQueue from './ProfileReviewQueue';
 import ProfileDetailReview from './ProfileDetailReview';
+import { incrementTeacherCount } from '@/lib/statistics';
 
 interface ProfileSubmission {
   id: string;
@@ -62,11 +63,30 @@ export default function ProfileVerificationSystem() {
     setSelectedProfile(null);
   };
 
-  const handleProfileAction = (profileId: string, action: 'approve' | 'reject' | 'hold', reason?: string) => {
-    // 실제 구현 시 API 호출
-    console.log('Profile action:', { profileId, action, reason });
-    setIsDetailViewOpen(false);
-    setSelectedProfile(null);
+  const handleProfileAction = async (profileId: string, action: 'approve' | 'reject' | 'hold', reason?: string) => {
+    try {
+      // 실제 구현 시 API 호출
+      console.log('Profile action:', { profileId, action, reason });
+      
+      // 치료사 프로필이 승인될 때 치료사 카운트 증가
+      if (action === 'approve') {
+        try {
+          await incrementTeacherCount();
+          console.log('치료사 프로필 승인으로 치료사 수가 증가했습니다.');
+        } catch (statsError) {
+          console.warn('치료사 카운트 증가 실패:', statsError);
+        }
+      }
+      
+      // TODO: Firebase에서 프로필 상태 업데이트
+      // await updateProfileStatus(profileId, action, reason);
+      
+      setIsDetailViewOpen(false);
+      setSelectedProfile(null);
+    } catch (error) {
+      console.error('프로필 액션 처리 실패:', error);
+      // 에러 처리 (토스트 메시지 등)
+    }
   };
 
   return (

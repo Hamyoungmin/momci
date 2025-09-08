@@ -191,6 +191,7 @@ service firebase.storage {
       // 증빙 파일 읽기: 특정 관리자 이메일 또는 관리자 컬렉션에 등록된 사용자
       allow read: if isAuthenticated() && 
                      (request.auth.token.email == 'dudals7334@naver.com' ||
+                      request.auth.token.email == 'everystars@naver.com' ||
                       firestore.exists(/databases/(default)/documents/admins/$(request.auth.uid)));
       
       // 증빙 파일 수정: 허용하지 않음 (원본 보존)
@@ -199,6 +200,7 @@ service firebase.storage {
       // 증빙 파일 삭제: 특정 관리자만 가능 (조사 완료 후)
       allow delete: if isAuthenticated() && 
                        (request.auth.token.email == 'dudals7334@naver.com' ||
+                        request.auth.token.email == 'everystars@naver.com' ||
                         firestore.exists(/databases/(default)/documents/admins/$(request.auth.uid)));
     }
     

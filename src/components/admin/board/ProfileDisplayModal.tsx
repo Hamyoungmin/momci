@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 interface TeacherProfile {
   id: string;
@@ -29,20 +31,56 @@ interface ProfileDisplayModalProps {
   profile: TeacherProfile;
   onProfileAction: (
     profileId: string, 
-    action: 'show' | 'hide' | 'feature' | 'unfeature' | 'reorder',
-    data?: { order?: number; reason?: string }
+    action: 'show' | 'hide' | 'feature' | 'unfeature' | 'reorder' | 'edit',
+    data?: { order?: number; reason?: string; profileData?: Partial<TeacherProfile> }
   ) => void;
 }
 
 export default function ProfileDisplayModal({ isOpen, onClose, profile, onProfileAction }: ProfileDisplayModalProps) {
-  const [activeTab, setActiveTab] = useState('display');
+  const [activeTab, setActiveTab] = useState('edit');
   const [actionType, setActionType] = useState<'show' | 'hide' | 'feature' | 'unfeature' | 'reorder' | null>(null);
   const [actionReason, setActionReason] = useState('');
-  const [newOrder, setNewOrder] = useState(profile.displayOrder);
+  const [newOrder, setNewOrder] = useState(profile?.displayOrder || 1);
+  
+  // 편집용 상태 변수들
+  const [editData, setEditData] = useState({
+    teacherName: profile?.teacherName || '',
+    experience: profile?.experience || '',
+    specialties: profile?.specialties?.join(', ') || '',
+    location: profile?.location || '',
+    hourlyRate: profile?.hourlyRate || '',
+    title: profile?.title || '',
+    rating: profile?.rating || 4.5
+  });
+  const [isEditing, setIsEditing] = useState(false);
+  const [editReason, setEditReason] = useState('');
 
-  if (!isOpen) return null;
+  if (!isOpen || !profile) return null;
+
+  // 데이터 유효성 검사
+  if (!profile.id) {
+    return (
+      <>
+        <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50">
+          <div className="bg-white rounded-lg p-8 max-w-md w-[90vw] shadow-xl border-4 border-blue-500">
+            <div className="text-center">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">데이터 로딩 중</h2>
+              <p className="text-sm text-gray-500 mb-4">프로필 정보를 불러오고 있습니다...</p>
+              <button
+                onClick={onClose}
+                className="px-4 py-2 text-gray-600 hover:bg-gray-50 border border-gray-300 rounded-md transition-colors"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   const tabs = [
+    { id: 'edit', label: '정보 편집' },
     { id: 'display', label: '노출 관리' },
     { id: 'quality', label: '품질 분석' },
     { id: 'preview', label: '프로필 미리보기' }
@@ -57,6 +95,66 @@ export default function ProfileDisplayModal({ isOpen, onClose, profile, onProfil
     }
     
     onProfileAction(profile.id, actionType, data);
+  };
+
+  const handleEditSave = async () => {
+    if (!editReason.trim()) {
+      alert('편집 사유를 입력해주세요.');
+      return;
+    }
+
+    try {
+      // Firestore에 직접 업데이트
+      const profileRef = doc(db, 'posts', profile.id);
+      const updateData: Record<string, unknown> = {
+        name: editData.teacherName,
+        experience: parseInt(editData.experience.replace('년', '')) || 0,
+        specialty: editData.specialties.split(',').map(s => s.trim()).filter(s => s)[0] || '기타',
+        region: editData.location,
+        price: editData.hourlyRate,
+        title: editData.title,
+        rating: editData.rating,
+        updatedAt: new Date()
+      };
+
+      await updateDoc(profileRef, updateData);
+      
+      // 부모 컴포넌트에 알림
+      onProfileAction(profile.id, 'edit', { 
+        reason: editReason,
+        profileData: {
+          ...profile,
+          teacherName: editData.teacherName,
+          experience: editData.experience,
+          specialties: editData.specialties.split(',').map(s => s.trim()).filter(s => s),
+          location: editData.location,
+          hourlyRate: editData.hourlyRate,
+          title: editData.title,
+          rating: editData.rating
+        }
+      });
+
+      setIsEditing(false);
+      setEditReason('');
+      alert('프로필이 성공적으로 수정되었습니다.');
+    } catch (error) {
+      console.error('프로필 수정 오류:', error);
+      alert('프로필 수정 중 오류가 발생했습니다.');
+    }
+  };
+
+  const resetEditData = () => {
+    setEditData({
+      teacherName: profile?.teacherName || '',
+      experience: profile?.experience || '',
+      specialties: profile?.specialties?.join(', ') || '',
+      location: profile?.location || '',
+      hourlyRate: profile?.hourlyRate || '',
+      title: profile?.title || '',
+      rating: profile?.rating || 4.5
+    });
+    setIsEditing(false);
+    setEditReason('');
   };
 
   const qualityChecklist = [
@@ -88,38 +186,35 @@ export default function ProfileDisplayModal({ isOpen, onClose, profile, onProfil
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-        {/* 배경 오버레이 */}
-        <div className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onClick={onClose}></div>
-
-        {/* 모달 */}
-        <div className="inline-block w-full max-w-4xl p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-lg">
+    <>
+      {/* 모달 */}
+      <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50">
+        <div className="bg-white rounded-lg p-8 max-w-6xl w-[95vw] shadow-xl border-4 border-blue-500 max-h-[90vh] overflow-y-auto">
           {/* 헤더 */}
-          <div className="flex items-center justify-between pb-4 border-b border-gray-200">
+          <div className="flex justify-between items-center mb-6">
             <div>
-              <h3 className="text-lg font-medium text-gray-900">프로필 노출 관리</h3>
-              <p className="text-sm text-gray-600">
+              <h2 className="text-2xl font-bold text-gray-900">프로필 노출 관리</h2>
+              <p className="text-sm text-gray-500 mt-1">
                 {profile.teacherName} 선생님 ({profile.teacherId})
+                {profile.verified && (
+                  <span className="ml-2 px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                    ✓ 인증 선생님
+                  </span>
+                )}
+                {profile.isFeatured && (
+                  <span className="ml-2 px-2 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded-full">
+                    추천 프로필
+                  </span>
+                )}
               </p>
             </div>
-            <div className="flex items-center space-x-4">
-              {profile.verified && (
-                <span className="px-3 py-1 text-sm font-medium bg-blue-100 text-blue-800 rounded-full">
-                  ✓ 인증 선생님
-                </span>
-              )}
-              {profile.isFeatured && (
-                <span className="px-3 py-1 text-sm font-medium bg-purple-100 text-purple-800 rounded-full">
-                  추천 프로필
-                </span>
-              )}
-              <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600 text-2xl"
+              type="button"
+            >
+              ✕
+            </button>
           </div>
 
           {/* 기본 정보 */}
@@ -177,6 +272,186 @@ export default function ProfileDisplayModal({ isOpen, onClose, profile, onProfil
 
           {/* 탭 컨텐츠 */}
           <div className="mt-6 max-h-96 overflow-y-auto">
+            {activeTab === 'edit' && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-base font-medium text-gray-900">프로필 정보 편집</h4>
+                  {!isEditing ? (
+                    <button
+                      onClick={() => setIsEditing(true)}
+                      className="px-3 py-1 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                    >
+                      편집 모드
+                    </button>
+                  ) : (
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={handleEditSave}
+                        className="px-3 py-1 text-sm bg-green-600 text-white rounded-md hover:bg-green-700"
+                      >
+                        저장
+                      </button>
+                      <button
+                        onClick={resetEditData}
+                        className="px-3 py-1 text-sm bg-gray-500 text-white rounded-md hover:bg-gray-600"
+                      >
+                        취소
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">이름</label>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={editData.teacherName}
+                        onChange={(e) => setEditData({...editData, teacherName: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    ) : (
+                      <div className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-gray-900">
+                        {profile.teacherName}
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      경력사항 <span className="text-red-500">*</span>
+                    </label>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={editData.experience}
+                        onChange={(e) => setEditData({...editData, experience: e.target.value})}
+                        placeholder="예: 5년"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    ) : (
+                      <div className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-gray-900">
+                        {profile.experience}
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">전문분야</label>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={editData.specialties}
+                        onChange={(e) => setEditData({...editData, specialties: e.target.value})}
+                        placeholder="예: 언어치료, 인지치료 (쉼표로 구분)"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    ) : (
+                      <div className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-gray-900">
+                        {profile.specialties.join(', ')}
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">지역</label>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={editData.location}
+                        onChange={(e) => setEditData({...editData, location: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    ) : (
+                      <div className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-gray-900">
+                        {profile.location}
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">시간당 요금</label>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={editData.hourlyRate}
+                        onChange={(e) => setEditData({...editData, hourlyRate: e.target.value})}
+                        placeholder="예: 50,000원"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    ) : (
+                      <div className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-gray-900">
+                        {profile.hourlyRate}
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">제목</label>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={editData.title}
+                        onChange={(e) => setEditData({...editData, title: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    ) : (
+                      <div className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-gray-900">
+                        {profile.title}
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">평점</label>
+                    {isEditing ? (
+                      <input
+                        type="number"
+                        value={editData.rating}
+                        onChange={(e) => setEditData({...editData, rating: parseFloat(e.target.value) || 0})}
+                        min="0"
+                        max="5"
+                        step="0.1"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    ) : (
+                      <div className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-gray-900">
+                        {profile.rating} / 5.0
+                      </div>
+                    )}
+                  </div>
+
+                  {isEditing && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        편집 사유 <span className="text-red-500">*</span>
+                      </label>
+                      <textarea
+                        value={editReason}
+                        onChange={(e) => setEditReason(e.target.value)}
+                        rows={3}
+                        placeholder="프로필을 편집하는 이유를 상세히 작성해주세요"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {!isEditing && (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                    <h5 className="text-sm font-medium text-yellow-900 mb-2">편집 안내</h5>
+                    <ul className="text-sm text-yellow-700 space-y-1">
+                      <li>• 경력사항은 숫자와 &quot;년&quot; 형태로 입력해주세요 (예: 5년)</li>
+                      <li>• 전문분야는 쉼표로 구분하여 입력할 수 있습니다</li>
+                      <li>• 모든 변경사항은 실시간으로 반영됩니다</li>
+                      <li>• 편집 사유는 관리 로그에 기록됩니다</li>
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+
             {activeTab === 'display' && (
               <div className="space-y-6">
                 <h4 className="text-base font-medium text-gray-900">노출 설정 관리</h4>
@@ -413,19 +688,19 @@ export default function ProfileDisplayModal({ isOpen, onClose, profile, onProfil
           </div>
 
           {/* 푸터 */}
-          <div className="mt-6 pt-4 border-t border-gray-200 flex justify-between">
+          <div className="flex justify-between pt-6 border-t border-gray-200 mt-6">
             <div className="text-sm text-gray-500">
               마지막 업데이트: {new Date(profile.lastUpdated).toLocaleString('ko-KR')}
             </div>
             <button
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300"
+              className="px-4 py-2 text-gray-600 hover:bg-gray-50 border border-gray-300 rounded-md transition-colors"
             >
               닫기
             </button>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

@@ -1,6 +1,7 @@
 ﻿import Link from 'next/link';
 import Image from 'next/image';
 import Statistics from '@/components/sections/Statistics';
+import MainReviews from '@/components/sections/MainReviews';
 
 export default function Home() {
   return (
@@ -150,59 +151,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 실제 학부모님 후기 */}
-      <section className="py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl lg:text-5xl font-bold mb-6">
-              <span className="text-blue-900">실제</span> <span className="text-blue-400">학부모님 후기</span>
-            </h2>
-            <p className="text-xl text-gray-600">
-              먼저 경험한 학부모님들의 목소리를 들어보세요.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="bg-gray-50 rounded-2xl p-8 border border-gray-100">
-              <div className="flex mb-6 space-x-1">
-                {[...Array(5)].map((_, i) => (
-                  <svg 
-                    key={i} 
-                    className="w-6 h-6 text-yellow-400"
-                    fill="currentColor" 
-                    viewBox="0 0 20 20"
-                  >
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                  </svg>
-                ))}
-              </div>
-              <p className="text-gray-700 text-lg mb-4 leading-relaxed text-left">
-                &ldquo;언어 발달이 늦어 걱정했는데, 좋은 선생님을 만나 아이가 자신감을 찾고 말이 정말 많이 늘었어요. 체계적으로 이끌어주셔서 감사합니다.&rdquo;
-              </p>
-              <p className="text-gray-500 text-left">- 김○영 학부모님 (언어치료)</p>
-            </div>
-
-            <div className="bg-gray-50 rounded-2xl p-8 border border-gray-100">
-              <div className="flex mb-6 space-x-1">
-                {[...Array(5)].map((_, i) => (
-                  <svg 
-                    key={i} 
-                    className="w-6 h-6 text-yellow-400"
-                    fill="currentColor" 
-                    viewBox="0 0 20 20"
-                  >
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                  </svg>
-                ))}
-              </div>
-              <p className="text-gray-700 text-lg mb-4 leading-relaxed text-left">
-                &ldquo;산만하던 아이가 선생님과 수업하면서 집중하는 시간이 길어졌어요. 아이의 변화가 눈에 보여서 정말 신기하고 만족스럽습니다. 강력 추천해요!&rdquo;
-              </p>
-              <p className="text-gray-500 text-left">- 박○수 학부모님 (놀이치료)</p>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* 실제 학부모님 후기 - 새로운 슬라이드 버전 */}
+      <MainReviews />
 
       {/* 간편한 이용 방법 */}
       <section className="py-20 bg-white">

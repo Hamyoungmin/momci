@@ -88,7 +88,7 @@ export default function RegisterGuide() {
 
   return (
     <section className="py-16">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* 메인 등록 안내 박스 */}
         <div className="bg-white border-4 border-blue-700 rounded-lg p-8">
           {/* 제목 */}

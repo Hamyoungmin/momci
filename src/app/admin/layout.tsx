@@ -7,7 +7,7 @@ import AdminHeader from "@/components/admin/AdminHeader";
 import { useUserSession } from "@/hooks/useUserSession";
 
 // 관리자 이메일 목록 (환경변수로 관리 권장)
-const ADMIN_EMAILS = ['dudals7334@naver.com'];
+const ADMIN_EMAILS = ['dudals7334@naver.com', 'everystars@naver.com'];
 
 // 관리자 권한 확인 함수
 function checkAdminAuth(userEmail: string | null): boolean {

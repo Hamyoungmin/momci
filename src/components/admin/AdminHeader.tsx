@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useAdminStats } from '@/hooks/useAdminStats';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface AdminHeaderProps {
   isAdmin: boolean;
@@ -9,6 +10,7 @@ interface AdminHeaderProps {
 
 export default function AdminHeader({ isAdmin }: AdminHeaderProps) {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const { currentUser } = useAuth();
   
   // 실시간 관리자 통계 데이터
   const stats = useAdminStats();
@@ -92,7 +94,7 @@ export default function AdminHeader({ isAdmin }: AdminHeaderProps) {
                 <div className="text-sm font-semibold text-gray-900">
                   {isAdmin ? '최고관리자' : '읽기 전용'}
                 </div>
-                <div className="text-xs text-gray-500">dudals7334@naver.com</div>
+                <div className="text-xs text-gray-500">{currentUser?.email || '이메일 정보 없음'}</div>
               </div>
               <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />

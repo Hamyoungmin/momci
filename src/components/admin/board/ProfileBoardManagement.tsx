@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
+import { collection, onSnapshot, orderBy, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import ProfileBoardTable from './ProfileBoardTable';
 import ProfileDisplayModal from './ProfileDisplayModal';
@@ -39,9 +39,10 @@ export default function ProfileBoardManagement() {
   useEffect(() => {
     console.log('🔥 관리자 프로필 관리 - Firebase 실시간 치료사 프로필 데이터 로딩 시작');
 
-    // therapistProfiles 컬렉션에서 모든 치료사 프로필을 실시간으로 가져오기
+    // posts 컬렉션에서 치료사 프로필 게시글만 실시간으로 가져오기 (선생님 둘러보기용)
     const profilesQuery = query(
-      collection(db, 'therapistProfiles'),
+      collection(db, 'posts'),
+      where('type', '==', 'teacher-offer'),
       orderBy('createdAt', 'desc')
     );
 
@@ -52,33 +53,35 @@ export default function ProfileBoardManagement() {
       
       snapshot.forEach((doc) => {
         const data = doc.data();
-        console.log('👨‍⚕️ 치료사 프로필 데이터:', doc.id, data);
+        console.log('👨‍⚕️ 게시글 데이터 (프로필용):', doc.id, data);
 
-        // Firebase 데이터를 TeacherProfile 인터페이스에 맞게 변환
+        // type이 'teacher-offer'인 경우만 처리 (이미 쿼리에서 필터링됨)
+        // Firebase posts 데이터를 TeacherProfile 인터페이스에 맞게 변환
         const profile: TeacherProfile = {
           id: doc.id,
-          teacherId: data.userId || 'unknown',
-          teacherName: data.name || '이름 없음',
+          teacherId: data.authorId || 'unknown',
+          teacherName: data.name || data.authorName || '이름 없음',
           profileImage: data.profileImage || '/default-profile.jpg',
-          title: data.title || `${data.experience || 0}년 경력 ${data.specialties?.[0] || '치료사'}`,
+          title: data.specialty || `${data.experience || 0}년 경력 치료사`,
           experience: `${data.experience || 0}년`,
-          specialties: Array.isArray(data.specialties) ? data.specialties : [data.specialties || '기타'],
-          location: data.location || data.regions?.[0] || '정보 없음',
-          rating: data.rating || 0,
+          specialties: data.specialty ? [data.specialty] : ['기타'],
+          location: data.region || data.category || '정보 없음',
+          rating: data.rating || 4.5,
           reviewCount: data.reviewCount || 0,
-          hourlyRate: data.hourlyRate || data.price || '협의',
-          verified: data.status === 'approved' || data.verified === true,
+          hourlyRate: data.price || '협의',
+          verified: data.isVerified === true || false,
           displayOrder: data.displayOrder || 0,
-          isVisible: data.isVisible !== false && data.status === 'approved',
+          isVisible: data.isVisible !== false,
           isFeatured: data.isFeatured === true,
-          qualityScore: data.qualityScore || (data.rating * 20) || 70, // 기본 70점
+          qualityScore: data.qualityScore || 
+            (data.isVerified ? 85 : 75) + (data.experience ? data.experience * 2 : 0), // 기본 점수 계산
           lastUpdated: data.updatedAt ? 
             (data.updatedAt.toDate ? data.updatedAt.toDate().toISOString() : new Date(data.updatedAt).toISOString()) :
             (data.createdAt ? 
               (data.createdAt.toDate ? data.createdAt.toDate().toISOString() : new Date(data.createdAt).toISOString()) :
               new Date().toISOString()),
           profileCompleteness: data.profileCompleteness || 
-            (data.name && data.specialties && data.experience ? 90 : 60) // 기본 완성도 계산
+            (data.name && data.specialty && data.experience ? 90 : 70) // 기본 완성도 계산
         };
 
         profilesData.push(profile);
@@ -108,11 +111,19 @@ export default function ProfileBoardManagement() {
 
   const handleProfileAction = (
     profileId: string, 
-    action: 'show' | 'hide' | 'feature' | 'unfeature' | 'reorder',
-    data?: { order?: number; reason?: string }
+    action: 'show' | 'hide' | 'feature' | 'unfeature' | 'reorder' | 'edit',
+    data?: { order?: number; reason?: string; profileData?: Partial<TeacherProfile> }
   ) => {
-    // 실제 구현 시 API 호출
     console.log('Profile action:', { profileId, action, data });
+    
+    if (action === 'edit') {
+      // 편집의 경우 ProfileDisplayModal에서 이미 Firestore 업데이트를 처리했으므로
+      // 여기서는 로그만 남기고 모달은 닫지 않음 (사용자가 직접 닫을 수 있도록)
+      console.log('✅ 프로필 편집 완료:', profileId, data?.profileData);
+      return;
+    }
+    
+    // 다른 액션들은 기존대로 모달을 닫음
     handleCloseModal();
   };
 

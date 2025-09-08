@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import MatchingStatusCards from './MatchingStatusCards';
 import MatchingTable from './MatchingTable';
 import MatchingDetailModal from './MatchingDetailModal';
+import { incrementMatchCount } from '@/lib/statistics';
 
 interface Matching {
   id: string;
@@ -58,10 +59,25 @@ export default function MatchingManagement() {
     setSelectedMatching(null);
   };
 
-  const handleStatusChange = (matchingId: string, newStatus: Matching['status'], reason?: string) => {
-    // 실제 구현 시 API 호출
-    console.log('Status change:', { matchingId, newStatus, reason });
-    handleCloseModal();
+  const handleStatusChange = async (matchingId: string, newStatus: Matching['status'], reason?: string) => {
+    try {
+      // 실제 구현 시 API 호출
+      console.log('Status change:', { matchingId, newStatus, reason });
+      
+      // 매칭이 'payment_completed' (매칭 완료) 상태로 변경될 때 통계 증가
+      if (newStatus === 'payment_completed') {
+        await incrementMatchCount();
+        console.log('누적 매칭 건수가 증가했습니다.');
+      }
+      
+      // TODO: Firebase에서 매칭 상태 업데이트
+      // await updateMatchingStatus(matchingId, newStatus, reason);
+      
+      handleCloseModal();
+    } catch (error) {
+      console.error('매칭 상태 변경 실패:', error);
+      // 에러 처리 (토스트 메시지 등)
+    }
   };
 
   const filteredMatchings = matchings.filter(matching => {

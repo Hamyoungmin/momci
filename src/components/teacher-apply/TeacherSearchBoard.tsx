@@ -13,6 +13,13 @@ interface Teacher {
   hourlyRate: string;
   status: string;
   applications: number;
+  // 추가 필드들
+  fullName?: string; // 성+이름 전체
+  gender?: string; // 성별
+  residence?: string; // 거주 지역
+  treatmentRegion?: string; // 치료 지역
+  experience?: string; // 경력
+  specialty?: string; // 전문 분야
 }
 
 export default function TeacherSearchBoard() {
@@ -173,15 +180,34 @@ export default function TeacherSearchBoard() {
       return '기타';
     };
 
-    // 새로운 치료사 생성
+    // 새로운 치료사 생성 - 기존 치료사 중 가장 큰 ID + 1로 생성
+    const nextId = registeredTeachers.length === 0 ? 1 : Math.max(...registeredTeachers.map(t => t.id)) + 1;
+    
+    // 제목 구성: 치료사 거주 지역/전문 분야/성별/치료 지역/경력/시간당 치료비
+    const titleParts = [
+      formData.address?.split(' ')[0] || '지역미정', // 거주 지역 (주소의 첫 부분)
+      formData.specialties[0] || '전문분야미정', // 전문 분야
+      formData.gender, // 성별
+      formData.region || '치료지역미정', // 치료 지역
+      formData.experience, // 경력
+      `시간당 ${formData.hourlyRate || '협의'}` // 시간당 치료비
+    ];
+    
     const newTeacher: Teacher = {
-      id: Date.now(), // 임시 ID (실제로는 서버에서 생성)
+      id: nextId,
       category: getCategoryFromSpecialties(),
-      name: `${formData.name} ${formData.specialties[0]?.replace('치료', '치료사') || '치료사'}`,
+      name: titleParts.join('/'), // 제목으로 표시될 내용
       details: `${formData.experience} 경력 / ${formData.specialties.join(', ')} 전문 / ${formData.region || '지역 협의'}`,
       hourlyRate: formData.hourlyRate || '협의',
       status: '등록완료',
-      applications: 0
+      applications: 0,
+      // 추가 필드들
+      fullName: formData.name, // 실제 이름
+      gender: formData.gender,
+      residence: formData.address?.split(' ')[0] || '지역미정',
+      treatmentRegion: formData.region,
+      experience: formData.experience,
+      specialty: formData.specialties[0]
     };
 
     // 치료사 목록에 추가
@@ -259,11 +285,14 @@ export default function TeacherSearchBoard() {
 
   // 현재 선택된 지역의 치료사 가져오기
   const getCurrentTeachers = () => {
+    // 등록된 치료사를 등록 순으로 정렬 (id가 작을수록 먼저 등록)
+    const sortedRegisteredTeachers = [...registeredTeachers].sort((a, b) => a.id - b.id);
+    
     if (selectedSidebarItem === '치료사등록') {
-      // 모든 지역의 치료사와 등록된 치료사를 합쳐서 보여줌
-      return [...Object.values(allRegionalTeachers).flat(), ...registeredTeachers];
+      // 등록된 치료사만 보여줌 (등록 순)
+      return sortedRegisteredTeachers;
     }
-    return [...(allRegionalTeachers[selectedSidebarItem as keyof typeof allRegionalTeachers] || []), ...registeredTeachers];
+    return [...(allRegionalTeachers[selectedSidebarItem as keyof typeof allRegionalTeachers] || []), ...sortedRegisteredTeachers];
   };
 
   const filteredTeachers = getCurrentTeachers();
@@ -448,58 +477,46 @@ export default function TeacherSearchBoard() {
 
               {/* 치료사 테이블 */}
               <div className="bg-white border border-gray-200 rounded-b-lg overflow-hidden border-t-0">
-                <table className="w-full">
+                <table className="w-full table-fixed">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">번호</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">분야</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">치료사 정보</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">치료비</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">진행</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-16">번호</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-2/3">제목</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">치료사</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">상태</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {filteredTeachers.length > 0 ? (
-                      filteredTeachers.map((teacher) => (
+                      filteredTeachers.map((teacher, index) => (
                         <tr key={teacher.id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {teacher.id}
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 w-16">
+                            {filteredTeachers.length - index}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
-                              {teacher.category}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4">
-                            <div>
-                              <div className="text-sm font-medium text-blue-600 hover:text-blue-800 cursor-pointer">
-                                {teacher.name}
-                              </div>
-                              <div className="text-sm text-gray-500 mt-1">
-                                {teacher.details}
-                              </div>
+                          <td className="px-6 py-4 whitespace-nowrap w-2/3">
+                            <div className="text-sm font-medium text-blue-600 hover:text-blue-800 cursor-pointer">
+                              {teacher.name}
                             </div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {teacher.hourlyRate}
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 w-24">
+                            {teacher.fullName || teacher.name.split(' ')[0] || '이름 미등록'}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right">
-                            <button className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
-                              teacher.status === '추천중' 
-                                ? 'bg-green-500 hover:bg-green-600 text-white'
-                                : 'bg-blue-500 hover:bg-blue-600 text-white'
+                          <td className="px-6 py-4 whitespace-nowrap w-20">
+                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                              teacher.status === '등록완료' 
+                                ? 'bg-green-100 text-green-800' 
+                                : teacher.status === '심사중'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : 'bg-gray-100 text-gray-800'
                             }`}>
                               {teacher.status}
-                            </button>
-                            <div className="text-xs text-blue-600 mt-1">
-                              +{teacher.applications}
-                            </div>
+                            </span>
                           </td>
                         </tr>
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={5} className="px-6 py-12 text-center">
+                        <td colSpan={4} className="px-6 py-12 text-center">
                           <div className="flex flex-col items-center justify-center">
                             <div className="text-6xl text-gray-300 mb-4">👩‍⚕️</div>
                             <div className="text-lg font-medium text-gray-500 mb-2">등록된 치료사가 없습니다</div>

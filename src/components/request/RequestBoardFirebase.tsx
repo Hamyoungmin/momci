@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
-import { collection, addDoc, onSnapshot, orderBy, query, serverTimestamp, where, limit, doc, getDoc } from 'firebase/firestore';
+import { collection, addDoc, onSnapshot, orderBy, query, serverTimestamp, doc, getDoc } from 'firebase/firestore';
 import { db, auth } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -24,6 +23,7 @@ interface Post {
   additionalInfo: string;
   createdAt: unknown;
   authorId: string; // 게시글 작성자 ID
+  status: 'matching' | 'meeting' | 'completed'; // 진행 상태
   // 치료사 정보
   teacherUserId?: string; // 매칭된 치료사의 실제 사용자 ID
   teacherName?: string;
@@ -52,16 +52,6 @@ interface Post {
   hasIdVerification?: boolean;
 }
 
-// 후기 타입 정의
-interface Review {
-  id: string;
-  teacherId: string;
-  parentId: string;
-  content: string;
-  rating: number;
-  createdAt: unknown;
-  parentName?: string;
-}
 
 export default function RequestBoardFirebase() {
   const { currentUser, userData } = useAuth();
@@ -75,6 +65,7 @@ export default function RequestBoardFirebase() {
 
   // 사용자 권한 체크 (학부모 또는 관리자, 또는 특정 관리자 이메일만 게시글 작성 가능)
   const canCreatePost = currentUser?.email === 'dudals7334@naver.com' || 
+    currentUser?.email === 'everystars@naver.com' ||
     (userData && (userData.userType === 'parent' || userData.userType === 'admin'));
 
   const [showLocationModal, setShowLocationModal] = useState(false);
@@ -101,8 +92,6 @@ export default function RequestBoardFirebase() {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [selectedProfile, setSelectedProfile] = useState<Post | null>(null);
   const [isProfileModalClosing, setIsProfileModalClosing] = useState(false);
-  const [teacherReviews, setTeacherReviews] = useState<Review[]>([]);
-  const [reviewsLoading, setReviewsLoading] = useState(false);
 
   const sidebarItems = ['홈티매칭', '서울', '인천/경기북부', '경기남부', '충청,강원,대전', '전라,경상,부산'];
   const tabs = ['서울', '인천/경기북부', '경기남부', '충청,강원,대전', '전라,경상,부산'];
@@ -144,9 +133,9 @@ export default function RequestBoardFirebase() {
 
   // 페이지네이션 상태
   const [currentPage, setCurrentPage] = useState(1);
-  const postsPerPage = 5; // 페이지당 게시글 수
+  const postsPerPage = 10; // 페이지당 게시글 수
 
-  // Firebase에서 게시글 데이터 실시간으로 가져오기
+  // Firebase에서 게시글 데이터 실시간으로 가져오기 (최신순으로 정렬)
   useEffect(() => {
     const q = query(
       collection(db, 'posts'),
@@ -208,172 +197,46 @@ export default function RequestBoardFirebase() {
     }, 300);
   };
 
-  // 상세 프로필 모달 열기 - 실제 사용자 데이터 가져오기
+  // 상세 요청 모달 열기 - 게시글 작성 내용 표시
   const openProfileModal = async (post: Post) => {
-    console.log('🔍 프로필 모달 열기 - 게시글 작성자 ID:', post.authorId);
+    console.log('🔍 요청 모달 열기 - 게시글 ID:', post.id);
     
     try {
-      // 1. 게시글 작성자의 기본 사용자 정보 가져오기
+      // 게시글 작성자 정보 가져오기
       const userDoc = await getDoc(doc(db, 'users', post.authorId));
       let userData = null;
       if (userDoc.exists()) {
         userData = userDoc.data();
-        console.log('✅ 사용자 기본 정보:', userData);
-      } else {
-        console.log('❌ 사용자 정보를 찾을 수 없습니다');
-      }
-
-      // 2. 치료사 프로필 정보 가져오기
-      const profilesQuery = query(
-        collection(db, 'therapistProfiles'),
-        where('userId', '==', post.authorId),
-        limit(1)
-      );
-      
-      const profileSnapshot: { empty: boolean; docs: { data: () => unknown }[]; } = await new Promise((resolve, reject) => {
-        const unsubscribe = onSnapshot(profilesQuery, resolve, reject);
-        // 타임아웃 설정
-        setTimeout(() => {
-          unsubscribe();
-          resolve({ empty: true, docs: [] });
-        }, 3000);
-      });
-      
-      let profileData: {
-        name?: string;
-        specialties?: string[];
-        experience?: number;
-        rating?: number;
-        reviewCount?: number;
-        profileImage?: string;
-        education?: string;
-        career?: string;
-        introduction?: string;
-        philosophy?: string;
-        certifications?: string[];
-        schedule?: string;
-        status?: string;
-      } | null = null;
-      if (!profileSnapshot.empty && profileSnapshot.docs.length > 0) {
-        profileData = profileSnapshot.docs[0].data() as {
-          name?: string;
-          specialties?: string[];
-          experience?: number;
-          rating?: number;
-          reviewCount?: number;
-          profileImage?: string;
-          education?: string;
-          career?: string;
-          introduction?: string;
-          philosophy?: string;
-          certifications?: string[];
-          schedule?: string;
-          status?: string;
-        };
-        console.log('✅ 치료사 프로필 데이터:', profileData);
-      } else {
-        console.log('❌ 치료사 프로필을 찾을 수 없습니다');
+        console.log('✅ 작성자 정보:', userData);
       }
       
-      // 3. 모든 데이터를 통합하여 selectedProfile 설정
-      const combinedProfile = {
+      // 게시글 데이터 그대로 사용
+      const requestProfile = {
         ...post,
-        // 기본 사용자 정보
-        userName: userData?.name || post.teacherName || '이름 없음',
-        userEmail: userData?.email,
-        userPhone: userData?.phone,
-        
-        // 치료사 프로필 정보
-        teacherName: userData?.name || profileData?.name || post.teacherName || '김OO',
-        teacherExperience: profileData?.experience || post.teacherExperience || 0,
-        teacherSpecialty: profileData?.specialties?.[0] || post.teacherSpecialty || post.treatment,
-        teacherRating: profileData?.rating || post.teacherRating || 4.8,
-        teacherReviewCount: profileData?.reviewCount || post.teacherReviewCount || 0,
-        teacherProfileImage: profileData?.profileImage || post.teacherProfileImage,
-        teacherEducation: profileData?.education || post.teacherEducation || '관련 학과 졸업',
-        teacherCareer: profileData?.career || post.teacherCareer || `${profileData?.experience || 0}년 이상의 전문 경력`,
-        teacherIntroduction: profileData?.introduction || post.teacherIntroduction || '전문적이고 체계적인 치료 서비스를 제공하겠습니다.',
-        teacherPhilosophy: profileData?.philosophy || post.teacherPhilosophy || profileData?.introduction || '아이와 가족의 행복을 최우선으로 생각합니다.',
-        teacherCertifications: profileData?.certifications || post.teacherCertifications || ['자격증'],
-        teacherSchedule: profileData?.schedule || post.teacherSchedule || '협의 후 결정',
-        
-        // 인증 상태
-        isVerified: profileData?.status === 'approved',
-        hasCertification: profileData?.certifications && profileData.certifications.length > 0,
-        hasExperienceProof: !!profileData?.career,
-        hasIdVerification: !!profileData?.status,
+        authorName: userData?.name || '익명',
+        authorEmail: userData?.email,
+        authorPhone: userData?.phone,
       };
       
-      console.log('📋 최종 통합 프로필:', combinedProfile);
+      console.log('📋 요청 게시글 정보:', requestProfile);
       
-      setSelectedProfile(combinedProfile);
+      setSelectedProfile(requestProfile);
       setShowProfileModal(true);
       
-      // 4. 해당 교사의 후기 가져오기
-      fetchTeacherReviews(post.authorId);
-      
     } catch (error) {
-      console.error('❌ 프로필 모달 열기 오류:', error);
+      console.error('❌ 요청 모달 열기 오류:', error);
       
       // 오류가 발생해도 기본 정보로 모달 표시
       const basicProfile = {
         ...post,
-        userName: '이름 없음',
-        teacherName: '김OO',
-        teacherExperience: 0,
-        teacherSpecialty: post.treatment,
-        teacherRating: 4.8,
-        teacherReviewCount: 0,
-        teacherEducation: '정보 없음',
-        teacherCareer: '정보 없음',
-        teacherIntroduction: '정보를 불러올 수 없습니다.',
-        teacherPhilosophy: '정보를 불러올 수 없습니다.',
-        teacherCertifications: [],
-        isVerified: false,
-        hasCertification: false,
-        hasExperienceProof: false,
-        hasIdVerification: false,
+        authorName: '익명',
       };
       
       setSelectedProfile(basicProfile);
       setShowProfileModal(true);
-      
-      // 후기도 빈 배열로 설정
-      setTeacherReviews([]);
-      setReviewsLoading(false);
     }
   };
 
-  // 교사 후기 가져오기
-  const fetchTeacherReviews = (teacherId: string) => {
-    setReviewsLoading(true);
-    
-    const reviewsQuery = query(
-      collection(db, 'therapist-reviews'),
-      where('therapistId', '==', teacherId),
-      orderBy('createdAt', 'desc'),
-      limit(5)
-    );
-
-    const unsubscribe = onSnapshot(reviewsQuery, (snapshot) => {
-      const reviews: Review[] = [];
-      snapshot.forEach((doc) => {
-        reviews.push({
-          id: doc.id,
-          ...doc.data()
-        } as Review);
-      });
-      
-      console.log('📥 교사 후기 가져옴:', reviews.length, '개');
-      setTeacherReviews(reviews);
-      setReviewsLoading(false);
-    }, (error) => {
-      console.error('❌ 교사 후기 가져오기 오류:', error);
-      setReviewsLoading(false);
-    });
-
-    return unsubscribe;
-  };
 
   // 상세 프로필 모달 닫기
   const closeProfileModal = () => {
@@ -408,7 +271,7 @@ export default function RequestBoardFirebase() {
         email: auth.currentUser.email
       });
 
-      const newTitle = `${postData.age} ${postData.gender} ${postData.frequency} 홈티`;
+      const newTitle = `${postData.age} ${postData.gender} ${postData.frequency} ${postData.treatment} 홈티 모집`;
       
       // 전송할 데이터 준비
       const postDataToSend = {
@@ -421,7 +284,7 @@ export default function RequestBoardFirebase() {
         price: postData.price,
         authorId: auth.currentUser.uid,
         createdAt: serverTimestamp(),
-        status: 'active',
+        status: 'matching',
         applications: 0,
         // 추가 정보들
         title: newTitle,
@@ -452,6 +315,19 @@ export default function RequestBoardFirebase() {
       console.error('Error adding document: ', error);
       const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다';
       alert('게시글 저장 중 오류가 발생했습니다: ' + errorMessage);
+    }
+  };
+
+  // 진행 상태 표시 함수
+  const getStatusDisplay = (status: string) => {
+    switch (status) {
+      case 'meeting':
+        return { text: '미팅중', bgColor: 'bg-blue-100', textColor: 'text-blue-700' };
+      case 'completed':
+        return { text: '매칭완료', bgColor: 'bg-green-100', textColor: 'text-green-700' };
+      case 'matching':
+      default:
+        return { text: '매칭중', bgColor: 'bg-orange-100', textColor: 'text-orange-700' };
     }
   };
 
@@ -812,145 +688,88 @@ export default function RequestBoardFirebase() {
             </div>
           )}
 
-          {/* 게시글 카드 */}
+          {/* 게시글 테이블 */}
           {!loading && (
-            <div className="space-y-4">
+            <div className="bg-white rounded-2xl border-2 border-blue-200 overflow-hidden shadow-lg">
               {filteredPosts.length === 0 ? (
-                <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center text-gray-500">
+                <div className="p-8 text-center text-gray-500">
                   등록된 게시글이 없습니다.
                 </div>
               ) : (
-                currentPosts.map((post) => (
-                  <div key={post.id} className="bg-white rounded-2xl border-2 border-blue-100 p-6 hover:shadow-lg transition-all duration-200 hover:border-blue-200">
-                    <div className="flex items-start justify-between">
-                      {/* 왼쪽: 프로필 정보 */}
-                      <div className="flex items-start space-x-4 flex-1">
-                          {/* 프로필 이미지 */}
-                        <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden relative">
-                          {post.teacherProfileImage ? (
-                            <Image 
-                              src={post.teacherProfileImage} 
-                              alt={`${post.teacherName || '치료사'} 프로필`}
-                              width={64}
-                              height={64}
-                              className="w-full h-full object-cover rounded-full"
-                              onError={(e) => {
-                                e.currentTarget.style.display = 'none';
-                                e.currentTarget.nextElementSibling?.classList.remove('hidden');
-                              }}
-                            />
-                          ) : null}
-                          <div className={`text-center ${post.teacherProfileImage ? 'hidden' : ''}`}>
-                            <span className="text-gray-500 text-xs font-medium block">프로필</span>
-                            <span className="text-gray-400 text-xs block">사진</span>
+                <>
+                  {/* 테이블 헤더 */}
+                  <div className="bg-blue-500 text-white">
+                    <div className="grid grid-cols-12 gap-4 px-6 py-4">
+                      <div className="col-span-1 text-center font-medium">번호</div>
+                      <div className="col-span-2 text-center font-medium">지역</div>
+                      <div className="col-span-7 text-left font-medium">제목</div>
+                      <div className="col-span-2 text-center font-medium">진행</div>
                           </div>
                         </div>
                         
-                        {/* 치료사 정보 */}
-                        <div className="flex-1">
-                          {/* 치료사 이름과 경력 */}
-                          <div className="flex items-center space-x-2 mb-1">
-                            <h3 className="text-lg font-bold text-gray-900">
-                              {post.teacherName || '치료사'} 치료사
-                            </h3>
-                            <span className="text-sm text-gray-600">
-                              ({post.teacherExperience || '경력미상'}년차 {post.teacherSpecialty || post.treatment}사)
+                  {/* 테이블 바디 */}
+                  <div>
+                    {currentPosts.map((post) => (
+                        <div key={post.id} className="grid grid-cols-12 gap-4 px-6 py-4 border-b border-gray-200 hover:bg-blue-50 transition-colors cursor-pointer"
+                             onClick={() => openProfileModal(post)}>
+                          {/* 번호 */}
+                          <div className="col-span-1 text-center text-blue-600 font-medium">
+                            {(() => {
+                              // 내림차순 번호: 최신 게시글이 가장 큰 번호
+                              const allPostIndex = filteredPosts.findIndex(p => p.id === post.id);
+                              return filteredPosts.length - allPostIndex;
+                            })()}
+                          </div>
+                          
+                          {/* 지역 */}
+                          <div className="col-span-2 text-center">
+                            <span className="inline-block px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
+                              {post.region || post.category}
                             </span>
                           </div>
                           
-                          {/* 별점과 후기 */}
-                          <div className="flex items-center space-x-2 mb-3">
-                            <div className="flex items-center">
-                              <span className="text-orange-400 text-lg">★</span>
-                              <span className="text-sm font-medium ml-1">{post.teacherRating || 4.8}</span>
-                              <span className="text-xs text-gray-500 ml-1">(후기 {post.teacherReviewCount || 0}개)</span>
-                            </div>
-                          </div>
-                          
-                          {/* 치료분야 태그 */}
-                          <div className="flex items-center space-x-2 mb-3">
-                            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-50 text-blue-700 border border-blue-200">
-                              #{post.treatment}
-                            </span>
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
-                              #{post.category}
-                            </span>
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
-                              #{post.frequency}
-                            </span>
-                          </div>
-                          
-                          {/* 가격 정보 */}
-                          <div className="text-xl font-bold text-blue-600 mb-4">
+                          {/* 제목 */}
+                          <div className="col-span-7 text-left">
+                            <div className="flex items-center space-x-3">
+                              <div className="flex-1">
+                                <h3 className="text-gray-900 font-medium text-base mb-1">
+                                  {post.age} {post.gender} {post.frequency} {post.treatment} 홈티 모집
+                                </h3>
+                                <div className="flex items-center space-x-2 text-sm text-gray-600">
+                                  <span>{post.timeDetails}</span>
+                                  {post.price && (
+                                    <>
+                                      <span>•</span>
+                                      <span className="text-blue-600 font-medium">
                             회기당 {(() => {
-                              if (!post.price) return '협의';
                               const priceStr = post.price.toString();
                               if (priceStr.includes('원')) return priceStr;
                               const numericPrice = priceStr.replace(/[^0-9]/g, '');
                               return numericPrice.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '원';
                             })()}
-                          </div>
-                          
-                          {/* 구분선 */}
-                          <div className="border-t border-gray-200 pt-3 mb-3"></div>
-                          
-                          {/* 인증 정보 - 초록색 둥근 박스 스타일 */}
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 border border-green-200">
-                              ✓ 자격증
                             </span>
-                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 border border-green-200">
-                              ✓ 경력증명
-                            </span>
-                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 border border-green-200">
-                              ✓ 신분증확인서
-                            </span>
-                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600 border border-gray-200">
-                              보험가입
-                            </span>
+                                    </>
+                                  )}
+                                </div>
                           </div>
                         </div>
                       </div>
                       
-                      {/* 오른쪽: 채팅 버튼 */}
-                      <div className="flex flex-col items-end space-y-3 ml-6">
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setShowSafetyModal(true);
-                          }}
-                          className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-2xl font-medium transition-colors shadow-sm"
-                        >
-                          1:1 채팅
-                        </button>
-                        
-                        <div className="text-right">
-                          {/* 상세 프로필 보기 버튼 */}
-                          <button 
-                            onClick={() => openProfileModal(post)}
-                            className="text-xs text-gray-500 hover:text-blue-600 mb-1 cursor-pointer transition-colors"
-                          >
-                            상세 프로필 보기 &gt;
-                          </button>
-                        
-                        {/* 작성일 */}
-                        <div className="text-xs text-gray-400">
-                          {post.createdAt ? 
-                            new Date(
-                              (post.createdAt && typeof post.createdAt === 'object' && 'toDate' in post.createdAt && typeof post.createdAt.toDate === 'function') 
-                                ? post.createdAt.toDate() 
-                                : post.createdAt as string | number
-                            ).toLocaleDateString('ko-KR', {
-                              month: 'long',
-                              day: 'numeric'
-                              }) : '9월 2일'
-                          }
+                          {/* 진행 상태 */}
+                          <div className="col-span-2 text-center">
+                            {(() => {
+                              const statusInfo = getStatusDisplay(post.status || 'matching');
+                              return (
+                                <span className={`inline-block px-3 py-1 ${statusInfo.bgColor} ${statusInfo.textColor} rounded-full text-sm font-medium`}>
+                                  {statusInfo.text}
+                                </span>
+                              );
+                            })()}
                         </div>
                         </div>
+                      ))}
                       </div>
-                    </div>
-                  </div>
-                ))
+                </>
               )}
             </div>
           )}
@@ -1171,7 +990,7 @@ export default function RequestBoardFirebase() {
                       <p><strong>회당 희망 금액:</strong> {newPost.price}</p>
                     </div>
                     <div className="col-span-2">
-                      <p><strong>제목:</strong> {newPost.age} {newPost.gender} {newPost.frequency} 홈티</p>
+                      <p><strong>제목:</strong> {newPost.age} {newPost.gender} {newPost.frequency} {newPost.treatment} 홈티 모집</p>
                     </div>
                   </div>
                 </div>
@@ -1198,13 +1017,13 @@ export default function RequestBoardFirebase() {
         </div>
       )}
 
-      {/* 상세 프로필 모달 */}
+      {/* 상세 요청 모달 */}
       {showProfileModal && selectedProfile && (
         <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50">
-          {/* 모달 콘텐츠 */}
           <div className={`bg-white rounded-lg max-w-6xl w-[95vw] shadow-xl border-4 border-blue-500 max-h-[90vh] overflow-y-auto profile-modal ${isProfileModalClosing ? 'animate-slideOut' : 'animate-slideIn'}`}>
-            {/* 모달 헤더 - 닫기 버튼만 */}
-            <div className="flex justify-end p-6 pb-2">
+            {/* 모달 헤더 */}
+            <div className="flex justify-between items-center p-6 pb-4 border-b border-gray-200">
+              <h2 className="text-2xl font-bold text-gray-900">요청 상세 정보</h2>
               <button
                 onClick={closeProfileModal}
                 className="text-gray-400 hover:text-gray-600 text-2xl"
@@ -1214,297 +1033,134 @@ export default function RequestBoardFirebase() {
             </div>
             
             {/* 모달 바디 */}
-            <div className="px-8 pb-8">
-              {/* 프로필 헤더 - 26.png 스타일 */}
-              <div className="flex items-center space-x-4 mb-6">
-                {/* 프로필 이미지 */}
-                <div className="w-20 h-20 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden relative">
-                  {selectedProfile?.teacherProfileImage ? (
-                    <Image 
-                      src={selectedProfile.teacherProfileImage} 
-                      alt={`${selectedProfile.teacherName || '치료사'} 프로필`}
-                      width={80}
-                      height={80}
-                      className="w-full h-full object-cover rounded-full"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                        e.currentTarget.nextElementSibling?.classList.remove('hidden');
-                      }}
-                    />
-                  ) : null}
-                  <div className={`text-center ${selectedProfile?.teacherProfileImage ? 'hidden' : ''}`}>
-                    <span className="text-gray-500 text-xs font-medium block">프로필</span>
-                    <span className="text-gray-400 text-xs block">사진</span>
-                  </div>
-                </div>
-                
-                {/* 기본 정보 */}
+            <div className="px-8 py-6">
+              {/* 요청 기본 정보 */}
+              <div className="mb-8">
+                <div className="flex items-center justify-between mb-6">
                 <div>
-                  <h2 className="text-xl font-bold text-gray-900 mb-1">
-                    {selectedProfile.teacherName || '김OO'} 치료사 ({selectedProfile.teacherExperience || 7}년차 {selectedProfile.teacherSpecialty || selectedProfile.treatment}사)
-                  </h2>
-                  <div className="flex items-center mb-2">
-                    <span className="text-orange-400 text-lg">★</span>
-                    <span className="text-sm font-medium ml-1">{selectedProfile.teacherRating || 4.8}</span>
-                    <span className="text-xs text-gray-500 ml-1">(후기 {selectedProfile.teacherReviewCount || 15}개)</span>
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">
+                      {selectedProfile.age} {selectedProfile.gender} {selectedProfile.frequency} {selectedProfile.treatment} 홈티 모집
+                    </h3>
+                    <div className="flex items-center space-x-2">
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                        #{selectedProfile.treatment}
+                      </span>
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                        #{selectedProfile.region || selectedProfile.category}
+                      </span>
+                      {(() => {
+                        const statusInfo = getStatusDisplay(selectedProfile.status || 'matching');
+                        return (
+                          <span className={`inline-flex items-center px-3 py-1 ${statusInfo.bgColor} ${statusInfo.textColor} rounded-full text-sm font-medium`}>
+                            {statusInfo.text}
+                          </span>
+                        );
+                      })()}
                   </div>
-                  <div className="text-2xl font-bold text-blue-600 mb-3">
+                  </div>
+                  <div className="text-right">
+                    <div className="text-2xl font-bold text-blue-600">
                     회기당 {(() => {
-                      if (!selectedProfile.price) return '65,000원';
+                        if (!selectedProfile.price) return '협의';
                       const priceStr = selectedProfile.price.toString();
                       if (priceStr.includes('원')) return priceStr;
                       const numericPrice = priceStr.replace(/[^0-9]/g, '');
+                        if (!numericPrice) return '협의';
                       return numericPrice.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '원';
                     })()}
                   </div>
+                    <div className="text-sm text-gray-500 mt-1">
+                      {selectedProfile.createdAt ? 
+                        new Date(
+                          (selectedProfile.createdAt && typeof selectedProfile.createdAt === 'object' && 'toDate' in selectedProfile.createdAt && typeof selectedProfile.createdAt.toDate === 'function') 
+                            ? selectedProfile.createdAt.toDate() 
+                            : selectedProfile.createdAt as string | number
+                        ).toLocaleDateString('ko-KR', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        }) : '작성일 미상'
+                      }
                 </div>
               </div>
-
-              {/* 태그들 */}
-              <div className="flex items-center space-x-2 mb-6">
-                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-50 text-blue-700 border border-blue-200">
-                  #{selectedProfile.treatment}
-                </span>
-                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
-                  #{selectedProfile.category}
-                </span>
-                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
-                  #{selectedProfile.frequency}
-                </span>
               </div>
-              
-              {/* 인증 정보 - 실제 데이터 기반 */}
-              <div className="flex flex-wrap items-center gap-2 mb-8">
-                {/* 자격증 인증 */}
-                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${selectedProfile.hasCertification ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200'} border`}>
-                  {selectedProfile.hasCertification ? '✓' : '×'} 자격증
-                </span>
-                
-                {/* 경력증명 */}
-                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${selectedProfile.hasExperienceProof ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200'} border`}>
-                  {selectedProfile.hasExperienceProof ? '✓' : '×'} 경력증명
-                </span>
-                
-                {/* 신분증확인서 */}
-                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${selectedProfile.hasIdVerification ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200'} border`}>
-                  {selectedProfile.hasIdVerification ? '✓' : '×'} 신분증확인서
-                </span>
-                
-                {/* 모든별키즈 인증 */}
-                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${selectedProfile.isVerified ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-gray-100 text-gray-600 border-gray-200'} border`}>
-                  {selectedProfile.isVerified ? '✓' : '×'} 모든별키즈 인증
-                </span>
-                
-                {/* 보험가입 - 항상 회색 (추후 구현) */}
-                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600 border border-gray-200">
-                  보험가입
-                </span>
               </div>
 
-                            {/* 선생님 소개 - 27.png 스타일 */}
-              <div className="mb-8">
-                <div className="flex items-center mb-4">
-                  <span className="text-blue-500 mr-2">👤</span>
-                  <h3 className="text-lg font-semibold text-gray-900">선생님 소개</h3>
-                </div>
-                
-                <div className="space-y-4">
+              {/* 요청 상세 정보 */}
+              <div className="space-y-6">
+                {/* 기본 정보 */}
+                <div className="bg-gray-50 rounded-lg p-6">
+                  <h4 className="font-semibold mb-4 text-gray-900 text-lg">기본 정보</h4>
+                  <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <h4 className="font-semibold mb-2">치료 철학 및 강점</h4>
-                    <p className="text-gray-700 text-sm leading-relaxed">
-                      {selectedProfile.teacherPhilosophy || "치료 철학 및 강점이 등록되지 않았습니다."}
-                    </p>
+                      <div className="text-sm font-medium text-gray-600 mb-1">치료 분야</div>
+                      <div className="text-sm text-gray-900">{selectedProfile.treatment}</div>
                   </div>
-                  
                   <div>
-                    <h4 className="font-semibold mb-2">주요 치료경험/사례</h4>
-                    <p className="text-gray-700 text-sm leading-relaxed">
-                      {selectedProfile.teacherServices || "주요 치료경험 및 사례가 등록되지 않았습니다."}
-                    </p>
+                      <div className="text-sm font-medium text-gray-600 mb-1">대상 연령</div>
+                      <div className="text-sm text-gray-900">{selectedProfile.age}</div>
                   </div>
-                  
                   <div>
-                    <h4 className="font-semibold mb-2">(선택) 1분 자기소개 영상</h4>
-                    <div className="bg-gray-100 rounded-lg">
-                      {selectedProfile.teacherVideoUrl ? (
-                        <video 
-                          src={selectedProfile.teacherVideoUrl} 
-                          controls 
-                          className="w-full rounded-lg" 
-                          poster="/placeholder-video.png"
-                        >
-                          영상을 재생할 수 없습니다.
-                        </video>
-                      ) : (
-                        <div className="text-center py-12 text-gray-500 text-sm">
-                          자기소개 영상이 등록되지 않았습니다.
+                      <div className="text-sm font-medium text-gray-600 mb-1">성별</div>
+                      <div className="text-sm text-gray-900">{selectedProfile.gender}</div>
                         </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* 핵심 정보 한눈에 보기 - 26.png 스타일 */}
-              <div className="mb-8">
-                <div className="flex items-center mb-4">
-                  <span className="text-blue-500 mr-2">📄</span>
-                  <h3 className="text-lg font-semibold text-gray-900">핵심 정보 한눈에 보기</h3>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <div className="text-sm font-medium text-gray-600 mb-1">학력 사항</div>
-                    <div className="text-sm text-gray-900">{selectedProfile.teacherEducation || '등록되지 않음'}</div>
-                  </div>
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <div className="text-sm font-medium text-gray-600 mb-1">총 경력</div>
-                    <div className="text-sm text-gray-900">{selectedProfile.teacherCareer || (selectedProfile.teacherExperience ? `${selectedProfile.teacherExperience}년차` : '등록되지 않음')}</div>
-                  </div>
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <div className="text-sm font-medium text-gray-600 mb-1">활동 가능 지역</div>
-                    <div className="text-sm text-gray-900">
-                      {selectedProfile.teacherRegions?.join(', ') || '등록되지 않음'}
-                    </div>
-                  </div>
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <div className="text-sm font-medium text-gray-600 mb-1">치료 가능 시간</div>
-                    <div className="text-sm text-gray-900">{selectedProfile.teacherSchedule || selectedProfile.timeDetails || '등록되지 않음'}</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* 전문 정보 - 27.png 스타일 */}
-              <div className="mb-8">
-                <div className="flex items-center mb-4">
-                  <span className="text-blue-500 mr-2">📋</span>
-                  <h3 className="text-lg font-semibold text-gray-900">전문 정보</h3>
-                </div>
-                
-                <div className="space-y-6">
-                  {/* 전문 분야 */}
                   <div>
-                    <h4 className="font-semibold mb-3 text-gray-900">전문 분야</h4>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedProfile.teacherCertifications?.map((cert, index) => (
-                        <span key={index} className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
-                          #{cert}
-                        </span>
-                      )) || (
-                        <span className="text-gray-500 text-sm">전문 분야가 등록되지 않았습니다.</span>
-                      )}
+                      <div className="text-sm font-medium text-gray-600 mb-1">희망 횟수</div>
+                      <div className="text-sm text-gray-900">{selectedProfile.frequency}</div>
                     </div>
-                  </div>
-
-                  {/* 학력 및 경력 */}
                   <div>
-                    <h4 className="font-semibold mb-3 text-gray-900">학력 및 경력</h4>
-                    <div className="space-y-2">
-                      {selectedProfile.teacherEducation || selectedProfile.teacherCareer ? (
-                        <>
-                          {selectedProfile.teacherEducation && (
-                            <div className="flex items-start space-x-2">
-                              <span className="text-blue-500 text-sm">•</span>
-                              <div>
-                                <p className="text-sm text-gray-700">
-                                  <span className="font-medium">학력:</span> {selectedProfile.teacherEducation}
-                                </p>
+                      <div className="text-sm font-medium text-gray-600 mb-1">지역</div>
+                      <div className="text-sm text-gray-900">{selectedProfile.region || selectedProfile.category}</div>
                               </div>
-                            </div>
-                          )}
-                          {selectedProfile.teacherCareer && (
-                            <div className="flex items-start space-x-2">
-                              <span className="text-blue-500 text-sm">•</span>
                               <div>
-                                <p className="text-sm text-gray-700">
-                                  <span className="font-medium">경력:</span> {selectedProfile.teacherCareer}
-                                </p>
+                      <div className="text-sm font-medium text-gray-600 mb-1">희망 시간</div>
+                      <div className="text-sm text-gray-900">{selectedProfile.timeDetails || '협의 후 결정'}</div>
                               </div>
-                            </div>
-                          )}
-                        </>
-                      ) : (
-                        <p className="text-gray-500 text-sm">학력 및 경력 정보가 등록되지 않았습니다.</p>
-                      )}
                     </div>
                   </div>
 
-                  {/* 보유 자격증 */}
+                {/* 세부 내용 */}
+                {selectedProfile.additionalInfo && (
                   <div>
-                    <h4 className="font-semibold mb-3 text-gray-900">보유 자격증</h4>
-                    <div className="space-y-2">
-                      {selectedProfile.teacherCertifications && selectedProfile.teacherCertifications.length > 0 ? (
-                        selectedProfile.teacherCertifications.map((cert, index) => (
-                          <div key={index} className="flex items-start space-x-2">
-                            <span className="text-blue-500 text-sm">•</span>
-                            <p className="text-sm text-gray-700">{cert}</p>
+                    <h4 className="font-semibold mb-3 text-gray-900 text-lg">세부 내용</h4>
+                    <div className="bg-white border border-gray-200 rounded-lg p-4">
+                      <pre className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
+                        {selectedProfile.additionalInfo}
+                      </pre>
                           </div>
-                        ))
-                      ) : (
-                        <p className="text-gray-500 text-sm">보유 자격증 정보가 등록되지 않았습니다.</p>
-                      )}
                     </div>
-                  </div>
-                </div>
-              </div>
+                )}
 
-              {/* 학부모 후기 - 27.png 스타일 */}
-              <div className="mb-8">
-                <div className="flex items-center mb-4">
-                  <span className="text-blue-500 mr-2">💬</span>
-                  <h3 className="text-lg font-semibold text-gray-900">학부모 후기 ({selectedProfile.teacherReviewCount || teacherReviews.length || 3}건)</h3>
-                </div>
-                
-                <div className="space-y-4">
-                  {reviewsLoading ? (
-                    <div className="text-center py-8 text-gray-500">
-                      후기를 불러오는 중...
-                    </div>
-                  ) : teacherReviews.length > 0 ? (
-                    teacherReviews.map((review) => (
-                      <div key={review.id} className="bg-gray-50 p-4 rounded-lg border">
-                        <div className="flex items-center mb-2">
-                          <div className="flex items-center">
-                            {[...Array(5)].map((_, i) => (
-                              <span key={i} className={`text-sm ${i < review.rating ? 'text-orange-400' : 'text-gray-300'}`}>
-                                ★
+                {/* 작성자 정보 */}
+                <div>
+                  <h4 className="font-semibold mb-3 text-gray-900 text-lg">작성자 정보</h4>
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
+                        <span className="text-gray-600 text-sm font-medium">
+                          {(selectedProfile as { authorName?: string }).authorName?.[0] || '익'}
                               </span>
-                            ))}
-                            <span className="text-xs text-gray-500 ml-1">({review.rating}/5)</span>
                           </div>
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">
+                          {(selectedProfile as { authorName?: string }).authorName || '익명'}
                         </div>
-                        <p className="text-sm text-gray-700 mb-2 leading-relaxed">
-                          &quot;{review.content}&quot;
-                        </p>
-                        <div className="text-xs text-gray-500 text-right">
-                          - {review.parentName || '학부모'} (
-                          {review.createdAt ? 
-                            new Date(
-                              (review.createdAt && typeof review.createdAt === 'object' && 'toDate' in review.createdAt && typeof review.createdAt.toDate === 'function') 
-                                ? review.createdAt.toDate() 
-                                : review.createdAt as string | number
-                            ).toLocaleDateString('ko-KR') : 
-                            '날짜정보없음'
-                          })
+                        <div className="text-xs text-gray-500">학부모</div>
                         </div>
                       </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-8 text-gray-500">
-                      <p>아직 작성된 후기가 없습니다.</p>
-                      <p className="text-sm mt-1">첫 번째 후기를 작성해보세요!</p>
                     </div>
-                  )}
                 </div>
               </div>
 
               {/* 1:1 채팅으로 문의하기 버튼 */}
-              <div className="text-center">
+              <div className="text-center mt-8 pt-6 border-t border-gray-200">
                 <button 
                   onClick={() => setShowSafetyModal(true)}
-                  className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-4 rounded-lg font-medium transition-colors text-lg w-full max-w-md"
+                  className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-4 rounded-lg font-medium transition-colors text-lg w-full max-w-md inline-flex items-center justify-center"
                 >
-                  <span className="mr-2">💬</span>
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                  </svg>
                   1:1 채팅으로 문의하기
                 </button>
               </div>

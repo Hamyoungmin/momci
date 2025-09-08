@@ -67,6 +67,9 @@ export const signUp = async (
     try {
       await setDoc(doc(db, 'users', user.uid), userDocData);
       console.log('사용자 데이터 Firestore에 저장 완료');
+      
+      // 참고: 치료사 카운트는 프로필 승인 시점에서 증가합니다
+      // 더 정확한 통계를 위해 실제 치료사로 활동 가능한 상태가 되었을 때 카운팅
     } catch (firestoreError) {
       console.warn('Firestore 저장 실패:', firestoreError);
       // Firestore 실패해도 회원가입은 성공으로 처리

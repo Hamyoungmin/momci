@@ -1,6 +1,8 @@
 'use client';
 
 import Link from 'next/link';
+import { useState } from 'react';
+import { initializeStatistics } from '@/lib/statistics';
 
 interface QuickAction {
   title: string;
@@ -11,6 +13,28 @@ interface QuickAction {
 }
 
 export default function QuickActions() {
+  const [isInitializing, setIsInitializing] = useState(false);
+  const [initMessage, setInitMessage] = useState<string | null>(null);
+
+  const handleInitializeStats = async () => {
+    if (confirm('통계 데이터를 초기화하시겠습니까?\n이미 데이터가 있는 경우 초기화되지 않습니다.')) {
+      try {
+        setIsInitializing(true);
+        setInitMessage(null);
+        await initializeStatistics();
+        setInitMessage('통계 데이터가 성공적으로 초기화되었습니다.');
+      } catch (error) {
+        console.error('통계 초기화 실패:', error);
+        setInitMessage('통계 데이터 초기화에 실패했습니다.');
+      } finally {
+        setIsInitializing(false);
+        // 3초 후 메시지 제거
+        setTimeout(() => setInitMessage(null), 3000);
+      }
+    }
+  };
+
+
   const quickActions: QuickAction[] = [
     {
       title: '프로필 승인',
@@ -100,7 +124,35 @@ export default function QuickActions() {
         ))}
       </div>
 
-      <div className="mt-6 pt-4 border-t border-gray-100">
+
+      {/* 통계 초기화 버튼 */}
+      <div className="mt-4 pt-4 border-t border-gray-100">
+        <button
+          onClick={handleInitializeStats}
+          disabled={isInitializing}
+          className="w-full p-3 rounded-lg bg-gradient-to-r from-blue-500 to-purple-500 text-white font-medium hover:from-blue-600 hover:to-purple-600 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isInitializing ? (
+            <div className="flex items-center justify-center space-x-2">
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              <span>통계 데이터 초기화 중...</span>
+            </div>
+          ) : (
+            '통계 데이터 초기화'
+          )}
+        </button>
+        {initMessage && (
+          <div className={`mt-2 p-2 rounded-lg text-center text-sm ${
+            initMessage.includes('성공') 
+              ? 'bg-green-100 text-green-700' 
+              : 'bg-red-100 text-red-700'
+          }`}>
+            {initMessage}
+          </div>
+        )}
+      </div>
+
+      <div className="mt-4 pt-4 border-t border-gray-100">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <span className="text-sm text-gray-600">오늘 처리한 작업</span>

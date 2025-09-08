@@ -31,6 +31,7 @@ export default function ReportDetailModal({ isOpen, onClose, report, onReportAct
   const [resolutionReason, setResolutionReason] = useState('');
   const [penalty, setPenalty] = useState<'warning' | 'temporary_ban' | 'permanent_ban' | ''>('');
   const [giveReward, setGiveReward] = useState(false);
+  const [showQuickCompleteModal, setShowQuickCompleteModal] = useState(false);
 
   if (!isOpen) return null;
 
@@ -72,6 +73,19 @@ export default function ReportDetailModal({ isOpen, onClose, report, onReportAct
     }
 
     onReportAction(report.id, actionType, data);
+  };
+
+  // 빠른 처리 완료 함수
+  const handleQuickComplete = () => {
+    const data = {
+      resolution: {
+        action: '신고 검토 완료',
+        reason: '관리자가 신고 내용을 검토하여 처리를 완료했습니다.'
+      }
+    };
+    onReportAction(report.id, 'complete', data);
+    setShowQuickCompleteModal(false);
+    onClose();
   };
 
   const getTypeDescription = (type: Report['type']) => {
@@ -599,15 +613,78 @@ export default function ReportDetailModal({ isOpen, onClose, report, onReportAct
             <div className="text-sm text-gray-500">
               마지막 업데이트: {convertTimestamp(report.updatedAt).toLocaleString('ko-KR')}
             </div>
-            <button
-              onClick={onClose}
-              className="px-4 py-2 text-gray-600 hover:bg-gray-50 border border-gray-300 rounded-md transition-colors"
-            >
-              닫기
-            </button>
+            <div className="flex gap-3">
+              {/* 신고가 아직 처리되지 않은 경우에만 처리 완료 버튼 표시 */}
+              {(report.status === 'pending' || report.status === 'investigating') && (
+                <button
+                  onClick={() => setShowQuickCompleteModal(true)}
+                  className="px-4 py-2 bg-green-600 text-white hover:bg-green-700 border border-green-600 rounded-md transition-colors"
+                >
+                  신고 처리 완료
+                </button>
+              )}
+              <button
+                onClick={onClose}
+                className="px-4 py-2 text-gray-600 hover:bg-gray-50 border border-gray-300 rounded-md transition-colors"
+              >
+                닫기
+              </button>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* 빠른 처리 완료 확인 모달 */}
+      {showQuickCompleteModal && (
+        <div 
+          className="fixed inset-0 bg-transparent flex items-center justify-center z-[60]"
+          onClick={() => setShowQuickCompleteModal(false)}
+        >
+          <div 
+            className="bg-white rounded-lg p-6 max-w-md w-[90vw] shadow-2xl border border-gray-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-lg font-semibold text-gray-900">신고 처리 완료</h3>
+                <button
+                  onClick={() => setShowQuickCompleteModal(false)}
+                  className="text-gray-400 hover:text-gray-600 text-xl"
+                >
+                  ✕
+                </button>
+              </div>
+              <p className="text-sm text-gray-600">
+                이 신고를 처리 완료로 변경하시겠습니까?
+              </p>
+              <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                <div className="flex">
+                  <svg className="w-4 h-4 text-yellow-500 mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  <span className="text-xs text-yellow-800">
+                    처리 완료 시 신고 목록에서 &quot;처리완료&quot; 상태로 표시됩니다.
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowQuickCompleteModal(false)}
+                className="px-4 py-2 text-gray-600 hover:bg-gray-50 border border-gray-300 rounded-md transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleQuickComplete}
+                className="px-4 py-2 bg-green-600 text-white hover:bg-green-700 rounded-md transition-colors"
+              >
+                처리 완료
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

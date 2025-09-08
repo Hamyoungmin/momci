@@ -1,12 +1,20 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { type SiteStatistics } from '@/lib/statistics';
 
 // 카운트업 애니메이션을 위한 커스텀 훅
 function useCountUp(end: number, duration: number = 2000, start: number = 0) {
-  const [count, setCount] = useState(start);
+  const [count, setCount] = useState(end); // 즉시 end값으로 시작
   const [isAnimating, setIsAnimating] = useState(false);
   const frameRef = useRef<number | null>(null);
+  
+  // end 값이 변경되면 count도 즉시 업데이트
+  useEffect(() => {
+    setCount(end);
+  }, [end]);
 
   const startCountUp = () => {
     if (isAnimating) return;
@@ -48,17 +56,71 @@ function useCountUp(end: number, duration: number = 2000, start: number = 0) {
 export default function Statistics() {
   const [isVisible, setIsVisible] = useState(false);
   const [hasStartedAnimation, setHasStartedAnimation] = useState(false);
+  const [statsData, setStatsData] = useState<SiteStatistics | null>(null);
+  const [loading, setLoading] = useState(true);
   
-  // 각 통계에 대한 카운트업 훅들
-  const count1 = useCountUp(34575, 2000); // 누적 매칭건수
-  const count2 = useCountUp(8983, 1800);  // 등록 전문 치료사
-  const count3 = useCountUp(98, 1500);    // 학부모 만족도
+  // 통계 데이터를 Firebase에서 실시간으로 가져오기
+  useEffect(() => {
+    const statsRef = doc(db, 'statistics', 'site-stats');
+    
+    // 실시간 리스너 설정
+    const unsubscribe = onSnapshot(statsRef, 
+      (docSnapshot) => {
+        try {
+          if (docSnapshot.exists()) {
+            const data = docSnapshot.data() as SiteStatistics;
+            setStatsData(data);
+          } else {
+            // 문서가 없으면 기본값 사용
+            console.warn('통계 문서가 존재하지 않습니다. 기본값을 사용합니다.');
+            setStatsData({
+              totalMatches: 100,
+              totalTeachers: 40,
+              parentSatisfaction: 98,
+              lastUpdated: new Date().toISOString()
+            });
+          }
+        } catch (error) {
+          console.error('통계 데이터 처리 실패:', error);
+        } finally {
+          setLoading(false);
+        }
+      },
+      (error) => {
+        console.error('실시간 통계 데이터 리스너 오류:', error);
+        setLoading(false);
+        // 에러 발생 시 기본값 사용
+        setStatsData({
+          totalMatches: 100,
+          totalTeachers: 40,
+          parentSatisfaction: 98,
+          lastUpdated: new Date().toISOString()
+        });
+      }
+    );
+
+    // 컴포넌트 언마운트 시 리스너 정리
+    return () => unsubscribe();
+  }, []);
+  
+  // 로딩 중이거나 데이터가 없을 때는 기본값으로 표시
+  const displayData = statsData || {
+    totalMatches: 100,
+    totalTeachers: 40,
+    parentSatisfaction: 98,
+    lastUpdated: new Date().toISOString()
+  };
+  
+  // 각 통계에 대한 카운트업 훅들 (기본값 보장)
+  const count1 = useCountUp(displayData.totalMatches, 2000); // 누적 매칭건수
+  const count2 = useCountUp(displayData.totalTeachers, 1800);  // 등록 전문 치료사
+  const count3 = useCountUp(displayData.parentSatisfaction, 1500);    // 학부모 만족도
   
   useEffect(() => {
     setIsVisible(true);
-    // 컴포넌트가 보여진 후 0.5초 뒤에 애니메이션 시작
+    // 컴포넌트 마운트 후 0.5초 뒤에 애니메이션 시작
     const timer = setTimeout(() => {
-      if (!hasStartedAnimation) {
+      if (!hasStartedAnimation && !loading) {
         count1.startCountUp();
         count2.startCountUp();
         count3.startCountUp();
@@ -67,7 +129,7 @@ export default function Statistics() {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [count1, count2, count3, hasStartedAnimation]);
+  }, [loading, hasStartedAnimation, count1, count2, count3]);
 
   const stats = [
     {
