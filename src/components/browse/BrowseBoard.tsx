@@ -49,6 +49,13 @@ interface Teacher {
 
 export default function BrowseBoard() {
   const { currentUser, userData } = useAuth();
+  
+  // 이름에서 성만 추출하는 함수
+  const getLastName = (fullName: string | undefined): string => {
+    if (!fullName) return '익명';
+    // 한글 이름인 경우 첫 글자가 성
+    return fullName.charAt(0);
+  };
   const [selectedSidebarItem, setSelectedSidebarItem] = useState('서울');
   const [selectedTab, setSelectedTab] = useState('서울');
   const [selectedLocation, setSelectedLocation] = useState('희망지역을 선택하세요');
@@ -61,6 +68,10 @@ export default function BrowseBoard() {
   const [isModalClosing, setIsModalClosing] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [isSuccessModalClosing, setIsSuccessModalClosing] = useState(false);
+  
+  // 프로필 등록 확인 팝업 상태
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [isConfirmModalClosing, setIsConfirmModalClosing] = useState(false);
   
   // 상세 프로필 모달 상태
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -135,7 +146,7 @@ export default function BrowseBoard() {
   useEffect(() => {
     const q = query(
       collection(db, 'posts'),
-      where('type', '==', 'teacher-offer'),
+      where('type', 'in', ['teacher-offer', 'teacher-request']),
       orderBy('createdAt', 'desc')
     );
 
@@ -161,7 +172,7 @@ export default function BrowseBoard() {
             name: docData.title || `${docData.age || ''} ${docData.gender || ''} ${docData.treatment || '치료사'}`,
             specialty: docData.treatment || '재활치료',
             experience: 0, // 프로필에서 업데이트됨
-            rating: 4.8, // 프로필에서 업데이트됨
+            rating: 0.0, // 실제 후기 기반으로 계산됨
             reviewCount: 0, // 실제 후기 수로 업데이트됨
             profileImage: '', // 프로필에서 업데이트됨
             certifications: [], // 프로필에서 업데이트됨
@@ -202,11 +213,27 @@ export default function BrowseBoard() {
               const userDocRef = doc(db, 'users', docData.authorId);
               const userDoc = await getDoc(userDocRef);
               if (userDoc.exists()) {
-                const userData = userDoc.data() as { name?: string; email?: string; phone?: string; userType?: string; };
+                const userData = userDoc.data() as { 
+                  name?: string; 
+                  email?: string; 
+                  phone?: string; 
+                  userType?: string;
+                  videoUrl?: string;
+                  isVerified?: boolean;
+                  hasCertification?: boolean;
+                  hasExperienceProof?: boolean;
+                  hasIdVerification?: boolean;
+                };
                 teacher.name = userData.name || teacher.name;
                 teacher.userName = userData.name;
                 teacher.userEmail = userData.email;
                 teacher.userPhone = userData.phone;
+                teacher.videoUrl = userData.videoUrl || teacher.videoUrl; // 자기소개 영상
+                // 인증 상태는 users 컬렉션에서 가져올 수도 있음
+                teacher.isVerified = userData.isVerified || teacher.isVerified;
+                teacher.hasCertification = userData.hasCertification || teacher.hasCertification;
+                teacher.hasExperienceProof = userData.hasExperienceProof || teacher.hasExperienceProof;
+                teacher.hasIdVerification = userData.hasIdVerification || teacher.hasIdVerification;
                 console.log('✅ 사용자 기본 정보 적용:', userData.name);
               }
 
@@ -240,6 +267,11 @@ export default function BrowseBoard() {
                   certifications?: string[];
                   schedule?: string;
                   status?: string;
+                  videoUrl?: string;
+                  isVerified?: boolean;
+                  hasCertification?: boolean;
+                  hasExperienceProof?: boolean;
+                  hasIdVerification?: boolean;
                 } | null;
                 console.log('✅ 치료사 프로필 정보 적용:', profileData?.name);
                 
@@ -247,7 +279,7 @@ export default function BrowseBoard() {
                 teacher.name = profileData?.name || teacher.name;
                 teacher.specialty = profileData?.specialties?.[0] || teacher.specialty;
                 teacher.experience = profileData?.experience || 0;
-                teacher.rating = profileData?.rating || 4.8;
+                // rating은 실제 후기에서 계산하므로 프로필 데이터 사용하지 않음
                 teacher.reviewCount = profileData?.reviewCount || 0;
                 teacher.profileImage = profileData?.profileImage || '';
                 teacher.education = profileData?.education || '정보 없음';
@@ -256,30 +288,53 @@ export default function BrowseBoard() {
                 teacher.philosophy = profileData?.philosophy || teacher.philosophy;
                 teacher.certifications = profileData?.certifications || [];
                 teacher.schedule = profileData?.schedule || teacher.schedule;
+                teacher.videoUrl = profileData?.videoUrl || ''; // 자기소개 영상 URL
                 
-                // 인증 상태 업데이트
-                teacher.isVerified = profileData?.status === 'approved';
-                teacher.hasCertification = profileData?.certifications && profileData.certifications.length > 0;
-                teacher.hasExperienceProof = !!profileData?.career;
-                teacher.hasIdVerification = !!profileData?.status;
+                // 인증 상태 업데이트 - 실제 프로필 데이터 기반 + 관리자 승인 상태
+                teacher.isVerified = profileData?.isVerified || false; // 모든별 인증
+                teacher.hasCertification = profileData?.hasCertification || (profileData?.certifications && profileData.certifications.length > 0) || false;
+                teacher.hasExperienceProof = profileData?.hasExperienceProof || !!profileData?.career;
+                teacher.hasIdVerification = profileData?.hasIdVerification || !!profileData?.status;
               }
 
-              // 3. 실제 후기 수 가져오기 (옵션)
+              // 3. 실제 후기 수와 평균 별점 계산
               const reviewsQuery = query(
                 collection(db, 'therapist-reviews'),
                 where('therapistId', '==', docData.authorId)
               );
 
-              const reviewsSnapshot = await new Promise<{ size: number; }>((resolve) => {
-                const unsubscribeReviews = onSnapshot(reviewsQuery, resolve, () => resolve({ size: 0 }));
+              const reviewsSnapshot = await new Promise<{ docs: { data: () => { rating?: number } }[]; size: number }>((resolve) => {
+                const unsubscribeReviews = onSnapshot(
+                  reviewsQuery, 
+                  (snapshot) => {
+                    unsubscribeReviews();
+                    resolve({ docs: snapshot.docs, size: snapshot.size });
+                  }, 
+                  () => {
+                    resolve({ docs: [], size: 0 });
+                  }
+                );
                 setTimeout(() => {
                   unsubscribeReviews();
-                  resolve({ size: 0 });
+                  resolve({ docs: [], size: 0 });
                 }, 1000); // 1초 타임아웃
               });
 
               teacher.reviewCount = reviewsSnapshot.size || 0;
-              console.log('✅ 후기 수 업데이트:', teacher.reviewCount);
+              
+              // 실제 후기가 있으면 평균 별점 계산, 없으면 0.0
+              if (reviewsSnapshot.size > 0) {
+                const ratings = reviewsSnapshot.docs.map((doc) => doc.data()?.rating || 0);
+                const totalRating = ratings.reduce((sum: number, rating: number) => sum + rating, 0);
+                teacher.rating = Math.round((totalRating / ratings.length) * 10) / 10; // 소수점 첫째자리까지
+              } else {
+                teacher.rating = 0.0; // 후기가 없으면 0.0점
+              }
+              
+              console.log('✅ 후기 정보 업데이트:', {
+                count: teacher.reviewCount,
+                averageRating: teacher.rating
+              });
 
             } catch (error) {
               console.error('❌ 실제 데이터 가져오기 오류 (authorId:', docData.authorId, '):', error);
@@ -323,13 +378,18 @@ export default function BrowseBoard() {
       if (showProfileModal && !target.closest('.profile-modal')) {
         closeProfileModal();
       }
+      
+      // 확인 팝업 외부 클릭 시 팝업 닫기
+      if (showConfirmModal && !target.closest('.confirm-modal')) {
+        closeConfirmModal();
+      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [showCreatePostModal, showProfileModal]);
+  }, [showCreatePostModal, showProfileModal, showConfirmModal]);
 
   // 현재 선택된 지역의 치료사 필터링
   const getCurrentTeachers = () => {
@@ -401,6 +461,29 @@ export default function BrowseBoard() {
     setTimeout(() => {
       setShowSuccessModal(false);
       setIsSuccessModalClosing(false);
+    }, 300);
+  };
+
+  // 프로필 등록 확인 팝업 열기
+  const openConfirmModal = () => {
+    setShowConfirmModal(true);
+  };
+
+  // 프로필 등록 확인 팝업 닫기
+  const closeConfirmModal = () => {
+    setIsConfirmModalClosing(true);
+    setTimeout(() => {
+      setShowConfirmModal(false);
+      setIsConfirmModalClosing(false);
+    }, 300);
+  };
+
+  // 프로필 등록 확인 후 작성 모달 열기
+  const handleConfirmRegister = () => {
+    closeConfirmModal();
+    // 확인 팝업이 닫힌 후 프로필 작성 모달 열기
+    setTimeout(() => {
+      setShowCreatePostModal(true);
     }, 300);
   };
 
@@ -850,14 +933,14 @@ export default function BrowseBoard() {
           <div className="mb-6 flex justify-end">
             {canCreatePost ? (
               <button
-                onClick={() => setShowCreatePostModal(true)}
+                onClick={openConfirmModal}
                 data-create-post-button
                 className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-2xl font-medium transition-colors flex items-center gap-2"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
-                선생님 둘러보기
+                내 프로필 등록하기
               </button>
             ) : (
               <div className="text-center">
@@ -868,7 +951,7 @@ export default function BrowseBoard() {
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
-                  선생님 둘러보기
+                  내 프로필 등록하기
                 </button>
                 <p className="text-sm text-gray-600">
                   {currentUser ? 
@@ -922,22 +1005,22 @@ export default function BrowseBoard() {
                         <div className="flex-1">
                           <div className="flex items-center space-x-2 mb-1">
                             <h3 className="text-lg font-bold text-gray-900">
-                              {/* 실제 게시글 제목 표시 */}
-                              {teacher.name || `${teacher.postAge} ${teacher.postGender} ${teacher.specialty}`}
+                              {/* 성 + 00 + 치료사 [년차 전문분야] 형태로 표시 */}
+                              {getLastName(teacher.userName || teacher.name)}00 치료사 <span className="text-gray-600">[{teacher.experience || 0}년차 {teacher.specialty}]</span>
                             </h3>
-                            <span className="text-sm text-gray-600">
-                              ({teacher.postAge && teacher.postGender ? `${teacher.postAge} ${teacher.postGender}` : ''} {teacher.specialty})
-                              {teacher.postFrequency && (
-                                <span className="ml-2 text-blue-600">• {teacher.postFrequency}</span>
-                              )}
-                            </span>
                           </div>
                           
                           <div className="flex items-center space-x-2 mb-3">
                             <div className="flex items-center">
-                              <span className="text-orange-400 text-lg">★</span>
-                              <span className="text-sm font-medium ml-1">{teacher.rating}</span>
-                              <span className="text-xs text-gray-500 ml-1">(후기 {teacher.reviewCount}개)</span>
+                              {teacher.reviewCount > 0 ? (
+                                <>
+                                  <span className="text-orange-400 text-lg">★</span>
+                                  <span className="text-sm font-medium ml-1">{teacher.rating}</span>
+                                  <span className="text-xs text-gray-500 ml-1">(후기 {teacher.reviewCount}개)</span>
+                                </>
+                              ) : (
+                                <span className="text-xs text-gray-500">후기 없음</span>
+                              )}
                             </div>
                           </div>
                           
@@ -956,7 +1039,14 @@ export default function BrowseBoard() {
                           </div>
                           
                           <div className="text-xl font-bold text-blue-600 mb-4">
-                            회기당 {teacher.price}
+                            회기당 {(() => {
+                              if (!teacher.price) return '협의';
+                              const priceStr = teacher.price.toString();
+                              if (priceStr.includes('원')) return priceStr;
+                              const numericPrice = priceStr.replace(/[^0-9]/g, '');
+                              if (!numericPrice) return '협의';
+                              return numericPrice.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '원';
+                            })()}
                           </div>
 
                           
@@ -978,10 +1068,12 @@ export default function BrowseBoard() {
                               {teacher.hasIdVerification ? '✓' : '×'} 신분증확인서
                             </span>
                             
-                            {/* 모든별키즈 인증 - 실제 데이터 반영 */}
-                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${teacher.isVerified ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-gray-100 text-gray-600 border-gray-200'} border`}>
-                              {teacher.isVerified ? '✓' : '×'} 모든별키즈 인증
-                            </span>
+                            {/* 모든별 인증 - 파란색 별과 함께 맨 뒤에 표시 */}
+                            {teacher.isVerified && (
+                              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 border border-blue-200">
+                                <span className="text-blue-500 mr-1">⭐</span> 모든별 인증
+                              </span>
+                            )}
                             
                             {/* 보험가입 - 추후 구현 */}
                             <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600 border border-gray-200">
@@ -1085,7 +1177,7 @@ export default function BrowseBoard() {
         <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50">
           <div className={`bg-white rounded-lg p-8 max-w-6xl w-[95vw] shadow-xl border-4 border-blue-500 max-h-[90vh] overflow-y-auto create-post-modal ${isModalClosing ? 'animate-slideOut' : 'animate-slideIn'}`}>
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">선생님께 요청하기</h2>
+              <h2 className="text-2xl font-bold text-gray-900">선생님 둘러보기</h2>
               <button
                 onClick={closeCreatePostModal}
                 className="text-gray-400 hover:text-gray-600 text-2xl"
@@ -1120,6 +1212,8 @@ export default function BrowseBoard() {
                     <option value="미술치료">미술치료</option>
                     <option value="특수체육">특수체육</option>
                     <option value="특수교사">특수교사</option>
+                    <option value="모니터링">모니터링</option>
+                    <option value="임상심리">임상심리</option>
                   </select>
                 </div>
                 <div>
@@ -1128,7 +1222,7 @@ export default function BrowseBoard() {
                     type="text"
                     value={newPost.age}
                     onChange={(e) => setNewPost(prev => ({ ...prev, age: e.target.value }))}
-                    placeholder="예: 초1, 5세"
+                    placeholder="5세, 36개월"
                     className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
                   />
@@ -1163,26 +1257,48 @@ export default function BrowseBoard() {
                 </div>
               </div>
 
-              {/* 희망 시간 | 회당 희망 금액 */}
+              {/* 요일 / 시간 | 회당 희망 금액 */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">희망 시간</label>
-                  <input
-                    type="text"
-                    value={newPost.timeDetails}
-                    onChange={(e) => setNewPost(prev => ({ ...prev, timeDetails: e.target.value }))}
-                    placeholder="예: 월,수 5시~6시"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
+                  <label className="block text-sm font-medium text-gray-700 mb-2">요일 / 시간</label>
+                  <div className="relative flex items-center border border-gray-300 rounded-2xl focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent">
+                    <input
+                      type="text"
+                      value={newPost.timeDetails.split(' / ')[0] || ''}
+                      onChange={(e) => {
+                        const timePart = newPost.timeDetails.split(' / ')[1] || '';
+                        setNewPost(prev => ({ ...prev, timeDetails: `${e.target.value} / ${timePart}` }));
+                      }}
+                      placeholder="월,수"
+                      className="flex-1 px-4 py-3 border-0 rounded-l-2xl focus:outline-none text-center"
+                      required
+                    />
+                    <div className="px-2 text-gray-400 font-medium">/</div>
+                    <input
+                      type="text"
+                      value={newPost.timeDetails.split(' / ')[1] || ''}
+                      onChange={(e) => {
+                        const dayPart = newPost.timeDetails.split(' / ')[0] || '';
+                        setNewPost(prev => ({ ...prev, timeDetails: `${dayPart} / ${e.target.value}` }));
+                      }}
+                      placeholder="5시~6시"
+                      className="flex-1 px-4 py-3 border-0 rounded-r-2xl focus:outline-none text-center"
+                      required
+                    />
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">회당 희망 금액</label>
                   <input
                     type="text"
                     value={newPost.price}
-                    onChange={(e) => setNewPost(prev => ({ ...prev, price: e.target.value }))}
-                    placeholder="예: 50,000원"
+                    onChange={(e) => {
+                      // 숫자만 추출하여 천 단위 콤마 적용
+                      const numbers = e.target.value.replace(/[^\d]/g, '');
+                      const formattedValue = numbers ? numbers.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '';
+                      setNewPost(prev => ({ ...prev, price: formattedValue }));
+                    }}
+                    placeholder="예: 50,000"
                     className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
                   />
@@ -1218,7 +1334,6 @@ export default function BrowseBoard() {
 희망시간 : 월2~5시, 화,목 7시~, 토 1~2시, 6시~, 일 전체
 아동정보 : 조음장애진단으로 조음치료 경험(1년전 종결)있으나 다시 발음이 뭉개짐
 
-* 치료가능한 요일과 시간을 댓글로 작성해주시면 접수됩니다.
 * 지원자는 비공개 익명으로 표기되며, 본인만 확인하실 수 있습니다.`}
                   rows={8}
                   className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -1238,7 +1353,14 @@ export default function BrowseBoard() {
                     <div>
                       <p><strong>나이:</strong> {newPost.age}</p>
                       <p><strong>희망 횟수:</strong> {newPost.frequency}</p>
-                      <p><strong>회당 희망 금액:</strong> {newPost.price}</p>
+                      <p><strong>회당 희망 금액:</strong> {(() => {
+                        if (!newPost.price) return '미입력';
+                        const priceStr = newPost.price.toString();
+                        if (priceStr.includes('원')) return priceStr;
+                        const numericPrice = priceStr.replace(/[^0-9]/g, '');
+                        if (!numericPrice) return newPost.price;
+                        return numericPrice.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '원';
+                      })()}</p>
                     </div>
                     <div className="col-span-2">
                       <p><strong>제목:</strong> {newPost.age} {newPost.gender} {newPost.frequency} 홈티</p>
@@ -1338,9 +1460,15 @@ export default function BrowseBoard() {
                     {selectedProfile.name} 치료사 ({selectedProfile.experience ? `${selectedProfile.experience}년차` : '경력미상'} {selectedProfile.specialty}사)
                   </h2>
                   <div className="flex items-center mb-2">
-                    <span className="text-orange-400 text-lg">★</span>
-                    <span className="text-sm font-medium ml-1">{selectedProfile.rating}</span>
-                    <span className="text-xs text-gray-500 ml-1">(후기 {selectedProfile.reviewCount}개)</span>
+                    {selectedProfile.reviewCount && selectedProfile.reviewCount > 0 ? (
+                      <>
+                        <span className="text-orange-400 text-lg">★</span>
+                        <span className="text-sm font-medium ml-1">{selectedProfile.rating}</span>
+                        <span className="text-xs text-gray-500 ml-1">(후기 {selectedProfile.reviewCount}개)</span>
+                      </>
+                    ) : (
+                      <span className="text-xs text-gray-500">후기 없음</span>
+                    )}
                   </div>
                   <div className="text-2xl font-bold text-blue-600 mb-3">
                     회기당 {(() => {
@@ -1352,11 +1480,39 @@ export default function BrowseBoard() {
                       return numericPrice.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '원';
                     })()}
                   </div>
+
+                  {/* 회색줄 */}
+                  <hr className="border-gray-300 mb-4" />
                 </div>
               </div>
 
-              {/* 태그들 */}
-              <div className="flex items-center space-x-2 mb-6">
+              {/* 인증 정보 - 회색줄 바로 밑에 */}
+              <div className="flex flex-wrap items-center gap-2 mb-3">
+                {/* 자격증 인증 */}
+                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${selectedProfile.hasCertification ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200'} border`}>
+                  {selectedProfile.hasCertification ? '✓' : '×'} 자격증
+                </span>
+                
+                {/* 경력증명 */}
+                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${selectedProfile.hasExperienceProof ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200'} border`}>
+                  {selectedProfile.hasExperienceProof ? '✓' : '×'} 경력증명
+                </span>
+                
+                {/* 신분증확인서 */}
+                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${selectedProfile.hasIdVerification ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200'} border`}>
+                  {selectedProfile.hasIdVerification ? '✓' : '×'} 신분증확인서
+                </span>
+                
+                {/* 모든별 인증 - 파란색 별과 함께 */}
+                {selectedProfile.isVerified && (
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 border border-blue-200">
+                    <span className="text-blue-500 mr-1">⭐</span> 모든별 인증
+                  </span>
+                )}
+              </div>
+
+              {/* 태그들 - 회색줄 바로 밑에 별도 줄 */}
+              <div className="flex items-center space-x-2 mb-8">
                 <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-50 text-blue-700 border border-blue-200">
                   #{selectedProfile.specialty}
                 </span>
@@ -1374,29 +1530,6 @@ export default function BrowseBoard() {
                   </span>
                 )}
               </div>
-              
-              {/* 인증 정보 - 실제 데이터 기반 */}
-              <div className="flex flex-wrap items-center gap-2 mb-8">
-                {/* 자격증 인증 */}
-                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${selectedProfile.hasCertification ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200'} border`}>
-                  {selectedProfile.hasCertification ? '✓' : '×'} 자격증
-                </span>
-                
-                {/* 경력증명 */}
-                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${selectedProfile.hasExperienceProof ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200'} border`}>
-                  {selectedProfile.hasExperienceProof ? '✓' : '×'} 경력증명
-                </span>
-                
-                {/* 신분증확인서 */}
-                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${selectedProfile.hasIdVerification ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200'} border`}>
-                  {selectedProfile.hasIdVerification ? '✓' : '×'} 신분증확인서
-                </span>
-                
-                {/* 모든별키즈 인증 */}
-                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${selectedProfile.isVerified ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-gray-100 text-gray-600 border-gray-200'} border`}>
-                  {selectedProfile.isVerified ? '✓' : '×'} 모든별키즈 인증
-                </span>
-              </div>
 
               {/* 선생님 소개 */}
               <div className="mb-8">
@@ -1409,8 +1542,11 @@ export default function BrowseBoard() {
                   <h3 className="text-lg font-semibold text-gray-900">선생님 소개</h3>
                 </div>
                 
+                {/* 회색줄 추가 */}
+                <hr className="border-gray-300 mb-4" />
+                
                 <div className="space-y-4">
-                  <div>
+                    <div>
                     <h4 className="font-semibold mb-2">치료 철학 및 강점</h4>
                     <p className="text-gray-700 text-sm leading-relaxed">
                       {selectedProfile.philosophy || selectedProfile.introduction || "치료 철학 및 강점이 등록되지 않았습니다."}
@@ -1421,28 +1557,38 @@ export default function BrowseBoard() {
                     <h4 className="font-semibold mb-2">주요 치료경험/사례</h4>
                     <p className="text-gray-700 text-sm leading-relaxed">
                       {selectedProfile.services || selectedProfile.career || "주요 치료경험 및 사례가 등록되지 않았습니다."}
-                    </p>
-                  </div>
-                  
-                  <div>
-                    <h4 className="font-semibold mb-2">(선택) 1분 자기소개 영상</h4>
-                    <div className="bg-gray-100 rounded-lg">
-                      {selectedProfile.videoUrl ? (
-                        <video 
-                          src={selectedProfile.videoUrl} 
-                          controls 
-                          className="w-full rounded-lg" 
-                          poster="/placeholder-video.png"
-                        >
-                          영상을 재생할 수 없습니다.
-                        </video>
-                      ) : (
-                        <div className="text-center py-12 text-gray-500 text-sm">
-                          자기소개 영상이 등록되지 않았습니다.
+                          </p>
                         </div>
-                      )}
-                    </div>
+                </div>
+              </div>
+
+              {/* 1분 자기소개 영상 - 별도 섹션으로 분리하고 새로로 더 넓게 */}
+              <div className="mb-8">
+                <div className="flex items-center mb-4">
+                  <div className="text-blue-500 mr-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                    </svg>
                   </div>
+                  <h3 className="text-lg font-semibold text-gray-900">1분 자기소개 영상</h3>
+                </div>
+                
+                <div className="w-full bg-gray-100 rounded-lg overflow-hidden">
+                  {selectedProfile.videoUrl ? (
+                    <video 
+                      src={selectedProfile.videoUrl} 
+                      controls 
+                      className="w-full h-auto rounded-lg" 
+                      poster="/placeholder-video.png"
+                      style={{ maxHeight: '400px' }}
+                    >
+                      영상을 재생할 수 없습니다.
+                    </video>
+                  ) : (
+                    <div className="text-center py-12 text-gray-500 text-sm">
+                      자기소개 영상이 등록되지 않았습니다.
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1453,12 +1599,15 @@ export default function BrowseBoard() {
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                     </svg>
-                  </div>
+                </div>
                   <h3 className="text-lg font-semibold text-gray-900">핵심 정보 한눈에 보기</h3>
                 </div>
                 
+                {/* 회색줄 추가 */}
+                <hr className="border-gray-300 mb-4" />
+                
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-gray-50 rounded-lg p-4">
+                <div className="bg-gray-50 rounded-lg p-4">
                     <div className="text-sm font-medium text-gray-600 mb-1">학력 사항</div>
                     <div className="text-sm text-gray-900">{selectedProfile.education || '등록되지 않음'}</div>
                   </div>
@@ -1486,7 +1635,7 @@ export default function BrowseBoard() {
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
                     </svg>
-                  </div>
+                </div>
                   <h3 className="text-lg font-semibold text-gray-900">전문 정보</h3>
                 </div>
                 
@@ -1494,6 +1643,8 @@ export default function BrowseBoard() {
                   {/* 전문 분야 */}
                   <div>
                     <h4 className="font-semibold mb-3 text-gray-900">전문 분야</h4>
+                    {/* 회색줄 추가 */}
+                    <hr className="border-gray-300 mb-3" />
                     <div className="flex flex-wrap gap-2">
                       <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
                         #{selectedProfile.specialty}
@@ -1575,7 +1726,7 @@ export default function BrowseBoard() {
                   <svg className="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
                   </svg>
-                  1:1 채팅으로 문의하기
+                  1:! 채팅으로 인터뷰 시작하기
                 </button>
               </div>
             </div>
@@ -1737,6 +1888,55 @@ export default function BrowseBoard() {
         </div>
       )}
 
+      {/* 프로필 등록 확인 팝업 */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 flex items-center justify-center z-50">
+          <div className={`bg-white rounded-2xl p-8 max-w-md w-[90%] text-center shadow-2xl transform confirm-modal ${isConfirmModalClosing ? 'animate-fadeOut' : 'animate-fadeIn'}`}>
+            {/* 로켓 아이콘 */}
+            <div className="mb-6">
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg width="48" height="48" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" transform="rotate(45)">
+                  {/* 로켓 본체 */}
+                  <ellipse cx="16" cy="14" rx="4" ry="8" fill="#3B82F6"/>
+                  {/* 로켓 머리 (뾰족한 부분) */}
+                  <path d="M16 6l-2 4h4l-2-4z" fill="#1E40AF"/>
+                  {/* 로켓 날개 */}
+                  <path d="M12 18l-3 2v3l3-2z" fill="#3B82F6"/>
+                  <path d="M20 18l3 2v3l-3-2z" fill="#3B82F6"/>
+                  {/* 로켓 창문 */}
+                  <circle cx="16" cy="12" r="1.5" fill="white"/>
+                </svg>
+              </div>
+            </div>
+            
+            {/* 제목 */}
+            <h2 className="text-xl font-bold text-gray-900 mb-4">
+              프로필을 목록에 등록하시겠습니까?
+            </h2>
+            
+            {/* 설명 */}
+            <p className="text-sm text-gray-600 mb-8 leading-relaxed">
+              [확인] 버튼을 누르시면, 회원님의 프로필이 ** &apos;내 프로필 등록하기&apos; 목록에 자동으로 노출** 되어 학부모님들이 볼 수 있게 됩니다.
+            </p>
+            
+            {/* 버튼들 */}
+            <div className="flex gap-3">
+              <button
+                onClick={closeConfirmModal}
+                className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleConfirmRegister}
+                className="flex-1 px-6 py-3 bg-blue-500 text-white rounded-xl font-medium hover:bg-blue-600 transition-colors"
+              >
+                네, 등록합니다
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

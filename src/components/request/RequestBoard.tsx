@@ -664,7 +664,7 @@ export default function RequestBoard() {
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
-              선생님에게 요청하기
+              선생님께 요청하기
             </button>
           </div>
 
@@ -751,7 +751,7 @@ export default function RequestBoard() {
         <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50">
           <div className={`bg-white rounded-lg p-8 max-w-6xl w-[95vw] shadow-xl border-4 border-blue-500 max-h-[90vh] overflow-y-auto create-post-modal ${isModalClosing ? 'animate-slideOut' : 'animate-slideIn'}`}>
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">선생님에게 요청하기</h2>
+              <h2 className="text-2xl font-bold text-gray-900">선생님께 요청하기</h2>
               <button
                 onClick={closeCreatePostModal}
                 className="text-gray-400 hover:text-gray-600 text-2xl"
@@ -786,6 +786,8 @@ export default function RequestBoard() {
                     <option value="미술치료">미술치료</option>
                     <option value="특수체육">특수체육</option>
                     <option value="특수교사">특수교사</option>
+                    <option value="모니터링">모니터링</option>
+                    <option value="임상심리">임상심리</option>
                   </select>
                 </div>
                 <div>
@@ -794,7 +796,7 @@ export default function RequestBoard() {
                     type="text"
                     value={newPost.age}
                     onChange={(e) => setNewPost(prev => ({ ...prev, age: e.target.value }))}
-                    placeholder="예: 초1, 5세"
+                    placeholder="5세, 36개월"
                     className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
                   />
@@ -829,26 +831,48 @@ export default function RequestBoard() {
                 </div>
               </div>
 
-              {/* 희망 시간 | 회당 희망 금액 */}
+              {/* 요일 / 시간 | 회당 희망 금액 */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">희망 시간</label>
-                  <input
-                    type="text"
-                    value={newPost.timeDetails}
-                    onChange={(e) => setNewPost(prev => ({ ...prev, timeDetails: e.target.value }))}
-                    placeholder="예: 월,수 5시~6시"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
+                  <label className="block text-sm font-medium text-gray-700 mb-2">요일 / 시간</label>
+                  <div className="relative flex items-center border border-gray-300 rounded-2xl focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent">
+                    <input
+                      type="text"
+                      value={newPost.timeDetails.split(' / ')[0] || ''}
+                      onChange={(e) => {
+                        const timePart = newPost.timeDetails.split(' / ')[1] || '';
+                        setNewPost(prev => ({ ...prev, timeDetails: `${e.target.value} / ${timePart}` }));
+                      }}
+                      placeholder="월,수"
+                      className="flex-1 px-4 py-3 border-0 rounded-l-2xl focus:outline-none text-center"
+                      required
+                    />
+                    <div className="px-2 text-gray-400 font-medium">/</div>
+                    <input
+                      type="text"
+                      value={newPost.timeDetails.split(' / ')[1] || ''}
+                      onChange={(e) => {
+                        const dayPart = newPost.timeDetails.split(' / ')[0] || '';
+                        setNewPost(prev => ({ ...prev, timeDetails: `${dayPart} / ${e.target.value}` }));
+                      }}
+                      placeholder="5시~6시"
+                      className="flex-1 px-4 py-3 border-0 rounded-r-2xl focus:outline-none text-center"
+                      required
+                    />
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">회당 희망 금액</label>
                   <input
                     type="text"
                     value={newPost.price}
-                    onChange={(e) => setNewPost(prev => ({ ...prev, price: e.target.value }))}
-                    placeholder="예: 50,000원"
+                    onChange={(e) => {
+                      // 숫자만 추출하여 천 단위 콤마 적용
+                      const numbers = e.target.value.replace(/[^\d]/g, '');
+                      const formattedValue = numbers ? numbers.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '';
+                      setNewPost(prev => ({ ...prev, price: formattedValue }));
+                    }}
+                    placeholder="예: 50,000"
                     className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
                   />
@@ -866,7 +890,6 @@ export default function RequestBoard() {
 희망시간 : 월2~5시, 화,목 7시~, 토 1~2시, 6시~, 일 전체
 아동정보 : 조음장애진단으로 조음치료 경험(1년전 종결)있으나 다시 발음이 뭉개짐
 
-* 치료가능한 요일과 시간을 댓글로 작성해주시면 접수됩니다.
 * 지원자는 비공개 익명으로 표기되며, 본인만 확인하실 수 있습니다.`}
                   rows={8}
                   className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -886,7 +909,14 @@ export default function RequestBoard() {
                     <div>
                       <p><strong>나이:</strong> {newPost.age}</p>
                       <p><strong>희망 횟수:</strong> {newPost.frequency}</p>
-                      <p><strong>회당 희망 금액:</strong> {newPost.price}</p>
+                      <p><strong>회당 희망 금액:</strong> {(() => {
+                        if (!newPost.price) return '미입력';
+                        const priceStr = newPost.price.toString();
+                        if (priceStr.includes('원')) return priceStr;
+                        const numericPrice = priceStr.replace(/[^0-9]/g, '');
+                        if (!numericPrice) return newPost.price;
+                        return numericPrice.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '원';
+                      })()}</p>
                     </div>
                     <div className="col-span-2">
                       <p><strong>제목:</strong> {newPost.age} {newPost.gender} {newPost.frequency} 홈티</p>

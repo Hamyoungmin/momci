@@ -11,12 +11,10 @@ export default function Header() {
   const [isGuideDropdownOpen, setIsGuideDropdownOpen] = useState(false);
   const [isMatchingDropdownOpen, setIsMatchingDropdownOpen] = useState(false);
   const [isRegisterDropdownOpen, setIsRegisterDropdownOpen] = useState(false);
-  const [isCommunityDropdownOpen, setIsCommunityDropdownOpen] = useState(false);
   const [isSupportDropdownOpen, setIsSupportDropdownOpen] = useState(false);
   const [isMobileGuideOpen, setIsMobileGuideOpen] = useState(false);
   const [isMobileMatchingOpen, setIsMobileMatchingOpen] = useState(false);
   const [isMobileRegisterOpen, setIsMobileRegisterOpen] = useState(false);
-  const [isMobileCommunityOpen, setIsMobileCommunityOpen] = useState(false);
   const [isMobileSupportOpen, setIsMobileSupportOpen] = useState(false);
 
   const handleLogout = async () => {
@@ -35,7 +33,7 @@ export default function Header() {
           {/* 로고 */}
           <div className="flex-shrink-0">
             <Link href="/" className="flex items-center">
-              <span className="text-2xl font-bold text-blue-700">모든별 키즈</span>
+              <span className="text-3xl font-bold text-blue-700">모든별 키즈</span>
             </Link>
           </div>
 
@@ -48,7 +46,7 @@ export default function Header() {
               onMouseLeave={() => setIsGuideDropdownOpen(false)}
             >
               <div 
-                className="text-gray-700 hover:text-blue-500 px-4 py-3 rounded-2xl text-base font-medium transition-colors cursor-pointer"
+                className="text-gray-700 hover:text-blue-500 px-4 py-3 rounded-2xl text-xl font-medium transition-colors cursor-pointer"
               >
                 이용안내
               </div>
@@ -93,7 +91,7 @@ export default function Header() {
               onMouseLeave={() => setIsMatchingDropdownOpen(false)}
             >
               <div 
-                className="text-gray-700 hover:text-blue-500 px-4 py-3 rounded-2xl text-base font-medium transition-colors cursor-pointer"
+                className="text-gray-700 hover:text-blue-500 px-4 py-3 rounded-2xl text-xl font-medium transition-colors cursor-pointer"
               >
                 홈티매칭
               </div>
@@ -125,7 +123,7 @@ export default function Header() {
               onMouseLeave={() => setIsRegisterDropdownOpen(false)}
             >
               <div 
-                className="text-gray-700 hover:text-blue-500 px-4 py-3 rounded-2xl text-base font-medium transition-colors cursor-pointer"
+                className="text-gray-700 hover:text-blue-500 px-4 py-3 rounded-2xl text-xl font-medium transition-colors cursor-pointer"
               >
                 치료사 등록
               </div>
@@ -151,32 +149,6 @@ export default function Header() {
               </div>
             </div>
 
-            {/* 커뮤니티 드롭다운 */}
-            <div 
-              className="relative"
-              onMouseEnter={() => setIsCommunityDropdownOpen(true)}
-              onMouseLeave={() => setIsCommunityDropdownOpen(false)}
-            >
-              <div 
-                className="text-gray-700 hover:text-blue-500 px-4 py-3 rounded-2xl text-base font-medium transition-colors cursor-pointer"
-              >
-                커뮤니티
-              </div>
-
-              {/* 드롭다운 메뉴 */}
-              <div className={`absolute top-full left-0 mt-1 w-48 bg-white rounded-2xl shadow-lg border border-gray-200 z-50 transition-all duration-200 ${
-                isCommunityDropdownOpen 
-                  ? 'opacity-100 translate-y-0 visible' 
-                  : 'opacity-0 -translate-y-2 invisible'
-              }`}>
-                                <Link 
-                  href="/reviews" 
-                  className="block px-4 py-3 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-500 transition-colors rounded-2xl"
-                >
-                  후기 작성/보기
-                </Link>
-              </div>
-            </div>
 
             {/* 고객센터 드롭다운 */}
             <div 
@@ -185,41 +157,49 @@ export default function Header() {
               onMouseLeave={() => setIsSupportDropdownOpen(false)}
             >
               <div 
-                className="text-gray-700 hover:text-blue-500 px-4 py-3 rounded-2xl text-base font-medium transition-colors cursor-pointer"
+                className="text-gray-700 hover:text-blue-500 px-4 py-3 rounded-2xl text-xl font-medium transition-colors cursor-pointer"
               >
                 고객센터
               </div>
 
-              {/* 드롭다운 메뉴 */}
-              <div className={`absolute top-full left-0 mt-1 w-48 bg-white rounded-2xl shadow-lg border border-gray-200 z-50 transition-all duration-200 ${
+              {/* 드롭다운 메뉴 - 가로 레이아웃 */}
+              <div className={`absolute top-full left-0 mt-1 w-auto bg-white rounded-2xl shadow-lg border border-gray-200 z-50 transition-all duration-200 ${
                 isSupportDropdownOpen 
                   ? 'opacity-100 translate-y-0 visible' 
                   : 'opacity-0 -translate-y-2 invisible'
               }`}>
-                                <Link 
-                  href="/notice" 
-                  className="block px-4 py-3 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-500 transition-colors first:rounded-t-2xl"
-                >
-                  공지사항
-                </Link>
-                <Link 
-                  href="/faq" 
-                  className="block px-4 py-3 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-500 transition-colors"
-                >
-                  자주 묻는 질문 (FAQ)
-                </Link>
-                <Link 
-                  href="/refund-policy" 
-                  className="block px-4 py-3 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-500 transition-colors"
-                >
-                  환불규정
-                </Link>
-                <Link 
-                  href="/report" 
-                  className="block px-4 py-3 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-500 transition-colors last:rounded-b-2xl"
-                >
-                  직거래 신고
-                </Link>
+                <div className="flex flex-wrap gap-1 p-2 max-w-lg">
+                  <Link 
+                    href="/notice" 
+                    className="px-4 py-3 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-500 transition-colors rounded-xl whitespace-nowrap"
+                  >
+                    공지사항
+                  </Link>
+                  <Link 
+                    href="/faq" 
+                    className="px-4 py-3 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-500 transition-colors rounded-xl whitespace-nowrap"
+                  >
+                    자주 묻는 질문 (FAQ)
+                  </Link>
+                  <Link 
+                    href="/reviews" 
+                    className="px-4 py-3 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-500 transition-colors rounded-xl whitespace-nowrap"
+                  >
+                    후기 작성/보기
+                  </Link>
+                  <Link 
+                    href="/refund-policy" 
+                    className="px-4 py-3 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-500 transition-colors rounded-xl whitespace-nowrap"
+                  >
+                    환불규정
+                  </Link>
+                  <Link 
+                    href="/report" 
+                    className="px-4 py-3 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-500 transition-colors rounded-xl whitespace-nowrap"
+                  >
+                    직거래 신고
+                  </Link>
+                </div>
               </div>
             </div>
           </nav>
@@ -306,7 +286,7 @@ export default function Header() {
               <div>
                 <button
                   onClick={() => setIsMobileGuideOpen(!isMobileGuideOpen)}
-                  className="text-gray-700 hover:text-blue-500 w-full px-4 py-3 rounded-2xl text-lg font-medium text-left"
+                  className="text-gray-700 hover:text-blue-500 w-full px-4 py-3 rounded-2xl text-xl font-medium text-left"
                 >
                   이용안내
                 </button>
@@ -362,7 +342,7 @@ export default function Header() {
               <div>
                 <button
                   onClick={() => setIsMobileMatchingOpen(!isMobileMatchingOpen)}
-                  className="text-gray-700 hover:text-blue-500 w-full px-4 py-3 rounded-2xl text-lg font-medium text-left"
+                  className="text-gray-700 hover:text-blue-500 w-full px-4 py-3 rounded-2xl text-xl font-medium text-left"
                 >
                   홈티매칭
                 </button>
@@ -398,7 +378,7 @@ export default function Header() {
               <div>
                 <button
                   onClick={() => setIsMobileRegisterOpen(!isMobileRegisterOpen)}
-                  className="text-gray-700 hover:text-blue-500 w-full px-4 py-3 rounded-2xl text-lg font-medium text-left"
+                  className="text-gray-700 hover:text-blue-500 w-full px-4 py-3 rounded-2xl text-xl font-medium text-left"
                 >
                   치료사 등록
                 </button>
@@ -430,43 +410,18 @@ export default function Header() {
                 </div>
               </div>
 
-              {/* 모바일 커뮤니티 드롭다운 */}
-              <div>
-                <button
-                  onClick={() => setIsMobileCommunityOpen(!isMobileCommunityOpen)}
-                  className="text-gray-700 hover:text-blue-500 w-full px-4 py-3 rounded-2xl text-lg font-medium text-left"
-                >
-                  커뮤니티
-                </button>
-                <div className={`pl-6 space-y-1 transition-all duration-200 overflow-hidden ${
-                  isMobileCommunityOpen 
-                    ? 'max-h-16 opacity-100' 
-                    : 'max-h-0 opacity-0'
-                }`}>
-                  <Link 
-                    href="/reviews" 
-                    className="text-gray-600 hover:text-blue-500 block px-3 py-2 rounded-2xl text-sm transition-colors"
-                    onClick={() => {
-                      setIsMenuOpen(false);
-                      setIsMobileCommunityOpen(false);
-                    }}
-                  >
-                    후기 작성/보기
-              </Link>
-                </div>
-              </div>
 
               {/* 모바일 고객센터 드롭다운 */}
               <div>
                 <button
                   onClick={() => setIsMobileSupportOpen(!isMobileSupportOpen)}
-                  className="text-gray-700 hover:text-blue-500 w-full px-4 py-3 rounded-2xl text-lg font-medium text-left"
+                  className="text-gray-700 hover:text-blue-500 w-full px-4 py-3 rounded-2xl text-xl font-medium text-left"
                 >
                   고객센터
                 </button>
                 <div className={`pl-6 space-y-1 transition-all duration-200 overflow-hidden ${
                   isMobileSupportOpen 
-                    ? 'max-h-64 opacity-100' 
+                    ? 'max-h-80 opacity-100' 
                     : 'max-h-0 opacity-0'
                 }`}>
                   <Link 
@@ -508,7 +463,17 @@ export default function Header() {
                     }}
                   >
                     직거래 신고
-              </Link>
+                  </Link>
+                  <Link 
+                    href="/reviews" 
+                    className="text-gray-600 hover:text-blue-500 block px-3 py-2 rounded-2xl text-sm transition-colors"
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      setIsMobileSupportOpen(false);
+                    }}
+                  >
+                    후기 작성/보기
+                  </Link>
                 </div>
               </div>
               <div className="pt-4 pb-3 border-t border-gray-200">

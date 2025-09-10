@@ -17,14 +17,18 @@ export default function Footer() {
           {/* 브랜드 정보 */}
           <div className="col-span-1 md:col-span-2">
             <p className="text-gray-300 mb-4 leading-relaxed">
-              (주)모든별 키즈는 전문 치료사와 학부모를 안전하게 연결하는<br />
-              홈티칭 매칭 플랫폼입니다.<br />
-              아이에게 꼭 필요한 가장 효과적인 도움을 제공합니다.
+              모든별 키즈는 전문가와 학부모를 안전하게 연결하는 홈티칭 플랫폼입니다.
             </p>
             <div className="text-sm text-gray-400">
+              <p>모든별(주)</p>
+              <p>서울시 마포구 마포대로 92 효성해링턴 스퀘어 A동 3층</p>
+              <p>대표 정진우</p>
+              <p>사업자등록번호:</p>
+              <p>통신판매업 신고번호:</p>
               <p>대표번호: 010-4549-1903</p>
-              <p>이메일: help@momci.co.kr</p>
-              <p>운영시간: 평일 09:00 - 18:00</p>
+              <p>팩스번호:</p>
+              <p>개인정보 보호책임자: 정진우</p>
+              <p>everystar@naver.com</p>
             </div>
           </div>
 
@@ -93,7 +97,23 @@ export default function Footer() {
                   </ul>
                 </div>
               </li>
-              
+            </ul>
+            
+            {/* 1:1문의 정보 */}
+            <div className="mt-12">
+              <h4 className="font-semibold text-gray-300 mb-2">1:1문의</h4>
+              <div className="text-xs text-gray-400 leading-relaxed">
+                <p>※운영 시간 : 평일 10:00~18:00</p>
+                <p>(점심시간 13:00 ~ 14:00 제외/주말 및 공휴일 제외)</p>
+              </div>
+            </div>
+          </div>
+
+          {/* 두 번째 컬럼 - 제목 없음 */}
+          <div>
+            {/* 빈 제목 공간으로 첫 번째 컬럼과 정렬 */}
+            <div className="h-6 mb-4"></div>
+            <ul className="space-y-2 text-sm text-gray-300">
               {/* 치료사 등록 드롭다운 */}
               <li>
                 <button
@@ -119,33 +139,6 @@ export default function Footer() {
                   </ul>
                 </div>
               </li>
-            </ul>
-          </div>
-
-          {/* 고객지원 */}
-          <div>
-            <h3 className="font-semibold mb-4">고객지원</h3>
-            <ul className="space-y-2 text-sm text-gray-300">
-              {/* 커뮤니티 드롭다운 */}
-              <li>
-                <button
-                  onClick={() => toggleDropdown('community')}
-                  className="text-left hover:text-white transition-colors"
-                >
-                  커뮤니티
-                </button>
-                <div className={`overflow-hidden transition-all duration-500 ease-out ${
-                  openDropdown === 'community' ? 'max-h-16 opacity-100' : 'max-h-0 opacity-0'
-                }`} style={{display: 'block'}}>
-                  <ul className="mt-2 ml-4 space-y-1 block">
-                    <li>
-                      <Link href="/reviews" className="block hover:text-white transition-colors">
-                        후기/작성 보기
-                      </Link>
-                    </li>
-                  </ul>
-                </div>
-              </li>
               
               {/* 고객센터 드롭다운 */}
               <li>
@@ -156,7 +149,7 @@ export default function Footer() {
                   고객센터
                 </button>
                 <div className={`overflow-hidden transition-all duration-500 ease-out ${
-                  openDropdown === 'support' ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'
+                  openDropdown === 'support' ? 'max-h-48 opacity-100' : 'max-h-0 opacity-0'
                 }`} style={{display: 'block'}}>
                   <ul className="mt-2 ml-4 space-y-1 block">
                     <li>
@@ -167,6 +160,11 @@ export default function Footer() {
                     <li>
                       <Link href="/faq" className="block hover:text-white transition-colors">
                         자주 묻는 질문(FAQ)
+                      </Link>
+                    </li>
+                    <li>
+                      <Link href="/reviews" className="block hover:text-white transition-colors">
+                        후기 작성/보기
                       </Link>
                     </li>
                     <li>
@@ -196,11 +194,11 @@ export default function Footer() {
               <Link href="/privacy" className="hover:text-white transition-colors font-semibold">
                 개인정보처리방침
               </Link>
-              <Link href="/youth-protection" className="hover:text-white transition-colors">
-                청소년 보호정책
+              <Link href="/location-terms" className="hover:text-white transition-colors">
+                위치기반서비스 이용약관
               </Link>
-              <Link href="/marketing" className="hover:text-white transition-colors">
-                마케팅 동의
+              <Link href="/youth-protection" className="hover:text-white transition-colors">
+                청소년보호정책
               </Link>
             </div>
              <div className="text-sm text-gray-400">

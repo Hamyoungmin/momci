@@ -90,6 +90,7 @@ export default function TeacherSearchBoard() {
     accountHolder: '',
     accountNumber: '',
     hourlyRate: '',
+    applicationSource: '',
     agreeTerms: false
   });
 
@@ -154,7 +155,7 @@ export default function TeacherSearchBoard() {
   // 치료사 등록 처리
   const handleTeacherRegistration = () => {
     // 필수 항목 검증
-    if (!formData.name || !formData.phone || !formData.email || !formData.agreeTerms) {
+    if (!formData.name || !formData.phone || !formData.email || !formData.applicationSource || !formData.agreeTerms) {
       alert('필수 항목을 모두 입력해주세요.');
       return;
     }
@@ -237,6 +238,7 @@ export default function TeacherSearchBoard() {
       accountHolder: '',
       accountNumber: '',
       hourlyRate: '',
+      applicationSource: '',
       agreeTerms: false
     });
 
@@ -800,9 +802,9 @@ export default function TeacherSearchBoard() {
                     <h4 className="text-xl font-bold text-gray-900">프로필 정보 (학부모 공개)</h4>
                   </div>
                   
-                  {/* 치료 활동 및 경력 */}
+                  {/* 치료 철학 및 강점 */}
                   <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">치료 활동 및 경력 *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">치료 철학 및 강점 *</label>
                     <p className="text-sm text-gray-500 mb-3">
                       어떤 치료 분야에서 어떤 활동을 해왔는지, 어떤 경험과 성과를 가지고 계신지 자세히 작성해주세요. 
                       학부모님께 공개되는 내용입니다.
@@ -816,9 +818,9 @@ export default function TeacherSearchBoard() {
                     />
                   </div>
                   
-                  {/* 주요 치료 경력/전문 */}
+                  {/* 주요 치료 경험 및 사례 */}
                   <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">주요 치료 경력/전문 *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">주요 치료 경험 및 사례 *</label>
                     <p className="text-sm text-gray-500 mb-3">
                       보유하신 전문 분야와 특화된 치료 기법, 주요 경력사항을 작성해주세요. 
                       (예: 병원명, 근무기간, 담당 업무, 보유 자격증 등)
@@ -844,10 +846,36 @@ export default function TeacherSearchBoard() {
                       className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                       <option value="">경력을 선택해주세요</option>
                       <option>1년 미만</option>
-                      <option>1-2년</option>
-                      <option>3-4년</option>
-                      <option>5-7년</option>
-                      <option>8년 이상</option>
+                      <option>1년</option>
+                      <option>2년</option>
+                      <option>3년</option>
+                      <option>4년</option>
+                      <option>5년</option>
+                      <option>6년</option>
+                      <option>7년</option>
+                      <option>8년</option>
+                      <option>9년</option>
+                      <option>10년</option>
+                      <option>11년</option>
+                      <option>12년</option>
+                      <option>13년</option>
+                      <option>14년</option>
+                      <option>15년</option>
+                      <option>16년</option>
+                      <option>17년</option>
+                      <option>18년</option>
+                      <option>19년</option>
+                      <option>20년</option>
+                      <option>21년</option>
+                      <option>22년</option>
+                      <option>23년</option>
+                      <option>24년</option>
+                      <option>25년</option>
+                      <option>26년</option>
+                      <option>27년</option>
+                      <option>28년</option>
+                      <option>29년</option>
+                      <option>30년</option>
                     </select>
                   </div>
 
@@ -914,12 +942,12 @@ export default function TeacherSearchBoard() {
                   {/* 전문 분야 */}
                   <div className="mb-4">
                     <label className="block text-sm font-medium text-gray-700 mb-3">전문 분야 (중복 선택 가능)</label>
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-4 gap-3">
                       {[
-                        '언어치료', 'ABA치료', '놀이치료', '작업치료', 
-                        '행동치료', '특수교육', '물리치료', '감각통합치료',
-                        '인지치료', '미술치료', '음악치료', '심리치료',
-                        '발달재활', '학습치료'
+                        '언어치료', '놀이치료', '감각통합', '인지학습',
+                        'ABA치료', '작업치료', '물리/운동치료', '미술치료',
+                        '음악치료', '특수체육', '특수교사', '임상심리',
+                        '모니터링'
                       ].map(field => (
                         <label key={field} className="inline-flex items-center">
                           <input 
@@ -954,9 +982,9 @@ export default function TeacherSearchBoard() {
                     업로드하신 서류들은 관리자 검토 용도로만 사용되며, 학부모님께 공개되지 않습니다.
                   </p>
                   
-                  {/* 학력 증빙 서류 */}
+                  {/* 성범죄 경력 조회 증명서 */}
                   <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">학력 증빙 서류 (졸업증명서 등) *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">성범죄 경력 조회 증명서 *</label>
                     <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center relative cursor-pointer hover:border-blue-300 transition-colors">
                       <input
                         type="file"
@@ -965,8 +993,7 @@ export default function TeacherSearchBoard() {
                         onChange={(e) => handleFileUpload(e, setEducationFiles)}
                         className="absolute inset-0 opacity-0 cursor-pointer"
                       />
-                      <p className="text-base text-gray-500">파일을 여기에 드래그하거나 클릭하여 업로드하세요.</p>
-                      <p className="text-sm text-gray-400 mt-1">PDF, JPG, PNG 파일만 가능</p>
+                      <p className="text-base text-gray-500">파일을 여기에 드래그하거나 클릭하며 업로드하세요.</p>
                     </div>
                     {educationFiles.length > 0 && (
                       <div className="mt-2 space-y-1">
@@ -985,9 +1012,9 @@ export default function TeacherSearchBoard() {
                     )}
                   </div>
                   
-                  {/* 경력 증빙 서류 */}
+                  {/* (선택) 기타 첨부파일 */}
                   <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">경력 증빙 서류 (재직증명서 등) *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">(선택) 기타 첨부파일</label>
                     <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center relative cursor-pointer hover:border-blue-300 transition-colors">
                       <input
                         type="file"
@@ -996,8 +1023,7 @@ export default function TeacherSearchBoard() {
                         onChange={(e) => handleFileUpload(e, setExperienceFiles)}
                         className="absolute inset-0 opacity-0 cursor-pointer"
                       />
-                      <p className="text-base text-gray-500">파일을 여기에 드래그하거나 클릭하여 업로드하세요.</p>
-                      <p className="text-sm text-gray-400 mt-1">PDF, JPG, PNG 파일만 가능</p>
+                      <p className="text-base text-gray-500">파일을 여기에 드래그하거나 클릭하며 업로드하세요.</p>
                     </div>
                     {experienceFiles.length > 0 && (
                       <div className="mt-2 space-y-1">
@@ -1016,9 +1042,9 @@ export default function TeacherSearchBoard() {
                     )}
                   </div>
                   
-                  {/* 자격증 사본 */}
+                  {/* (선택) 1분 자기소개 영상 */}
                   <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">자격증 사본 *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">(선택) 1분 자기소개 영상</label>
                     <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center relative cursor-pointer hover:border-blue-300 transition-colors">
                       <input
                         type="file"
@@ -1027,8 +1053,7 @@ export default function TeacherSearchBoard() {
                         onChange={(e) => handleFileUpload(e, setCertificateFiles)}
                         className="absolute inset-0 opacity-0 cursor-pointer"
                       />
-                      <p className="text-base text-gray-500">파일을 여기에 드래그하거나 클릭하여 업로드하세요.</p>
-                      <p className="text-sm text-gray-400 mt-1">PDF, JPG, PNG 파일만 가능</p>
+                      <p className="text-base text-gray-500">파일을 여기에 드래그하거나 클릭하며 업로드하세요.</p>
                     </div>
                     {certificateFiles.length > 0 && (
                       <div className="mt-2 space-y-1">
@@ -1045,6 +1070,34 @@ export default function TeacherSearchBoard() {
                         ))}
                       </div>
                     )}
+                  </div>
+                </div>
+
+                {/* 지원 경로 섹션 */}
+                <div className="border-2 border-blue-200 rounded-lg p-4 bg-blue-50 mb-6">
+                  <div className="flex items-center mb-4">
+                    <div className="bg-blue-100 rounded-full p-2 mr-3">
+                      <span className="text-blue-600 text-lg">🔍</span>
+                    </div>
+                    <h4 className="text-xl font-bold text-gray-900">지원 경로</h4>
+                  </div>
+                  
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">경로를 선택해주세요. *</label>
+                    <select 
+                      value={formData.applicationSource}
+                      onChange={(e) => handleFormChange('applicationSource', e.target.value)}
+                      className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                      <option value="">경로를 선택해주세요.</option>
+                      <option value="인터넷 검색 (네이버, 구글 등)">인터넷 검색 (네이버, 구글 등)</option>
+                      <option value="관련 구인/구직 사이트 (아이소리몰, 오티브레인 등)">관련 구인/구직 사이트 (아이소리몰, 오티브레인 등)</option>
+                      <option value="온라인 커뮤니티 (발달/재활 관련 카페, 오픈채팅방 등)">온라인 커뮤니티 (발달/재활 관련 카페, 오픈채팅방 등)</option>
+                      <option value="SNS (인스타그램, 블로그, 유튜브 등)">SNS (인스타그램, 블로그, 유튜브 등)</option>
+                      <option value="지인 추천 / 소개">지인 추천 / 소개</option>
+                      <option value="학교/협회 추천">학교/협회 추천</option>
+                      <option value="병원 / 관련 기관 추천">병원 / 관련 기관 추천</option>
+                      <option value="기타">기타</option>
+                    </select>
                   </div>
                 </div>
 
@@ -1106,7 +1159,6 @@ export default function TeacherSearchBoard() {
                         className="absolute inset-0 opacity-0 cursor-pointer"
                       />
                       <p className="text-base text-gray-500">통장 첫 페이지 사본을 업로드해주세요.</p>
-                      <p className="text-sm text-gray-400 mt-1">PDF, JPG, PNG 파일만 가능</p>
                     </div>
                     {bankBookFile && (
                       <div className="mt-2">
@@ -1134,13 +1186,13 @@ export default function TeacherSearchBoard() {
                   </div>
                   
                   <div className="space-y-3 text-base text-gray-700 mb-4">
-                    <p>1. 제공한 개인정보는 플랫폼 내 치료사 활동, 정산, 세금 관련 업무에서만 사용되며, 제3자에게 제공되지 않습니다.</p>
-                    <p>2. 제출한 자격증명서와 경력서류는 관리자 검토 후 승인여부를 결정하며, 허위정보 제공 시 등록이 취소될 수 있습니다.</p>
-                    <p>3. 치료사 활동 중 발생하는 분쟁 또는 갈등에 대해서는 플랫폼의 중재를 받으며, 관련 규정에 따라 해결합니다.</p>
-                    <p>4. 플랫폼은 치료사와 학부모 간의 매칭 서비스를 제공하며, 치료의 질과 효과에 대해서는 치료사가 직접 책임집니다.</p>
-                    <p>5. 첫 수업 수수료를 제외한 모든 수업료는 100% 치료사에게 지급되며, 정산은 매월 말일 기준으로 익월 10일에 지급됩니다.</p>
-                    <p>6. 외부 직거래는 금지되며, 발견 시 계약해지 및 법적 조치가 취해질 수 있습니다. 모든 거래는 플랫폼 내에서만 진행됩니다.</p>
-                    <p>7. 본 약관에 동의함으로써 모든별 키즈의 치료사로서 전문성과 책임감을 가지고 활동할 것을 서약합니다.</p>
+                    <p>1. 본인이 제출하는 프로필의 모든 정보(학력, 경력, 자격증 등)는 사실이며, 허위 기재 사실이 없음을 확인합니다.</p>
+                    <p>2. 매칭이 진행되는 학부모 회원에게 본인의 프로필 정보가 제공됨에 동의합니다.</p>
+                    <p>3. 매칭 시 확정된 주당 수업 횟수만큼 첫 수업료가 매칭 성사 수수료로 발생하는 것에 동의합니다.</p>
+                    <p>4. 본인은 &apos;모든별 키즈&apos;에 고용된 근로자가 아니며, 자신의 전문성과 판단에 따라 서비스를 제공하는 독립적인 전문가(프리랜서)로서 활동함에 동의합니다.</p>
+                    <p>5. 플랫폼을 통하지 않은 외부 거래(직거래, 현금 결제 등)는 엄격히 금지되며, 위반 시 경고 없이 계정이 영구 정지될 수 있음에 동의합니다.</p>
+                    <p>6. 학부모님과 공식적으로 확정된 스케줄을 사전 협의 없이 임의로 변경하거나 취소할 경우, 서비스 이용이 제한될 수 있음에 동의합니다.</p>
+                    <p>7. 학부모님과의 첫 인터뷰는 상호 알아가는 과정으로, 별도의 비용 없이 진행하는 것을 원칙으로 합니다.</p>
                   </div>
                   
                   <div className="flex items-center mb-4">
@@ -1158,18 +1210,12 @@ export default function TeacherSearchBoard() {
             
             {/* 팝업 푸터 */}
             <div className="flex-shrink-0 p-6 border-t border-gray-200 bg-gray-50">
-              <div className="flex justify-end space-x-3">
-                <button 
-                  onClick={closePopup}
-                  className="px-8 py-3 text-base text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  취소
-                </button>
+              <div className="flex justify-center">
                 <button 
                   onClick={handleTeacherRegistration}
                   className="px-10 py-3 text-base bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
                 >
-                  프로필 등록 진행하기
+                  프로필 등록 완료하기
                 </button>
               </div>
             </div>

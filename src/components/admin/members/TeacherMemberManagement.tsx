@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import SearchFilters from './SearchFilters';
 import MemberTable, { TableRow } from './MemberTable';
 import MemberDetailModal from './MemberDetailModal';
+import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 interface TeacherMember {
   id: string;
@@ -20,6 +22,7 @@ interface TeacherMember {
   totalMatches: number;
   certificationBadge: 'certified' | 'regular';
   lastActivity: string;
+  isVerified: boolean; // 모든별 인증 상태
 }
 
 export default function TeacherMemberManagement() {
@@ -29,13 +32,72 @@ export default function TeacherMemberManagement() {
   const [members, setMembers] = useState<TeacherMember[]>([]);
   // const [loading, setLoading] = useState(true);
 
+  // 모든별 인증 상태 토글 함수
+  const toggleVerification = async (memberId: string, currentStatus: boolean) => {
+    try {
+      const userRef = doc(db, 'users', memberId);
+      await updateDoc(userRef, {
+        isVerified: !currentStatus,
+        verifiedAt: !currentStatus ? new Date() : null,
+      });
+      
+      // 로컬 상태 업데이트
+      setMembers(prev => prev.map(member => 
+        member.id === memberId 
+          ? { ...member, isVerified: !currentStatus }
+          : member
+      ));
+      
+      console.log(`사용자 ${memberId}의 모든별 인증 상태를 ${!currentStatus ? '활성화' : '비활성화'}했습니다.`);
+      alert(`모든별 인증이 ${!currentStatus ? '부여' : '제거'}되었습니다.`);
+      
+    } catch (error) {
+      console.error('모든별 인증 상태 업데이트 실패:', error);
+      alert('모든별 인증 상태 업데이트에 실패했습니다.');
+    }
+  };
+
   useEffect(() => {
     const fetchMembers = async () => {
       try {
         // setLoading(true);
-        // TODO: Firebase에서 실제 치료사 회원 데이터 조회
-        // const membersData = await getTeacherMembers();
-        setMembers([]);
+        console.log('치료사 회원 데이터 로딩 시작...');
+        
+        // Firebase에서 치료사 타입 사용자들 가져오기
+        const usersSnapshot = await getDocs(collection(db, 'users'));
+        const teacherMembers: TeacherMember[] = [];
+        
+        usersSnapshot.docs.forEach((doc) => {
+          const userData = doc.data();
+          if (userData.userType === 'therapist' || userData.userType === 'teacher') {
+            const member: TeacherMember = {
+              id: doc.id,
+              name: userData.name || '이름 없음',
+              email: userData.email || '',
+              phone: userData.phone || '연락처 없음',
+              joinDate: userData.createdAt 
+                ? new Date(userData.createdAt.toDate()).toLocaleDateString('ko-KR')
+                : '가입일 미상',
+              region: userData.region || '지역 미상',
+              status: userData.status || 'active',
+              profileStatus: userData.profileStatus || 'pending',
+              specialties: userData.specialties || ['정보 없음'],
+              experience: userData.experience || 0,
+              rating: userData.rating || 0,
+              totalMatches: userData.totalMatches || 0,
+              certificationBadge: userData.certificationBadge || 'regular',
+              lastActivity: userData.lastLoginAt 
+                ? new Date(userData.lastLoginAt.toDate()).toLocaleDateString('ko-KR')
+                : '활동 기록 없음',
+              isVerified: userData.isVerified || false, // 모든별 인증 상태
+            };
+            teacherMembers.push(member);
+          }
+        });
+        
+        console.log(`${teacherMembers.length}명의 치료사 회원 데이터를 불러왔습니다.`);
+        setMembers(teacherMembers);
+        
       } catch (error) {
         console.error('치료사 회원 데이터 로딩 실패:', error);
       } finally {
@@ -95,6 +157,35 @@ export default function TeacherMemberManagement() {
     }
   };
 
+  // 모든별 인증 상태 표시 및 토글 버튼
+  const getVerificationBadge = (member: TeacherMember) => {
+    return (
+      <div className="flex items-center space-x-2">
+        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+          member.isVerified 
+            ? 'bg-blue-100 text-blue-800' 
+            : 'bg-gray-100 text-gray-600'
+        }`}>
+          {member.isVerified && <span className="mr-1">⭐</span>}
+          {member.isVerified ? '모든별 인증' : '일반 회원'}
+        </span>
+        <button
+          onClick={(e) => {
+            e.stopPropagation(); // 테이블 행 클릭 이벤트 방지
+            toggleVerification(member.id, member.isVerified);
+          }}
+          className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+            member.isVerified
+              ? 'bg-red-100 text-red-700 hover:bg-red-200'
+              : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+          }`}
+        >
+          {member.isVerified ? '제거' : '부여'}
+        </button>
+      </div>
+    );
+  };
+
   const columns = [
     { key: 'name', label: '이름' },
     { key: 'email', label: '이메일' },
@@ -128,6 +219,11 @@ export default function TeacherMemberManagement() {
     { key: 'status', label: '상태', render: (value: unknown) => getStatusBadge(value as TeacherMember['status']) },
     { key: 'profileStatus', label: '프로필', render: (value: unknown) => getProfileStatusBadge(value as TeacherMember['profileStatus']) },
     { key: 'certificationBadge', label: '인증', render: (value: unknown) => getCertificationBadge(value as TeacherMember['certificationBadge']) },
+    { 
+      key: 'isVerified', 
+      label: '모든별 인증', 
+      render: (value: unknown, row: unknown) => getVerificationBadge(row as TeacherMember)
+    },
     { key: 'totalMatches', label: '매칭수' },
     { key: 'lastActivity', label: '최근 활동' }
   ];
@@ -192,9 +288,10 @@ export default function TeacherMemberManagement() {
 
         <div className="bg-white rounded-xl border-2 border-blue-100 p-6 shadow-sm hover:shadow-lg transition-all duration-300 group">
           <div>
-            <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">인증 치료사</p>
-            <p className="text-2xl font-bold text-purple-600">
-              {members.filter(m => m.certificationBadge === 'certified').length}명
+            <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">모든별 인증</p>
+            <p className="text-2xl font-bold text-purple-600 flex items-center">
+              <span className="mr-2">⭐</span>
+              {members.filter(m => m.isVerified).length}명
             </p>
           </div>
         </div>

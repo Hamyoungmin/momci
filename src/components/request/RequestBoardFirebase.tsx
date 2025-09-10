@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { collection, addDoc, onSnapshot, orderBy, query, serverTimestamp, doc, getDoc } from 'firebase/firestore';
+import { collection, addDoc, onSnapshot, orderBy, query, where, serverTimestamp, doc, getDoc } from 'firebase/firestore';
 import { db, auth } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
+import TherapistApplicationCard from './TherapistApplicationCard';
 
 // 게시글 타입 정의
 interface Post {
@@ -52,6 +53,30 @@ interface Post {
   hasIdVerification?: boolean;
 }
 
+// 치료사 지원자 정보 타입
+interface TherapistApplication {
+  id: string;
+  postId: string;
+  applicantId: string;
+  postAuthorId: string;
+  message: string;
+  status: 'pending' | 'approved' | 'rejected' | 'withdrawn';
+  createdAt: Date | { seconds: number; nanoseconds: number; toDate: () => Date };
+  // 치료사 프로필 정보
+  therapistName: string;
+  therapistSpecialty: string;
+  therapistExperience: number;
+  therapistRating: number;
+  therapistReviewCount: number;
+  therapistProfileImage?: string;
+  therapistCertifications?: string[];
+  therapistSpecialtyTags?: string[];
+  // 인증 상태
+  hasIdVerification: boolean;
+  hasCertification: boolean;
+  hasExperienceProof: boolean;
+  isVerified: boolean;
+}
 
 export default function RequestBoardFirebase() {
   const { currentUser, userData } = useAuth();
@@ -92,6 +117,11 @@ export default function RequestBoardFirebase() {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [selectedProfile, setSelectedProfile] = useState<Post | null>(null);
   const [isProfileModalClosing, setIsProfileModalClosing] = useState(false);
+
+  // 치료사 지원자 정보 상태
+  const [applications, setApplications] = useState<TherapistApplication[]>([]);
+  const [loadingApplications, setLoadingApplications] = useState(false);
+  const [applicationsUnsubscribe, setApplicationsUnsubscribe] = useState<(() => void) | null>(null);
 
   const sidebarItems = ['홈티매칭', '서울', '인천/경기북부', '경기남부', '충청,강원,대전', '전라,경상,부산'];
   const tabs = ['서울', '인천/경기북부', '경기남부', '충청,강원,대전', '전라,경상,부산'];
@@ -139,6 +169,7 @@ export default function RequestBoardFirebase() {
   useEffect(() => {
     const q = query(
       collection(db, 'posts'),
+      where('type', '==', 'request'),
       orderBy('createdAt', 'desc')
     );
 
@@ -197,6 +228,80 @@ export default function RequestBoardFirebase() {
     }, 300);
   };
 
+  // 실시간 지원자 정보 리스너 설정
+  const setupApplicationsListener = (postId: string) => {
+    setLoadingApplications(true);
+    console.log('🔍 실시간 지원자 정보 리스너 설정 - 게시글 ID:', postId);
+    
+    try {
+      // applications 컬렉션에서 해당 게시글의 지원자들 실시간 감지
+      const applicationsQuery = query(
+        collection(db, 'applications'), 
+        where('postId', '==', postId),
+        orderBy('createdAt', 'desc')
+      );
+      
+      const unsubscribe = onSnapshot(applicationsQuery, async (snapshot) => {
+        console.log('📡 지원자 정보 업데이트 감지');
+        const applicationsList: TherapistApplication[] = [];
+        
+        // 각 지원자의 프로필 정보 가져오기
+        for (const applicationDoc of snapshot.docs) {
+          const applicationData = applicationDoc.data();
+          
+          // 치료사 프로필 정보 가져오기
+          const therapistDoc = await getDoc(doc(db, 'users', applicationData.applicantId));
+          let therapistProfile = null;
+          if (therapistDoc.exists()) {
+            therapistProfile = therapistDoc.data();
+          }
+          
+          const application: TherapistApplication = {
+            id: applicationDoc.id,
+            postId: applicationData.postId,
+            applicantId: applicationData.applicantId,
+            postAuthorId: applicationData.postAuthorId,
+            message: applicationData.message,
+            status: applicationData.status,
+            createdAt: applicationData.createdAt,
+            // 치료사 프로필 정보 (기본값 포함)
+            therapistName: therapistProfile?.name || '익명',
+            therapistSpecialty: therapistProfile?.specialty || '언어재활사',
+            therapistExperience: therapistProfile?.experience || 0,
+            therapistRating: therapistProfile?.rating || 0,
+            therapistReviewCount: therapistProfile?.reviewCount || 0,
+            therapistProfileImage: therapistProfile?.profileImage,
+            therapistCertifications: therapistProfile?.certifications || [],
+            therapistSpecialtyTags: therapistProfile?.specialtyTags || [],
+            // 인증 상태
+            hasIdVerification: therapistProfile?.hasIdVerification || false,
+            hasCertification: therapistProfile?.hasCertification || false,
+            hasExperienceProof: therapistProfile?.hasExperienceProof || false,
+            isVerified: therapistProfile?.isVerified || false,
+          };
+          
+          applicationsList.push(application);
+        }
+        
+        console.log('✅ 실시간 지원자 정보 업데이트:', applicationsList);
+        setApplications(applicationsList);
+        setLoadingApplications(false);
+      }, (error) => {
+        console.error('❌ 실시간 지원자 정보 리스너 오류:', error);
+        setApplications([]);
+        setLoadingApplications(false);
+      });
+      
+      return unsubscribe;
+      
+    } catch (error) {
+      console.error('❌ 지원자 정보 리스너 설정 오류:', error);
+      setApplications([]);
+      setLoadingApplications(false);
+      return () => {}; // 빈 함수 반환
+    }
+  };
+
   // 상세 요청 모달 열기 - 게시글 작성 내용 표시
   const openProfileModal = async (post: Post) => {
     console.log('🔍 요청 모달 열기 - 게시글 ID:', post.id);
@@ -223,6 +328,15 @@ export default function RequestBoardFirebase() {
       setSelectedProfile(requestProfile);
       setShowProfileModal(true);
       
+      // 기존 리스너 정리
+      if (applicationsUnsubscribe) {
+        applicationsUnsubscribe();
+      }
+      
+      // 실시간 지원자 정보 리스너 설정
+      const unsubscribe = setupApplicationsListener(post.id);
+      setApplicationsUnsubscribe(() => unsubscribe);
+      
     } catch (error) {
       console.error('❌ 요청 모달 열기 오류:', error);
       
@@ -234,17 +348,32 @@ export default function RequestBoardFirebase() {
       
       setSelectedProfile(basicProfile);
       setShowProfileModal(true);
+      setApplications([]);
     }
   };
 
+  // 1:1 채팅 시작 함수
+  const handleChatStart = (therapistId: string) => {
+    console.log('💬 1:1 채팅 시작 - 치료사 ID:', therapistId);
+    // TODO: 채팅 시스템으로 이동 (기존 채팅 기능이 있다면 해당 라우터로 이동)
+    alert('1:1 채팅 기능은 준비 중입니다.');
+  };
 
   // 상세 프로필 모달 닫기
   const closeProfileModal = () => {
     setIsProfileModalClosing(true);
+    
+    // 리스너 정리
+    if (applicationsUnsubscribe) {
+      applicationsUnsubscribe();
+      setApplicationsUnsubscribe(null);
+    }
+    
     setTimeout(() => {
       setShowProfileModal(false);
       setIsProfileModalClosing(false);
       setSelectedProfile(null);
+      setApplications([]); // 지원자 정보도 초기화
     }, 300);
   };
 
@@ -431,7 +560,17 @@ export default function RequestBoardFirebase() {
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showProfileModal]);
+
+  // 컴포넌트 언마운트 시 리스너 정리
+  useEffect(() => {
+    return () => {
+      if (applicationsUnsubscribe) {
+        applicationsUnsubscribe();
+      }
+    };
+  }, [applicationsUnsubscribe]);
 
   return (
     <section className="bg-gray-50 min-h-screen">
@@ -658,7 +797,7 @@ export default function RequestBoardFirebase() {
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
-                선생님에게 요청하기
+                선생님께 요청하기
               </button>
             ) : (
               <div className="text-center">
@@ -669,7 +808,7 @@ export default function RequestBoardFirebase() {
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
-                  선생님에게 요청하기
+                  선생님께 요청하기
                 </button>
                 <p className="text-sm text-gray-600">
                   {currentUser ? 
@@ -701,9 +840,12 @@ export default function RequestBoardFirebase() {
                   <div className="bg-blue-500 text-white">
                     <div className="grid grid-cols-12 gap-4 px-6 py-4">
                       <div className="col-span-1 text-center font-medium">번호</div>
+                      <div className="col-span-2 text-center font-medium">분야</div>
                       <div className="col-span-2 text-center font-medium">지역</div>
-                      <div className="col-span-7 text-left font-medium">제목</div>
-                      <div className="col-span-2 text-center font-medium">진행</div>
+                      <div className="col-span-2 text-center font-medium">나이/성별</div>
+                      <div className="col-span-2 text-center font-medium">주당횟수/희망시간</div>
+                      <div className="col-span-2 text-center font-medium">희망금액(회당)</div>
+                      <div className="col-span-1 text-center font-medium">진행</div>
                           </div>
                         </div>
                         
@@ -721,6 +863,13 @@ export default function RequestBoardFirebase() {
                             })()}
                           </div>
                           
+                          {/* 분야 */}
+                          <div className="col-span-2 text-center">
+                            <span className="inline-block px-2 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
+                              {post.treatment}
+                            </span>
+                          </div>
+                          
                           {/* 지역 */}
                           <div className="col-span-2 text-center">
                             <span className="inline-block px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
@@ -728,44 +877,76 @@ export default function RequestBoardFirebase() {
                             </span>
                           </div>
                           
-                          {/* 제목 */}
-                          <div className="col-span-7 text-left">
-                            <div className="flex items-center space-x-3">
-                              <div className="flex-1">
-                                <h3 className="text-gray-900 font-medium text-base mb-1">
-                                  {post.age} {post.gender} {post.frequency} {post.treatment} 홈티 모집
-                                </h3>
-                                <div className="flex items-center space-x-2 text-sm text-gray-600">
-                                  <span>{post.timeDetails}</span>
-                                  {post.price && (
-                                    <>
-                                      <span>•</span>
-                                      <span className="text-blue-600 font-medium">
-                            회기당 {(() => {
-                              const priceStr = post.price.toString();
-                              if (priceStr.includes('원')) return priceStr;
-                              const numericPrice = priceStr.replace(/[^0-9]/g, '');
-                              return numericPrice.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '원';
-                            })()}
-                            </span>
-                                    </>
-                                  )}
-                                </div>
-                          </div>
-                        </div>
-                      </div>
-                      
-                          {/* 진행 상태 */}
+                          {/* 나이/성별 */}
                           <div className="col-span-2 text-center">
+                            <div className="text-gray-900 font-medium text-sm">
+                              {post.age} {post.gender}
+                            </div>
+                          </div>
+                          
+                          {/* 주당횟수/희망시간 */}
+                          <div className="col-span-2 text-center">
+                            <div className="text-gray-900 text-sm">
+                              <div className="font-medium">{post.frequency}</div>
+                              <div className="text-xs text-gray-600 mt-1">{post.timeDetails}</div>
+                            </div>
+                          </div>
+                          
+                          {/* 희망금액(회당) */}
+                          <div className="col-span-2 text-center">
+                            <div className="text-blue-600 font-medium text-sm">
+                              {post.price && (() => {
+                                const priceStr = post.price.toString();
+                                if (priceStr.includes('원')) return priceStr;
+                                const numericPrice = priceStr.replace(/[^0-9]/g, '');
+                                return numericPrice.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '원';
+                              })()}
+                            </div>
+                          </div>
+                          
+                          {/* 진행 상태 */}
+                          <div className="col-span-1 text-center">
                             {(() => {
-                              const statusInfo = getStatusDisplay(post.status || 'matching');
+                              const status = post.status || 'matching';
+                              let statusInfo;
+                              
+                              switch(status) {
+                                case 'matching':
+                                  statusInfo = {
+                                    text: '매칭중',
+                                    bgColor: 'bg-orange-100',
+                                    textColor: 'text-orange-700'
+                                  };
+                                  break;
+                                case 'meeting':
+                                  statusInfo = {
+                                    text: '인터뷰중',
+                                    bgColor: 'bg-yellow-100', 
+                                    textColor: 'text-yellow-700'
+                                  };
+                                  break;
+                                case 'completed':
+                                  statusInfo = {
+                                    text: '매칭완료',
+                                    bgColor: 'bg-green-100',
+                                    textColor: 'text-green-700'
+                                  };
+                                  break;
+                                default:
+                                  statusInfo = {
+                                    text: '매칭중',
+                                    bgColor: 'bg-orange-100',
+                                    textColor: 'text-orange-700'
+                                  };
+                              }
+                              
                               return (
-                                <span className={`inline-block px-3 py-1 ${statusInfo.bgColor} ${statusInfo.textColor} rounded-full text-sm font-medium`}>
+                                <span className={`inline-block px-2 py-1 ${statusInfo.bgColor} ${statusInfo.textColor} rounded-full text-xs font-medium`}>
                                   {statusInfo.text}
                                 </span>
                               );
                             })()}
-                        </div>
+                          </div>
                         </div>
                       ))}
                       </div>
@@ -834,7 +1015,7 @@ export default function RequestBoardFirebase() {
         <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50">
           <div className={`bg-white rounded-lg p-8 max-w-6xl w-[95vw] shadow-xl border-4 border-blue-500 max-h-[90vh] overflow-y-auto create-post-modal ${isModalClosing ? 'animate-slideOut' : 'animate-slideIn'}`}>
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">선생님에게 요청하기</h2>
+              <h2 className="text-2xl font-bold text-gray-900">선생님께 요청하기</h2>
               <button
                 onClick={closeCreatePostModal}
                 className="text-gray-400 hover:text-gray-600 text-2xl"
@@ -869,6 +1050,8 @@ export default function RequestBoardFirebase() {
                     <option value="미술치료">미술치료</option>
                     <option value="특수체육">특수체육</option>
                     <option value="특수교사">특수교사</option>
+                    <option value="모니터링">모니터링</option>
+                    <option value="임상심리">임상심리</option>
                   </select>
                 </div>
                 <div>
@@ -877,7 +1060,7 @@ export default function RequestBoardFirebase() {
                     type="text"
                     value={newPost.age}
                     onChange={(e) => setNewPost(prev => ({ ...prev, age: e.target.value }))}
-                    placeholder="예: 초1, 5세"
+                    placeholder="5세, 36개월"
                     className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
                   />
@@ -912,26 +1095,48 @@ export default function RequestBoardFirebase() {
                 </div>
               </div>
 
-              {/* 희망 시간 | 회당 희망 금액 */}
+              {/* 요일 / 시간 | 회당 희망 금액 */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">희망 시간</label>
-                  <input
-                    type="text"
-                    value={newPost.timeDetails}
-                    onChange={(e) => setNewPost(prev => ({ ...prev, timeDetails: e.target.value }))}
-                    placeholder="예: 월,수 5시~6시"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
+                  <label className="block text-sm font-medium text-gray-700 mb-2">요일 / 시간</label>
+                  <div className="relative flex items-center border border-gray-300 rounded-2xl focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent">
+                    <input
+                      type="text"
+                      value={newPost.timeDetails.split(' / ')[0] || ''}
+                      onChange={(e) => {
+                        const timePart = newPost.timeDetails.split(' / ')[1] || '';
+                        setNewPost(prev => ({ ...prev, timeDetails: `${e.target.value} / ${timePart}` }));
+                      }}
+                      placeholder="월,수"
+                      className="flex-1 px-4 py-3 border-0 rounded-l-2xl focus:outline-none text-center"
+                      required
+                    />
+                    <div className="px-2 text-gray-400 font-medium">/</div>
+                    <input
+                      type="text"
+                      value={newPost.timeDetails.split(' / ')[1] || ''}
+                      onChange={(e) => {
+                        const dayPart = newPost.timeDetails.split(' / ')[0] || '';
+                        setNewPost(prev => ({ ...prev, timeDetails: `${dayPart} / ${e.target.value}` }));
+                      }}
+                      placeholder="5시~6시"
+                      className="flex-1 px-4 py-3 border-0 rounded-r-2xl focus:outline-none text-center"
+                      required
+                    />
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">회당 희망 금액</label>
                   <input
                     type="text"
                     value={newPost.price}
-                    onChange={(e) => setNewPost(prev => ({ ...prev, price: e.target.value }))}
-                    placeholder="예: 50,000원"
+                    onChange={(e) => {
+                      // 숫자만 추출하여 천 단위 콤마 적용
+                      const numbers = e.target.value.replace(/[^\d]/g, '');
+                      const formattedValue = numbers ? numbers.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '';
+                      setNewPost(prev => ({ ...prev, price: formattedValue }));
+                    }}
+                    placeholder="예: 50,000"
                     className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
                   />
@@ -967,7 +1172,6 @@ export default function RequestBoardFirebase() {
 희망시간 : 월2~5시, 화,목 7시~, 토 1~2시, 6시~, 일 전체
 아동정보 : 조음장애진단으로 조음치료 경험(1년전 종결)있으나 다시 발음이 뭉개짐
 
-* 치료가능한 요일과 시간을 댓글로 작성해주시면 접수됩니다.
 * 지원자는 비공개 익명으로 표기되며, 본인만 확인하실 수 있습니다.`}
                   rows={8}
                   className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -987,7 +1191,14 @@ export default function RequestBoardFirebase() {
                     <div>
                       <p><strong>나이:</strong> {newPost.age}</p>
                       <p><strong>희망 횟수:</strong> {newPost.frequency}</p>
-                      <p><strong>회당 희망 금액:</strong> {newPost.price}</p>
+                      <p><strong>회당 희망 금액:</strong> {(() => {
+                        if (!newPost.price) return '미입력';
+                        const priceStr = newPost.price.toString();
+                        if (priceStr.includes('원')) return priceStr;
+                        const numericPrice = priceStr.replace(/[^0-9]/g, '');
+                        if (!numericPrice) return newPost.price;
+                        return numericPrice.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '원';
+                      })()}</p>
                     </div>
                     <div className="col-span-2">
                       <p><strong>제목:</strong> {newPost.age} {newPost.gender} {newPost.frequency} {newPost.treatment} 홈티 모집</p>
@@ -1034,12 +1245,12 @@ export default function RequestBoardFirebase() {
             
             {/* 모달 바디 */}
             <div className="px-8 py-6">
-              {/* 요청 기본 정보 */}
+              {/* 헤더 영역 */}
               <div className="mb-8">
-                <div className="flex items-center justify-between mb-6">
-                <div>
-                    <h3 className="text-xl font-bold text-gray-900 mb-2">
-                      {selectedProfile.age} {selectedProfile.gender} {selectedProfile.frequency} {selectedProfile.treatment} 홈티 모집
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <h3 className="text-2xl font-bold text-gray-900 mb-3">
+                      {selectedProfile.age} {selectedProfile.gender} {selectedProfile.treatment} 홈티 모집
                     </h3>
                     <div className="flex items-center space-x-2">
                       <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-50 text-blue-700 border border-blue-200">
@@ -1056,19 +1267,19 @@ export default function RequestBoardFirebase() {
                           </span>
                         );
                       })()}
+                    </div>
                   </div>
-                  </div>
-                  <div className="text-right">
+                  <div className="text-right ml-6">
                     <div className="text-2xl font-bold text-blue-600">
-                    회기당 {(() => {
+                      회기당 {(() => {
                         if (!selectedProfile.price) return '협의';
-                      const priceStr = selectedProfile.price.toString();
-                      if (priceStr.includes('원')) return priceStr;
-                      const numericPrice = priceStr.replace(/[^0-9]/g, '');
+                        const priceStr = selectedProfile.price.toString();
+                        if (priceStr.includes('원')) return priceStr;
+                        const numericPrice = priceStr.replace(/[^0-9]/g, '');
                         if (!numericPrice) return '협의';
-                      return numericPrice.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '원';
-                    })()}
-                  </div>
+                        return numericPrice.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '원';
+                      })()}
+                    </div>
                     <div className="text-sm text-gray-500 mt-1">
                       {selectedProfile.createdAt ? 
                         new Date(
@@ -1081,75 +1292,97 @@ export default function RequestBoardFirebase() {
                           day: 'numeric'
                         }) : '작성일 미상'
                       }
+                    </div>
+                  </div>
                 </div>
               </div>
-              </div>
-              </div>
+
+              {/* 구분선 */}
+              <div className="border-t border-gray-200 mb-6"></div>
 
               {/* 요청 상세 정보 */}
               <div className="space-y-6">
                 {/* 기본 정보 */}
-                <div className="bg-gray-50 rounded-lg p-6">
+                <div>
                   <h4 className="font-semibold mb-4 text-gray-900 text-lg">기본 정보</h4>
-                  <div className="grid grid-cols-2 gap-4">
-                  <div>
-                      <div className="text-sm font-medium text-gray-600 mb-1">치료 분야</div>
-                      <div className="text-sm text-gray-900">{selectedProfile.treatment}</div>
-                  </div>
-                  <div>
-                      <div className="text-sm font-medium text-gray-600 mb-1">대상 연령</div>
-                      <div className="text-sm text-gray-900">{selectedProfile.age}</div>
-                  </div>
-                  <div>
-                      <div className="text-sm font-medium text-gray-600 mb-1">성별</div>
-                      <div className="text-sm text-gray-900">{selectedProfile.gender}</div>
-                        </div>
-                  <div>
-                      <div className="text-sm font-medium text-gray-600 mb-1">희망 횟수</div>
-                      <div className="text-sm text-gray-900">{selectedProfile.frequency}</div>
+                  <div className="bg-gray-50 rounded-lg p-6">
+                    <div className="grid grid-cols-4 gap-6 mb-4">
+                      <div>
+                        <div className="text-sm font-medium text-gray-600 mb-1">치료 분야</div>
+                        <div className="text-sm text-gray-900">{selectedProfile.treatment}</div>
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-gray-600 mb-1">대상 연령</div>
+                        <div className="text-sm text-gray-900">{selectedProfile.age}</div>
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-gray-600 mb-1">성별</div>
+                        <div className="text-sm text-gray-900">{selectedProfile.gender}</div>
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-gray-600 mb-1">희망 횟수</div>
+                        <div className="text-sm text-gray-900">{selectedProfile.frequency}</div>
+                      </div>
                     </div>
-                  <div>
-                      <div className="text-sm font-medium text-gray-600 mb-1">지역</div>
-                      <div className="text-sm text-gray-900">{selectedProfile.region || selectedProfile.category}</div>
-                              </div>
-                              <div>
-                      <div className="text-sm font-medium text-gray-600 mb-1">희망 시간</div>
-                      <div className="text-sm text-gray-900">{selectedProfile.timeDetails || '협의 후 결정'}</div>
-                              </div>
+                    <div className="grid grid-cols-4 gap-6">
+                      <div>
+                        <div className="text-sm font-medium text-gray-600 mb-1">지역</div>
+                        <div className="text-sm text-gray-900">{selectedProfile.region || selectedProfile.category}</div>
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-gray-600 mb-1">요일/시간</div>
+                        <div className="text-sm text-gray-900">{selectedProfile.timeDetails || '협의 후 결정'}</div>
+                      </div>
+                      <div></div>
+                      <div></div>
                     </div>
                   </div>
+                </div>
 
                 {/* 세부 내용 */}
                 {selectedProfile.additionalInfo && (
                   <div>
-                    <h4 className="font-semibold mb-3 text-gray-900 text-lg">세부 내용</h4>
-                    <div className="bg-white border border-gray-200 rounded-lg p-4">
-                      <pre className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
+                    <h4 className="font-semibold mb-4 text-gray-900 text-lg">세부 내용</h4>
+                    <div className="bg-gray-50 rounded-lg p-6">
+                      <pre className="text-sm text-gray-900 font-medium whitespace-pre-wrap leading-relaxed">
                         {selectedProfile.additionalInfo}
                       </pre>
-                          </div>
                     </div>
+                  </div>
                 )}
 
-                {/* 작성자 정보 */}
+                {/* 지원자 정보 */}
                 <div>
-                  <h4 className="font-semibold mb-3 text-gray-900 text-lg">작성자 정보</h4>
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
-                        <span className="text-gray-600 text-sm font-medium">
-                          {(selectedProfile as { authorName?: string }).authorName?.[0] || '익'}
-                              </span>
-                          </div>
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">
-                          {(selectedProfile as { authorName?: string }).authorName || '익명'}
-                        </div>
-                        <div className="text-xs text-gray-500">학부모</div>
-                        </div>
+                  <h4 className="font-semibold mb-4 text-gray-900 text-lg">
+                    지원자 정보 ({applications.length}명)
+                  </h4>
+                  
+                  {loadingApplications ? (
+                    <div className="flex justify-center items-center py-8">
+                      <div className="text-gray-500">지원자 정보를 불러오는 중...</div>
+                    </div>
+                  ) : applications.length > 0 ? (
+                    <div className="space-y-4">
+                      {applications.map((application) => (
+                        <TherapistApplicationCard
+                          key={application.id}
+                          application={application}
+                          onChatStart={handleChatStart}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="bg-gray-50 rounded-lg p-6 text-center">
+                      <div className="text-gray-500 mb-2">
+                        📝 아직 지원한 치료사가 없습니다
+                      </div>
+                      <div className="text-sm text-gray-400">
+                        조건에 맞는 치료사들이 지원하면 실시간으로 표시됩니다
                       </div>
                     </div>
+                  )}
                 </div>
+
               </div>
 
               {/* 1:1 채팅으로 문의하기 버튼 */}

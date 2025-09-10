@@ -7,16 +7,18 @@ export default function Home() {
   return (
     <div className="min-h-screen">
       {/* 히어로 섹션 */}
-      <section className="relative bg-blue-50 min-h-screen">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-20">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center min-h-[80vh]">
+      <section className="relative bg-blue-50 min-h-[75vh]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center min-h-[60vh]">
             {/* 왼쪽 텍스트 영역 */}
             <div className="space-y-8">
               <div className="space-y-6">
-                <h1 className="text-5xl lg:text-6xl xl:text-7xl font-bold leading-tight">
-                  <span className="text-blue-900">우리 아이의 빛나는 잠재력,</span><br />
-                  <span className="text-blue-400">최고의 전문가가</span><br />
-                  <span className="text-blue-900">함께 찾아요.</span>
+                <h1 className="text-4xl lg:text-5xl xl:text-6xl font-bold leading-tight">
+                  <div className="text-blue-900" style={{whiteSpace: 'nowrap'}}>우리 아이의 빛나는 잠재력,</div>
+                  <div style={{whiteSpace: 'nowrap'}}>
+                    <span className="text-blue-400">최고의 전문가가 </span>
+                    <span className="text-blue-900">함께 찾아요.</span>
+                  </div>
                 </h1>
                 
                 <p className="text-xl lg:text-2xl text-gray-600 leading-relaxed max-w-2xl">
@@ -47,23 +49,6 @@ export default function Home() {
               </div>
             </div>
 
-            {/* 31.jpg 이미지 (배경 제거됨) */}
-            <div className="flex justify-center lg:justify-center lg:pr-16">
-              <div className="relative">
-                <Image 
-                  src="/31.jpg" 
-                  alt="여우 캐릭터" 
-                  width={320}
-                  height={320}
-                  className="w-80 h-80 object-contain transition-transform duration-500 hover:scale-105"
-                  style={{
-                    filter: 'drop-shadow(0 10px 25px rgba(0,0,0,0.15))',
-                    background: 'transparent',
-                    mixBlendMode: 'multiply'
-                  }}
-                />
-              </div>
-            </div>
           </div>
         </div>
       </section>
@@ -99,7 +84,7 @@ export default function Home() {
                 </div>
                 <h3 className="text-2xl font-bold text-gray-900">검증된 전문가</h3>
                 <p className="text-gray-600 text-lg leading-relaxed">
-                  업계 최상 및 철저 검증을 통과한<br />
+                  엄격한 서류 및 경력 검증을 통과한<br />
                   전문가들이 아이와 함께합니다.
                 </p>
               </div>
@@ -115,8 +100,8 @@ export default function Home() {
                 </div>
                 <h3 className="text-2xl font-bold text-gray-900">투명한 이용료</h3>
                 <p className="text-gray-600 text-lg leading-relaxed">
-                  매월 20%씩 내는 번잡 수수료 대신,<br />
-                  합리적인 이용권으로 부담을 줄였습니다.
+                  매번 20%씩 내는 비싼 수수료 대신,<br />
+                  합리적인 이용권으로 부담을 없앴습니다.
                 </p>
               </div>
             </div>

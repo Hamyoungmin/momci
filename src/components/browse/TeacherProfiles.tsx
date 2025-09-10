@@ -28,10 +28,21 @@ interface Teacher {
 export default function TeacherProfiles() {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // 이름에서 성만 추출하는 함수
+  const getLastName = (fullName: string | undefined): string => {
+    if (!fullName) return '익명';
+    // 한글 이름인 경우 첫 글자가 성
+    return fullName.charAt(0);
+  };
 
   // 선생님에게 요청하기 모달 상태
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [isModalClosing, setIsModalClosing] = useState(false);
+  
+  // 프로필 등록 확인 팝업 상태
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [isConfirmModalClosing, setIsConfirmModalClosing] = useState(false);
   const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null);
 
   // 새 게시글 작성용 상태
@@ -122,6 +133,29 @@ export default function TeacherProfiles() {
     }, 300); // 애니메이션 시간과 맞춤
   };
 
+  // 프로필 등록 확인 팝업 열기
+  const openConfirmModal = () => {
+    setShowConfirmModal(true);
+  };
+
+  // 프로필 등록 확인 팝업 닫기
+  const closeConfirmModal = () => {
+    setIsConfirmModalClosing(true);
+    setTimeout(() => {
+      setShowConfirmModal(false);
+      setIsConfirmModalClosing(false);
+    }, 300);
+  };
+
+  // 프로필 등록 확인 후 작성 모달 열기
+  const handleConfirmRegister = () => {
+    closeConfirmModal();
+    // 확인 팝업이 닫힌 후 프로필 작성 모달 열기
+    setTimeout(() => {
+      setShowRequestModal(true);
+    }, 300);
+  };
+
   // 선생님에게 요청하기 모달 열기 (특정 선생님 지정)
   const openRequestModal = (teacher?: Teacher) => {
     if (teacher) {
@@ -163,7 +197,9 @@ export default function TeacherProfiles() {
         additionalInfo: postData.additionalInfo || '',
         // 선택한 치료사 정보 추가
         preferredTeacherId: selectedTeacher?.id,
-        preferredTeacherName: selectedTeacher?.name
+        preferredTeacherName: selectedTeacher?.name,
+        // 게시글 타입 구분 (선생님 둘러보기에서 특정 선생님에게 요청)
+        type: 'teacher-request'
       };
 
       console.log('📤 전송할 데이터:', postDataToSend);
@@ -195,13 +231,18 @@ export default function TeacherProfiles() {
       if (showRequestModal && !target.closest('.request-modal')) {
         closeRequestModal();
       }
+      
+      // 확인 팝업 외부 클릭 시 팝업 닫기
+      if (showConfirmModal && !target.closest('.confirm-modal')) {
+        closeConfirmModal();
+      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [showRequestModal]);
+  }, [showRequestModal, showConfirmModal]);
 
   return (
     <section className="py-12 bg-gray-50">
@@ -218,7 +259,7 @@ export default function TeacherProfiles() {
           <div className="flex items-center space-x-4">
             {/* 새 게시글 작성 버튼 */}
             <button
-              onClick={() => setShowRequestModal(true)}
+              onClick={openConfirmModal}
               className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-2xl font-medium transition-colors flex items-center gap-2 shadow-sm"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -251,7 +292,7 @@ export default function TeacherProfiles() {
                 <div className="flex-1">
                   {/* 제목 */}
                   <h3 className="text-lg font-bold text-gray-900 mb-2">
-                    {teacher.name} 치료사 ({teacher.specialties[0]})
+                    {getLastName(teacher.name)}00 치료사 <span className="text-gray-600">[{teacher.experience || 0}년차 {teacher.specialties[0]}]</span>
                   </h3>
                   
                   {/* 메타 정보 */}
@@ -261,8 +302,14 @@ export default function TeacherProfiles() {
                     <span>📍 {teacher.location}</span>
                     <span>•</span>
                     <span className="flex items-center">
-                      <span className="text-orange-400 mr-1">★</span>
-                      {teacher.rating} ({teacher.reviewCount}개 후기)
+                      {teacher.reviewCount > 0 ? (
+                        <>
+                          <span className="text-orange-400 mr-1">★</span>
+                          {teacher.rating} ({teacher.reviewCount}개 후기)
+                        </>
+                      ) : (
+                        <span className="text-gray-500">후기 없음</span>
+                      )}
                     </span>
                   </div>
                   
@@ -304,7 +351,7 @@ export default function TeacherProfiles() {
                       onClick={() => openRequestModal(teacher)}
                       className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-2xl font-medium transition-colors shadow-sm"
                     >
-                      선생님에게 요청하기
+                      선생님께 요청하기
                         </button>
                     
                   <button className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-2xl font-medium transition-colors shadow-sm">
@@ -357,7 +404,7 @@ export default function TeacherProfiles() {
           <div className={`bg-white rounded-lg p-8 max-w-6xl w-[95vw] shadow-xl border-4 border-blue-500 max-h-[90vh] overflow-y-auto request-modal ${isModalClosing ? 'animate-slideOut' : 'animate-slideIn'}`}>
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold text-gray-900">
-                {selectedTeacher ? `${selectedTeacher.name} 선생님에게 요청하기` : '새 게시글 작성'}
+                내 프로필 등록하기
               </h2>
               <button
                 onClick={closeRequestModal}
@@ -393,6 +440,8 @@ export default function TeacherProfiles() {
                     <option value="미술치료">미술치료</option>
                     <option value="특수체육">특수체육</option>
                     <option value="특수교사">특수교사</option>
+                    <option value="모니터링">모니터링</option>
+                    <option value="임상심리">임상심리</option>
                   </select>
                 </div>
                 <div>
@@ -401,7 +450,7 @@ export default function TeacherProfiles() {
                     type="text"
                     value={newPost.age}
                     onChange={(e) => setNewPost(prev => ({ ...prev, age: e.target.value }))}
-                    placeholder="예: 초1, 5세"
+                    placeholder="5세, 36개월"
                     className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
                   />
@@ -436,26 +485,48 @@ export default function TeacherProfiles() {
                 </div>
               </div>
 
-              {/* 희망 시간 | 회당 희망 금액 */}
+              {/* 요일 / 시간 | 회당 희망 금액 */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">희망 시간</label>
-                  <input
-                    type="text"
-                    value={newPost.timeDetails}
-                    onChange={(e) => setNewPost(prev => ({ ...prev, timeDetails: e.target.value }))}
-                    placeholder="예: 월,수 5시~6시"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
+                  <label className="block text-sm font-medium text-gray-700 mb-2">요일 / 시간</label>
+                  <div className="relative flex items-center border border-gray-300 rounded-2xl focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent">
+                    <input
+                      type="text"
+                      value={newPost.timeDetails.split(' / ')[0] || ''}
+                      onChange={(e) => {
+                        const timePart = newPost.timeDetails.split(' / ')[1] || '';
+                        setNewPost(prev => ({ ...prev, timeDetails: `${e.target.value} / ${timePart}` }));
+                      }}
+                      placeholder="월,수"
+                      className="flex-1 px-4 py-3 border-0 rounded-l-2xl focus:outline-none text-center"
+                      required
+                    />
+                    <div className="px-2 text-gray-400 font-medium">/</div>
+                    <input
+                      type="text"
+                      value={newPost.timeDetails.split(' / ')[1] || ''}
+                      onChange={(e) => {
+                        const dayPart = newPost.timeDetails.split(' / ')[0] || '';
+                        setNewPost(prev => ({ ...prev, timeDetails: `${dayPart} / ${e.target.value}` }));
+                      }}
+                      placeholder="5시~6시"
+                      className="flex-1 px-4 py-3 border-0 rounded-r-2xl focus:outline-none text-center"
+                      required
+                    />
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">회당 희망 금액</label>
                   <input
                     type="text"
                     value={newPost.price}
-                    onChange={(e) => setNewPost(prev => ({ ...prev, price: e.target.value }))}
-                    placeholder="예: 50,000원"
+                    onChange={(e) => {
+                      // 숫자만 추출하여 천 단위 콤마 적용
+                      const numbers = e.target.value.replace(/[^\d]/g, '');
+                      const formattedValue = numbers ? numbers.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '';
+                      setNewPost(prev => ({ ...prev, price: formattedValue }));
+                    }}
+                    placeholder="예: 50,000"
                     className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
                   />
@@ -491,7 +562,6 @@ export default function TeacherProfiles() {
 희망시간 : 월2~5시, 화,목 7시~, 토 1~2시, 6시~, 일 전체
 아동정보 : 조음장애진단으로 조음치료 경험(1년전 종결)있으나 다시 발음이 뭉개짐
 
-* 치료가능한 요일과 시간을 댓글로 작성해주시면 접수됩니다.
 * 지원자는 비공개 익명으로 표기되며, 본인만 확인하실 수 있습니다.`}
                   rows={8}
                   className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -511,7 +581,14 @@ export default function TeacherProfiles() {
                     <div>
                       <p><strong>나이:</strong> {newPost.age}</p>
                       <p><strong>희망 횟수:</strong> {newPost.frequency}</p>
-                      <p><strong>회당 희망 금액:</strong> {newPost.price}</p>
+                      <p><strong>회당 희망 금액:</strong> {(() => {
+                        if (!newPost.price) return '미입력';
+                        const priceStr = newPost.price.toString();
+                        if (priceStr.includes('원')) return priceStr;
+                        const numericPrice = priceStr.replace(/[^0-9]/g, '');
+                        if (!numericPrice) return newPost.price;
+                        return numericPrice.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '원';
+                      })()}</p>
                     </div>
                     <div className="col-span-2">
                       <p><strong>제목:</strong> {newPost.age} {newPost.gender} {newPost.frequency} 홈티</p>
@@ -537,6 +614,56 @@ export default function TeacherProfiles() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* 프로필 등록 확인 팝업 */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 flex items-center justify-center z-50">
+          <div className={`bg-white rounded-2xl p-8 max-w-md w-[90%] text-center shadow-2xl transform confirm-modal ${isConfirmModalClosing ? 'animate-fadeOut' : 'animate-fadeIn'}`}>
+            {/* 로켓 아이콘 */}
+            <div className="mb-6">
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg width="48" height="48" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" transform="rotate(45)">
+                  {/* 로켓 본체 */}
+                  <ellipse cx="16" cy="14" rx="4" ry="8" fill="#3B82F6"/>
+                  {/* 로켓 머리 (뾰족한 부분) */}
+                  <path d="M16 6l-2 4h4l-2-4z" fill="#1E40AF"/>
+                  {/* 로켓 날개 */}
+                  <path d="M12 18l-3 2v3l3-2z" fill="#3B82F6"/>
+                  <path d="M20 18l3 2v3l-3-2z" fill="#3B82F6"/>
+                  {/* 로켓 창문 */}
+                  <circle cx="16" cy="12" r="1.5" fill="white"/>
+                </svg>
+              </div>
+            </div>
+            
+            {/* 제목 */}
+            <h2 className="text-xl font-bold text-gray-900 mb-4">
+              프로필을 목록에 등록하시겠습니까?
+            </h2>
+            
+            {/* 설명 */}
+            <p className="text-sm text-gray-600 mb-8 leading-relaxed">
+              [확인] 버튼을 누르시면, 회원님의 프로필이 ** &apos;내 프로필 등록하기&apos; 목록에 자동으로 노출** 되어 학부모님들이 볼 수 있게 됩니다.
+            </p>
+            
+            {/* 버튼들 */}
+            <div className="flex gap-3">
+              <button
+                onClick={closeConfirmModal}
+                className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleConfirmRegister}
+                className="flex-1 px-6 py-3 bg-blue-500 text-white rounded-xl font-medium hover:bg-blue-600 transition-colors"
+              >
+                네, 등록합니다
+              </button>
+            </div>
           </div>
         </div>
       )}
