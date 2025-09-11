@@ -128,21 +128,21 @@ export default function ReportCenter() {
 
   return (
     <section className="py-16">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         {!showReportForm ? (
           <>
             {/* 메인 박스 */}
-            <div className="bg-white border-4 border-blue-700 rounded-lg p-8">
+            <div className="bg-white border-4 border-blue-700 rounded-lg p-6">
               {/* 제목 */}
-              <div className="text-center mb-20 mt-20">
-                <h2 className="text-5xl font-bold text-gray-900 mb-4">클린 캠페인: 직거래 신고 안내</h2>
-                <p className="text-gray-600 text-center leading-relaxed text-lg">
-                  <span className="text-blue-700 font-semibold">더모든 키즈는</span> 선생님과 학부모님 모두가 신뢰할 수 있는 투명한 거래 환경을 위해 노력합니다.
+              <div className="text-center mb-16 mt-16">
+                <h2 className="text-3xl font-bold text-gray-900 mb-4">클린 캠페인: 직거래 신고 안내</h2>
+                <p className="text-gray-600 text-center leading-relaxed text-sm">
+                  <span className="text-blue-700 font-semibold">모든별 키즈는</span> 선생님과 학부모님 모두가 신뢰할 수 있는 투명한 거래 환경을 위해 노력합니다.
                 </p>
               </div>
 
               {/* 경고 박스 */}
-              <div className="bg-red-50 border-l-4 border-red-400 p-6 mb-32">
+              <div className="bg-red-50 border-l-4 border-red-400 p-6 mb-16">
                 <h3 className="font-bold text-red-700 mb-3">
                   엄격히 금지됩니다!
                 </h3>
@@ -154,14 +154,14 @@ export default function ReportCenter() {
 
               {/* 신고 안내 */}
               <div className="mb-8">
-                <h3 className="text-3xl font-bold text-black mb-6">
+                <h3 className="text-xl font-bold text-black mb-4">
                   학부모님, 이런 경우 꼭 신고해 주세요!
                 </h3>
                 
                 {/* 구분선 */}
-                <div className="border-t border-gray-300 mb-6"></div>
+                <div className="border-t border-gray-300 mb-4"></div>
                 
-                <p className="text-gray-700 leading-relaxed mb-6">
+                <p className="text-gray-700 leading-relaxed mb-4 text-sm">
                   만약 일부 치료사가 수수료 회피를 목적으로 직거래를 유도한다면, 
                   즉시 고객센터를 통해 신고해 주세요.
                 </p>
@@ -172,16 +172,16 @@ export default function ReportCenter() {
                 <div className="text-center">
                   <p className="text-green-800 text-sm font-bold mb-2">신고 내용이 사실로 확인될 경우,</p>
                   <p className="text-green-700 text-sm mb-3">제보해 주신 학부모님께 감사의 의미로</p>
-                  <p className="text-xl leading-relaxed font-bold">
-                    <span className="text-green-500">더모든 키즈 이용권 1개월권</span><span className="text-green-800">(무료 인터뷰 2회 포함)을 포상으로 지급해 드립니다.</span>
+                  <p className="text-sm leading-relaxed font-bold">
+                    <span className="text-green-500">모든별 키즈 이용권 1개월권</span><span className="text-green-800">(무료 인터뷰 2회 포함)을 포상으로 지급해 드립니다.</span>
                   </p>
                 </div>
               </div>
 
               {/* 하단 텍스트 */}
-              <div className="text-center mb-24">
-                <p className="text-gray-500">
-                  여러분의 소중한 제보가 더 안전하고 신뢰도 높은 더모든 키즈를 만듭니다.
+              <div className="text-center mb-12">
+                <p className="text-gray-500 text-xs">
+                  여러분의 소중한 제보가 더 안전하고 신뢰도 높은 모든별 키즈를 만듭니다.
                 </p>
               </div>
 
@@ -199,9 +199,9 @@ export default function ReportCenter() {
         ) : (
           <>
             {/* 신고 폼 */}
-            <div className="bg-white border-4 border-blue-700 rounded-lg p-8">
-              <div className="text-center mb-20 mt-20">
-                <h2 className="text-5xl font-bold text-gray-900 mb-4">
+            <div className="bg-white border-4 border-blue-700 rounded-lg p-6">
+              <div className="text-center mb-16 mt-16">
+                <h2 className="text-3xl font-bold text-gray-900 mb-4">
                   직거래 신고센터
                 </h2>
                 <p className="text-gray-600">

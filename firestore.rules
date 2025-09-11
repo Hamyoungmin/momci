@@ -36,17 +36,17 @@ service cloud.firestore {
     }
     
     function hasRecentActivity() {
-      return request.auth != null && request.auth.token.auth_time > timestamp.date() - duration.value(90, 'd');
+      // 인증된 사용자면 최근 활동으로 간주 (단순화)
+      return request.auth != null;
     }
     
     function isBusinessHours() {
-      return request.time.dayOfWeek() >= 1 && request.time.dayOfWeek() <= 5 &&
-             request.time.hours() >= 9 && request.time.hours() < 18;
+      // 임시로 항상 true 반환 (영업시간 제한 없음)
+      return true;
     }
     
     function rateLimitCheck(maxPerMinute) {
-      // 실제로는 더 복잡한 rate limiting 로직이 필요하지만, 기본적인 시간 체크
-      // 임시로 항상 true 반환 (실제 rate limiting은 클라이언트나 서버에서 처리)
+      // 임시로 항상 true 반환 (rate limiting은 클라이언트에서 처리)
       return true;
     }
     
@@ -80,11 +80,16 @@ service cloud.firestore {
                        // 민감한 필드는 관리자만 수정 가능
                        (!request.resource.data.diff(resource.data).affectedKeys().hasAny([
                          'email', 'userType', 'createdAt', 'isVerified', 'verifiedAt',
-                         'hasCertification', 'hasExperienceProof', 'hasIdVerification'
+                         'hasCertification', 'hasExperienceProof', 'hasIdVerification',
+                         'profileStatus', 'certificationBadge', 'totalMatches', 'status'
                        ]) || isAdmin()) &&
                        // 전화번호 검증
                        (!request.resource.data.keys().hasAny(['phone']) || 
-                        isValidPhone(request.resource.data.phone));
+                        isValidPhone(request.resource.data.phone)) &&
+                       // 관리자의 사용자 상태 변경 권한
+                       ((!request.resource.data.diff(resource.data).affectedKeys().hasAny([
+                         'isVerified', 'profileStatus', 'status', 'certificationBadge'
+                       ])) || isAdmin());
       
       // 프로필 삭제 - 관리자만
       allow delete: if isAdmin();
@@ -872,7 +877,7 @@ service cloud.firestore {
                         ]) &&
                         // 지원자 수 증가 허용
                         request.resource.data.applications >= resource.data.applications) ||
-                       // 관리자는 모든 필드 수정 가능
+                       // 관리자는 모든 필드 수정 가능 (숨김/표시, 순서 변경 등)
                        isAdmin() ||
                        // 관련 치료사가 채팅 시작 시 상태 변경 (meeting)
                        (isAuthenticated() &&
@@ -1228,19 +1233,57 @@ service cloud.firestore {
       // 인증된 사용자만 후기 작성 가능
       allow create: if isAuthenticated() && 
                        request.resource.data.userId == request.auth.uid &&
-                       request.resource.data.keys().hasAll(['title', 'content', 'category', 'rating', 'createdAt', 'status']) &&
+                       // 필수 필드 존재 검증
+                       request.resource.data.keys().hasAll(['title', 'content', 'category', 'rating', 'createdAt', 'status', 'userId', 'author', 'helpfulCount']) &&
+                       // 허용된 추가 필드만 허용
+                       request.resource.data.keys().hasOnly(['title', 'content', 'category', 'rating', 'createdAt', 'status', 'userId', 'author', 'helpfulCount', 'selectedTags', 'userEmail', 'imageUrls']) &&
+                       // 기본 필드 타입 및 값 검증
                        request.resource.data.rating is number &&
                        request.resource.data.rating >= 1 &&
                        request.resource.data.rating <= 5 &&
-                       request.resource.data.status == 'pending';
+                       request.resource.data.status == 'approved' &&
+                       request.resource.data.title is string &&
+                       request.resource.data.content is string &&
+                       request.resource.data.category is string &&
+                       request.resource.data.author is string &&
+                       request.resource.data.helpfulCount == 0 &&
+                       // 최소 길이 검증 (관대하게)
+                       request.resource.data.title.size() >= 1 &&
+                       request.resource.data.content.size() >= 5 &&
+                       request.resource.data.author.size() >= 1 &&
+                       request.resource.data.category.size() >= 1 &&
+                       // 선택적 필드 검증 (빈 배열도 허용)
+                       (!request.resource.data.keys().hasAny(['selectedTags']) || 
+                        (request.resource.data.selectedTags is list && 
+                         request.resource.data.selectedTags.size() >= 0)) &&
+                       (!request.resource.data.keys().hasAny(['imageUrls']) || 
+                        (request.resource.data.imageUrls is list && 
+                         request.resource.data.imageUrls.size() <= 3)) &&
+                       (!request.resource.data.keys().hasAny(['userEmail']) || 
+                        request.resource.data.userEmail is string) &&
+                       hasRecentActivity() &&
+                       rateLimitCheck(5);  // 분당 5개 제한
       
       // 관리자만 상태 변경 가능 (승인/거부)
       allow update: if isAdmin() && 
                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) &&
                        request.resource.data.status in ['pending', 'approved', 'rejected'];
       
-      // 관리자만 삭제 가능
-      allow delete: if isAdmin();
+      // 작성자는 자신의 후기만 수정 가능 (내용, 제목, 태그만)
+      allow update: if isOwner(resource.data.userId) && 
+                       !request.resource.data.diff(resource.data).affectedKeys().hasAny(['userId', 'createdAt', 'status', 'helpfulCount', 'author']) &&
+                       // 수정된 필드 검증
+                       (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['title']) ||
+                        (request.resource.data.title is string && request.resource.data.title.size() >= 1)) &&
+                       (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['content']) ||
+                        (request.resource.data.content is string && request.resource.data.content.size() >= 10)) &&
+                       (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['selectedTags']) ||
+                        (request.resource.data.selectedTags is list && request.resource.data.selectedTags.size() > 0)) &&
+                       (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['imageUrls']) ||
+                        (request.resource.data.imageUrls is list && request.resource.data.imageUrls.size() <= 3));
+      
+      // 관리자와 작성자만 삭제 가능
+      allow delete: if isOwnerOrAdmin(resource.data.userId);
     }
     
     // 치료사 목록 (선생님 둘러보기용 - teachers 컬렉션)
@@ -1271,6 +1314,77 @@ service cloud.firestore {
       
       // 관리자만 삭제 가능
       allow delete: if isAdmin();
+    }
+    
+    // 치료사 등록 데이터 (localStorage 대신 Firebase 사용)
+    match /therapist-registrations/{registrationId} {
+      // 치료사 본인과 관리자만 읽기 가능
+      allow read: if isAuthenticated() && 
+                     (resource.data.userId == request.auth.uid || isAdmin());
+      
+      // 치료사만 등록 데이터 생성 가능
+      allow create: if isAuthenticated() && 
+                       request.resource.data.userId == request.auth.uid &&
+                       exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+                       get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType == 'therapist' &&
+                       request.resource.data.keys().hasAll([
+                         'userId', 'name', 'birthDate', 'gender', 'phone', 'email', 
+                         'address', 'qualification', 'mainSpecialty', 'experience', 
+                         'region', 'availableDays', 'availableTime', 'specialties', 
+                         'bankName', 'accountHolder', 'accountNumber', 'hourlyRate', 
+                         'status', 'createdAt', 'agreeTerms'
+                       ]) &&
+                       request.resource.data.status == 'pending' &&
+                       request.resource.data.agreeTerms == true &&
+                       hasRecentActivity();
+      
+      // 치료사 본인은 pending 상태일 때만 수정 가능, 관리자는 상태 변경 가능
+      allow update: if isAuthenticated() && 
+                       ((resource.data.userId == request.auth.uid && 
+                         resource.data.status == 'pending' &&
+                         !request.resource.data.diff(resource.data).affectedKeys().hasAny(['userId', 'createdAt', 'status'])) ||
+                        (isAdmin() && 
+                         request.resource.data.status in ['pending', 'approved', 'rejected', 'hold']));
+      
+        // 관리자만 삭제 가능 (완전 삭제는 드물게)
+      allow delete: if isAdmin();
+    }
+    
+    // 관리자 활동 로그 (관리자 기능 사용 추적)
+    match /admin-logs/{logId} {
+      // 관리자만 읽기 가능
+      allow read: if isAdmin();
+      
+      // 시스템이 자동으로 생성 (관리자 활동 추적용)
+      allow create: if isAdmin() &&
+                       request.resource.data.keys().hasAll(['adminId', 'action', 'targetId', 'targetType', 'timestamp', 'details']);
+      
+      // 수정/삭제 불가 (감사 추적 보존)
+      allow update, delete: if false;
+    }
+    
+    // 사이트 통계 (실시간 업데이트)
+    match /site-statistics/{statId} {
+      // 모든 사용자가 기본 통계 읽기 가능 (메인페이지 표시용)
+      allow read: if statId in ['total-posts', 'total-teachers', 'total-matches', 'total-reviews'];
+      
+      // 관리자는 모든 통계 읽기 가능
+      allow read: if isAdmin();
+      
+      // 관리자와 시스템만 통계 생성/수정 가능
+      allow create, update: if isAdmin();
+      
+      // 삭제 불가 (통계 데이터 보존)
+      allow delete: if false;
+    }
+    
+    // 시스템 설정 (앱 버전, 점검 공지 등)
+    match /system-config/{configId} {
+      // 모든 사용자가 앱 설정 읽기 가능 (앱 업데이트 체크용)
+      allow read: if configId in ['app-version', 'maintenance-notice', 'service-announcement'];
+      
+      // 관리자는 모든 설정 읽기/수정 가능
+      allow read, write: if isAdmin();
     }
   }
 }

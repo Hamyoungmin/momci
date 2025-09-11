@@ -81,48 +81,54 @@ export default function RegisterGuide() {
       descriptions: [
         "첫 매칭 수수료를 제외한 {모든 수업료는 100% 선생님의 수익}입니다.",
         "플랫폼 내에서 안전하게 활동하고 {'인증 선생님'}으로 성장하세요.",
-        "( ※ 외부 직거래는 금지되며, 더모든 키즈의 선생님은 독립적인 전문가(프리랜서)로 활동합니다.)"
+        "( ※ 외부 직거래는 금지되며, 모든별 키즈의 선생님은 독립적인 전문가(프리랜서)로 활동합니다.)"
       ]
     }
   ];
 
   return (
-    <section className="py-16">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section className="py-12">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* 메인 등록 안내 박스 */}
-        <div className="bg-white border-4 border-blue-700 rounded-lg p-8">
+        <div className="bg-white border-4 border-blue-700 rounded-lg p-6">
           {/* 제목 */}
-          <div className="text-center mb-20 mt-20">
-            <h2 className="text-5xl font-bold text-gray-900 mb-4">
-              더모든 키즈 치료사 등록안내
+          <div className="text-center mb-16 mt-16">
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">
+              모든별 키즈 치료사 등록안내
             </h2>
           </div>
 
           {/* 등록 단계 - 세로 레이아웃 */}
-          <div className="space-y-8">
+          <div className="space-y-12">
             {steps.map((step, index) => (
-              <div key={index} className="flex items-start space-x-6">
-                {/* 스텝 아이콘 */}
-                <div className="flex-shrink-0">
-                  <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                    {step.icon}
-                  </div>
-                </div>
+              <div key={index} className="mb-16">
+                <h3 className="text-xl font-bold text-black mb-4">
+                  STEP {step.step}. {step.title}
+                </h3>
                 
-                {/* 내용 */}
-                <div className="flex-1">
-                  <h3 className="text-xl font-bold text-gray-900 mb-3">
-                    {step.step} {step.title}
-                  </h3>
-                  <div className="space-y-2">
-                    {step.descriptions.map((desc, descIndex) => (
-                      <div key={descIndex} className="flex items-start space-x-2">
-                        <span className="text-gray-700 text-lg leading-none">●</span>
-                        <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-line">
-                          {formatTextWithBlueHighlight(desc)}
-                        </p>
-                      </div>
-                    ))}
+                {/* STEP 제목 아래 구분선 */}
+                <div className="border-t border-gray-300 mb-4"></div>
+                
+                <div className="flex items-start space-x-6">
+                  {/* 스텝 아이콘 */}
+                  <div className="flex-shrink-0">
+                    <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                      {step.icon}
+                    </div>
+                  </div>
+                  
+                  {/* 내용 */}
+                  <div className="flex-1">
+                    <div className="space-y-2">
+                      {step.descriptions.map((desc, descIndex) => (
+                        <div key={descIndex} className="flex items-start space-x-2">
+                          <span className="text-gray-700 text-lg leading-none">●</span>
+                          <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-line">
+                            {formatTextWithBlueHighlight(desc)}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>

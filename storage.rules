@@ -167,6 +167,64 @@ service firebase.storage {
                      (isOwner(userId) || isAdmin());
     }
     
+    // 치료사 등록 관련 파일들 (TeacherSearchBoard용)
+    match /therapist-registration/{userId}/profile-image/{filename} {
+      // 치료사 본인만 업로드/수정/삭제 가능
+      allow create, update, delete: if isAuthenticated() && 
+                                       isOwner(userId) &&
+                                       isValidProfileImage() &&
+                                       hasRecentActivity();
+      
+      // 관리자와 본인만 읽기 가능 (등록 검토용)
+      allow read: if isAuthenticated() && 
+                     (isOwner(userId) || isAdmin());
+    }
+    
+    // 경력증명서 파일
+    match /therapist-registration/{userId}/experience-proof/{filename} {
+      // 치료사 본인만 업로드 가능
+      allow create: if isAuthenticated() && 
+                       isOwner(userId) &&
+                       isValidDocumentType() &&
+                       hasRecentActivity() &&
+                       // 경력증명서 파일 크기 제한 (15MB)
+                       request.resource.size < 15 * 1024 * 1024;
+      
+      // 관리자와 본인만 읽기/삭제 가능
+      allow read, delete: if isAuthenticated() && 
+                             (isOwner(userId) || isAdmin());
+    }
+    
+    // 자격증 파일 (등록용)
+    match /therapist-registration/{userId}/certificates/{filename} {
+      // 치료사 본인만 업로드 가능
+      allow create: if isAuthenticated() && 
+                       isOwner(userId) &&
+                       isValidDocumentType() &&
+                       hasRecentActivity() &&
+                       // 자격증 파일 크기 제한 (10MB)
+                       request.resource.size < 10 * 1024 * 1024;
+      
+      // 관리자와 본인만 읽기/삭제 가능
+      allow read, delete: if isAuthenticated() && 
+                             (isOwner(userId) || isAdmin());
+    }
+    
+    // 통장사본 파일
+    match /therapist-registration/{userId}/bankbook/{filename} {
+      // 치료사 본인만 업로드 가능
+      allow create: if isAuthenticated() && 
+                       isOwner(userId) &&
+                       isValidDocumentType() &&
+                       hasRecentActivity() &&
+                       // 통장사본 파일 크기 제한 (5MB)
+                       request.resource.size < 5 * 1024 * 1024;
+      
+      // 관리자와 본인만 읽기/삭제 가능 (민감한 개인정보)
+      allow read, delete: if isAuthenticated() && 
+                             (isOwner(userId) || isAdmin());
+    }
+    
     // 후기 첨부 파일 (학부모 후기용)
     match /teacher-reviews/{reviewId}/attachments/{filename} {
       // 후기 작성자만 업로드 가능
@@ -181,6 +239,28 @@ service firebase.storage {
       
       // 관리자만 삭제 가능
       allow delete: if isAdmin();
+    }
+    
+    // 일반 후기 첨부 파일 (reviews 컬렉션용)
+    match /reviews/{reviewId}/attachments/{filename} {
+      // 후기 작성자만 업로드 가능 (Firestore에서 userId 확인)
+      allow create: if isAuthenticated() && 
+                       isValidImageType() &&
+                       hasRecentActivity() &&
+                       // 후기 첨부파일 크기 제한 (5MB)
+                       request.resource.size < 5 * 1024 * 1024 &&
+                       // Firestore에서 해당 후기의 작성자인지 확인
+                       firestore.exists(/databases/(default)/documents/reviews/$(reviewId)) &&
+                       firestore.get(/databases/(default)/documents/reviews/$(reviewId)).data.userId == request.auth.uid;
+      
+      // 모든 인증된 사용자가 읽기 가능 (공개 후기)
+      allow read: if isAuthenticated();
+      
+      // 후기 작성자와 관리자만 삭제 가능
+      allow delete: if isAuthenticated() && 
+                       (isAdmin() || 
+                        (firestore.exists(/databases/(default)/documents/reviews/$(reviewId)) &&
+                         firestore.get(/databases/(default)/documents/reviews/$(reviewId)).data.userId == request.auth.uid));
     }
     
     // 직거래 신고 증빙 파일 - 실용적인 운영용 보안 규칙
@@ -218,6 +298,30 @@ service firebase.storage {
       // 24시간 후 자동 삭제 (또는 업로드한 본인이 삭제 가능)
       allow delete: if isAuthenticated() && 
                        (request.time.toMillis() > int(ts) + 86400000);
+    }
+    
+    // 관리자 시스템 파일들 (공지사항 첨부 등)
+    match /admin-assets/{filename} {
+      // 관리자만 업로드/수정/삭제 가능
+      allow create, update, delete: if isAdmin() &&
+                                       (isValidImageType() || isValidDocumentType()) &&
+                                       // 관리자 파일 크기 제한 (20MB)
+                                       request.resource.size < 20 * 1024 * 1024;
+      
+      // 모든 사용자가 읽기 가능 (공지사항 첨부파일 등)
+      allow read: if true;
+    }
+    
+    // 사이트 로고, 배너 등 공개 자료
+    match /public-assets/{filename} {
+      // 관리자만 업로드/수정/삭제 가능
+      allow create, update, delete: if isAdmin() &&
+                                       isValidImageType() &&
+                                       // 공개 자료 크기 제한 (10MB)
+                                       request.resource.size < 10 * 1024 * 1024;
+      
+      // 모든 사용자가 읽기 가능
+      allow read: if true;
     }
     
     // 기본적으로 모든 다른 경로는 거부
