@@ -1,60 +1,120 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db, auth } from '@/lib/firebase';
+import { collection, addDoc, serverTimestamp, onSnapshot, orderBy, query, updateDoc, doc } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { db, auth, storage } from '@/lib/firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
+import { Timestamp } from 'firebase/firestore';
 
 export default function ReviewsList() {
   const [selectedCategory] = useState('전체');
-  const [reviews, setReviews] = useState<Review[]>([]);
+  const [firebaseReviews, setFirebaseReviews] = useState<Review[]>([]);
 
   interface Review {
-    id: number;
+    id: string;
     title: string;
     content: string;
     rating: number;
     author: string;
     date: string;
     category?: string;
+    imageUrls?: string[];
+    userId?: string;
+    createdAt?: Timestamp;
   }
   const [loading, setLoading] = useState(true);
   const [showWriteModal, setShowWriteModal] = useState(false);
   const [isModalClosing, setIsModalClosing] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [currentSlide, setCurrentSlide] = useState(0);
-  
-  const categories = ['전체', '언어치료', '놀이치료', '감각통합치료', '작업치료', 'ABA치료', '미술치료', '음악치료'];
 
   // 사용자 인증 상태 관리
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
     });
 
     return () => unsubscribe();
   }, []);
 
+  // Firebase에서 실시간 후기 데이터 가져오기
+  useEffect(() => {
+    console.log('🔥 실시간 후기 데이터 로딩 시작');
+    
+    const reviewsQuery = query(
+      collection(db, 'reviews'),
+      orderBy('createdAt', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(reviewsQuery, (snapshot) => {
+      const reviewsData: Review[] = [];
+      
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        if (data.status === 'approved') { // 승인된 후기만 표시
+          const review: Review = {
+            id: doc.id,
+            title: data.title || '',
+            content: data.content || '',
+            rating: data.rating || 0,
+            author: data.author || '익명',
+            date: data.createdAt 
+              ? new Date(data.createdAt.toDate()).toLocaleDateString('ko-KR', {
+                  year: 'numeric',
+                  month: '2-digit', 
+                  day: '2-digit'
+                }).replace(/\. /g, '.').slice(0, -1)
+              : new Date().toLocaleDateString('ko-KR', {
+                  year: 'numeric',
+                  month: '2-digit',
+                  day: '2-digit'
+                }).replace(/\. /g, '.').slice(0, -1),
+            category: data.category || '기타',
+            imageUrls: data.imageUrls || [],
+            userId: data.userId,
+            createdAt: data.createdAt
+          };
+          reviewsData.push(review);
+        }
+      });
+
+      console.log('✅ Firebase 후기 데이터 로딩 완료:', reviewsData.length, '개');
+      setFirebaseReviews(reviewsData);
+      setLoading(false);
+    }, (error) => {
+      console.error('❌ Firebase 후기 데이터 로딩 오류:', error);
+      setLoading(false);
+    });
+
+    return () => {
+      console.log('🧹 Firebase 후기 구독 해제');
+      unsubscribe();
+    };
+  }, []);
+
   // 더미 데이터 추가 (첫 번째 이미지 스타일 확인용)
   const dummyReviews = useMemo(() => [
     {
-      id: 1,
+      id: "dummy-1",
       title: "놀기만 하는 아이, 선생님께서 놀이를 치료로 바뀌니깐 차근차근 치료받고 있습니다^^",
       content: "아이가 자연스럽게 놀면서 치료를 받을 수 있어서 좋았습니다. 처음에는 치료를 받는 것을 싫어했는데, 놀이를 통해 접근하니 아이가 즐거워하면서 치료를 받더라고요. 선생님께서 아이의 상태를 정확히 파악하시고 적절한 놀이를 통해 치료해 주셔서 정말 감사합니다.",
       rating: 5,
       author: "신대방역 임**님",
-      date: "2025.01.20"
+      date: "2025.01.20",
+      category: "놀이치료"
     },
     {
-      id: 2,
+      id: "dummy-2",
       title: "선생님들을 보고 선택할 수 있어서 좋았습니다!",
       content: "직접 선생님의 이력과 경력을 보고 선택할 수 있다는 점이 정말 좋았습니다. 우리 아이에게 맞는 선생님을 직접 고를 수 있어서 더욱 신뢰가 갔고, 실제로도 아이가 선생님을 좋아해서 치료 효과도 좋았습니다.",
       rating: 5,
       author: "가람마을 임**님",
-      date: "2025.01.18"
+      date: "2025.01.18",
+      category: "언어치료"
     },
     {
-      id: 3,
+      id: "dummy-3",
       title: "좋은 선생님께서 서서 컨설팅도-",
       content: "선생님께서 아이의 상태를 정확히 진단해 주시고, 앞으로의 치료 방향에 대해서도 자세히 설명해 주셔서 정말 도움이 되었습니다. 부모로서 궁금했던 점들도 친절하게 답변해 주시고, 가정에서 할 수 있는 활동들도 알려주셔서 감사했습니다.",
       rating: 5,
@@ -62,7 +122,7 @@ export default function ReviewsList() {
       date: "2025.01.15"
     },
     {
-      id: 4,
+      id: "dummy-4",
       title: "전문적인 치료로 아이가 많이 좋아졌어요",
       content: "선생님의 전문성이 정말 뛰어나시더라고요. 체계적이고 과학적인 접근으로 우리 아이의 문제를 정확히 파악하고 치료해 주셨습니다.",
       rating: 5,
@@ -70,7 +130,7 @@ export default function ReviewsList() {
       date: "2025.01.12"
     },
     {
-      id: 5,
+      id: "dummy-5",
       title: "아이가 치료를 즐거워해요",
       content: "처음에는 치료를 싫어했던 아이가 이제는 선생님 만나는 날을 기다립니다. 재미있게 치료받으면서 실력도 늘고 있어요.",
       rating: 5,
@@ -78,7 +138,7 @@ export default function ReviewsList() {
       date: "2025.01.10"
     },
     {
-      id: 6,
+      id: "dummy-6",
       title: "세심한 케어에 감동받았습니다",
       content: "아이 하나하나의 특성을 잘 파악하시고 맞춤형 치료를 해주셔서 정말 감사했습니다. 부모 상담도 꼼꼼히 해주세요.",
       rating: 5,
@@ -86,7 +146,7 @@ export default function ReviewsList() {
       date: "2025.01.08"
     },
     {
-      id: 7,
+      id: "dummy-7",
       title: "체계적인 프로그램으로 효과가 확실해요",
       content: "다른 치료센터와는 달리 정말 체계적이고 과학적인 접근방법으로 치료를 진행해주셔서 눈에 띄는 효과를 볼 수 있었습니다. 매번 상세한 피드백도 주셔서 아이의 발전과정을 명확히 알 수 있어요.",
       rating: 5,
@@ -94,7 +154,7 @@ export default function ReviewsList() {
       date: "2025.01.06"
     },
     {
-      id: 8,
+      id: "dummy-8",
       title: "선생님의 전문성이 정말 뛰어나세요",
       content: "오랜 경험과 전문지식을 바탕으로 우리 아이의 문제점을 정확히 파악하고 해결책을 제시해주셨습니다. 아이도 선생님을 정말 좋아하고 신뢰하는 모습이 보여서 안심이 됩니다.",
       rating: 5,
@@ -111,32 +171,17 @@ export default function ReviewsList() {
     }
   ], []);
 
-  // Firebase에서 실제 후기 데이터 가져오기 (임시 비활성화)
-  useEffect(() => {
-    // 더미 데이터로 설정
-    setReviews(dummyReviews as Review[]);
-    setLoading(false);
+  // 더미 데이터와 Firebase 데이터 합치기
+  const allReviews = useMemo(() => {
+    // 더미 데이터에 category가 없는 경우 기본값 추가
+    const processedDummyReviews = dummyReviews.map(review => ({
+      ...review,
+      category: review.category || '기타'
+    }));
     
-    // 실제 Firebase 연동 (나중에 활성화)
-    /*
-    const reviewsQuery = query(
-      collection(db, 'reviews'),
-      orderBy('createdAt', 'desc')
-    );
-
-    const unsubscribe = onSnapshot(reviewsQuery, (snapshot) => {
-      const reviewsData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate()
-      }));
-      setReviews(reviewsData);
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-    */
-  }, [dummyReviews]);
+    // 더미 데이터 먼저, 그 다음 Firebase 데이터 (최신순)
+    return [...processedDummyReviews, ...firebaseReviews];
+  }, [dummyReviews, firebaseReviews]);
 
   // 후기 작성 모달 열기/닫기
   const openWriteModal = () => {
@@ -152,29 +197,119 @@ export default function ReviewsList() {
     }, 300);
   };
 
+  // 이미지 업로드 함수
+  const uploadImages = async (files: File[], reviewId: string): Promise<string[]> => {
+    const uploadPromises = files.map(async (file, index) => {
+      const fileName = `${Date.now()}_${index}_${file.name}`;
+      const storageRef = ref(storage, `reviews/${reviewId}/attachments/${fileName}`);
+      
+      try {
+        const snapshot = await uploadBytes(storageRef, file);
+        const downloadURL = await getDownloadURL(snapshot.ref);
+        return downloadURL;
+      } catch (error) {
+        console.error(`이미지 업로드 실패 (${file.name}):`, error);
+        throw error;
+      }
+    });
+
+    return Promise.all(uploadPromises);
+  };
+
   // 후기 작성 제출 - 바로 승인됨
-  const handleSubmitReview = async (reviewData: Partial<Review>) => {
+  const handleSubmitReview = async (reviewData: ReviewFormData) => {
     try {
-      await addDoc(collection(db, 'reviews'), {
-        ...reviewData,
+      // 디버깅: 전송할 데이터 확인
+      console.log('🔍 사용자 인증 상태:', currentUser);
+      console.log('🔍 전송할 후기 데이터:', reviewData);
+      
+      if (!currentUser) {
+        alert('로그인이 필요합니다.');
+        return;
+      }
+
+      // 작성자명 생성
+      const authorName = currentUser?.displayName || 
+                        (currentUser?.email ? currentUser.email.split('@')[0] + '00님' : '') || 
+                        '익명 사용자';
+
+      const reviewDoc = {
+        title: reviewData.selectedTags.length > 0 
+          ? `${reviewData.selectedTags.join(', ')} - 만족스러운 치료 경험`
+          : '만족스러운 치료 경험',
+        content: reviewData.content || '',
+        category: reviewData.selectedTags[0] || '기타',
+        rating: reviewData.rating || 0,
+        selectedTags: reviewData.selectedTags || [],
         createdAt: serverTimestamp(),
-        userId: user?.uid,
-        userEmail: user?.email,
+        userId: currentUser.uid,
+        userEmail: currentUser.email || '',
+        author: authorName,
         helpfulCount: 0,
-        status: 'approved' // 바로 승인 상태로 게시
-      });
+        status: 'approved',
+        imageUrls: []
+      };
+
+      console.log('🔍 Firestore에 전송할 문서:', reviewDoc);
+
+      // 1. 먼저 후기 문서를 생성
+      const docRef = await addDoc(collection(db, 'reviews'), reviewDoc);
+
+      // 2. 이미지가 있다면 업로드
+      if (reviewData.images && reviewData.images.length > 0) {
+        try {
+          console.log('🖼️ 이미지 업로드 시작:', reviewData.images.length, '개');
+          const imageUrls = await uploadImages(reviewData.images, docRef.id);
+          
+          // 3. 이미지 URL들을 후기 문서에 업데이트
+          await updateDoc(doc(db, 'reviews', docRef.id), {
+            imageUrls: imageUrls
+          });
+          
+          console.log('✅ 이미지 업로드 및 URL 업데이트 완료');
+        } catch (imageError) {
+          console.error('❌ 이미지 업로드 실패:', imageError);
+          // 이미지 업로드가 실패해도 후기는 저장됨
+          alert('이미지 업로드에 실패했지만 후기는 정상적으로 등록되었습니다.');
+        }
+      } else {
+        console.log('📝 이미지 없이 후기만 등록');
+      }
       
       alert('후기가 성공적으로 작성되었습니다!');
       closeWriteModal();
-    } catch (error) {
-      console.error('후기 작성 실패:', error);
-      alert('후기 작성에 실패했습니다. 다시 시도해주세요.');
+      
+      // 슬라이더를 첫 번째 페이지로 이동 (새 후기가 더미데이터 다음에 나타남)
+      setCurrentSlide(0);
+    } catch (error: unknown) {
+      console.error('❌ 후기 작성 실패 - 상세 에러:', error);
+      
+      let errorMessage = '후기 작성에 실패했습니다.';
+      
+      if (error && typeof error === 'object' && 'code' in error) {
+        console.error('❌ 에러 코드:', error.code);
+        
+        if (error.code === 'permission-denied') {
+          errorMessage = '권한이 없습니다. 로그인을 확인해주세요.';
+        } else if (error.code === 'invalid-argument') {
+          errorMessage = '입력 데이터에 문제가 있습니다.';
+        }
+      }
+      
+      if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string') {
+        console.error('❌ 에러 메시지:', error.message);
+        if (!errorMessage.includes('권한') && !errorMessage.includes('입력 데이터')) {
+          errorMessage = `에러: ${error.message}`;
+        }
+      }
+      
+      alert(errorMessage + '\n\n개발자도구 콘솔에서 상세 에러를 확인해주세요.');
     }
   };
 
   const filteredReviews = selectedCategory === '전체' 
-    ? reviews 
-    : reviews.filter(review => review.category === selectedCategory);
+    ? allReviews 
+    : allReviews.filter(review => review.category === selectedCategory);
 
   // 슬라이더 관련 함수 - 하나씩 넘어가기
   const visibleItems = 3; // 화면에 보이는 개수는 3개
@@ -245,13 +380,75 @@ export default function ReviewsList() {
             transform: translateX(0);
           }
         }
+        
+        /* 팝업 애니메이션 */
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        
+        @keyframes fadeOut {
+          from { opacity: 1; }
+          to { opacity: 0; }
+        }
+        
+        @keyframes scaleIn {
+          from {
+            opacity: 0;
+            transform: scale(0.9) translateY(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+          }
+        }
+        
+        @keyframes scaleOut {
+          from {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+          }
+          to {
+            opacity: 0;
+            transform: scale(0.9) translateY(-10px);
+          }
+        }
+
+        .animate-fade-in {
+          animation: fadeIn 0.3s ease-out forwards;
+        }
+        
+        .animate-fade-out {
+          animation: fadeOut 0.3s ease-in forwards;
+        }
+        
+        .animate-scale-in {
+          animation: scaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+        
+        .animate-scale-out {
+          animation: scaleOut 0.3s ease-in forwards;
+        }
       `}</style>
       
     <section className="py-20 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* 섹션 헤더 - 첫 번째 이미지 스타일 */}
-        <div className="text-center mb-12">
+        <div className="text-center mb-32 relative">
           <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-8">실시간 모든별 키즈!</h2>
+          
+          {/* 후기 작성하기 버튼 - 제목 아래쪽에 배치 */}
+          <div className="absolute top-20 right-0">
+            <button
+              onClick={() => setShowWriteModal(true)}
+              className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-2xl font-medium transition-colors flex items-center gap-2 shadow-lg"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              후기 작성하기
+            </button>
+          </div>
         </div>
 
         {/* 후기 슬라이더 - 첫 번째 이미지 스타일 */}
@@ -377,15 +574,15 @@ export default function ReviewsList() {
         </div>
 
         {/* 후기 작성 모달 */}
-        {showWriteModal && (
-          <ReviewWriteModal 
-            isOpen={showWriteModal}
-            isClosing={isModalClosing}
-            onClose={closeWriteModal}
-            onSubmit={handleSubmitReview}
-            categories={categories.filter(cat => cat !== '전체')}
-          />
-        )}
+      {showWriteModal && (
+        <ReviewWriteModal 
+          isOpen={showWriteModal}
+          isClosing={isModalClosing}
+          onClose={closeWriteModal}
+          onSubmit={handleSubmitReview}
+          currentUser={currentUser}
+        />
+      )}
       </section>
     </>
   );
@@ -393,167 +590,227 @@ export default function ReviewsList() {
 
 // 후기 작성 모달 컴포넌트
 interface ReviewFormData {
-  title: string;
   content: string;
-  category: string;
-  therapist: string;
   rating: number;
-  author: string;
+  selectedTags: string[];
+  images?: File[];
 }
 
-function ReviewWriteModal({ isOpen, isClosing, onClose, onSubmit, categories }: {
+function ReviewWriteModal({ isOpen, isClosing, onClose, onSubmit, currentUser }: {
   isOpen: boolean;
   isClosing: boolean;
   onClose: () => void;
   onSubmit: (data: ReviewFormData) => void;
-  categories: string[];
+  currentUser: User | null;
 }) {
   const [formData, setFormData] = useState<ReviewFormData>({
-    title: '',
     content: '',
-    category: '',
-    therapist: '',
-    rating: 5,
-    author: ''
+    rating: 0,
+    selectedTags: [],
+    images: []
   });
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      const newFiles = Array.from(files).slice(0, 3); // 최대 3개 파일만 허용
+      setFormData(prev => ({
+        ...prev,
+        images: [...(prev.images || []), ...newFiles].slice(0, 3)
+      }));
+    }
+  };
+
+  const removeImage = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      images: prev.images?.filter((_, i) => i !== index) || []
+    }));
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.title || !formData.content || !formData.category) {
-      alert('필수 항목을 모두 입력해주세요.');
+    if (!formData.content || formData.rating === 0 || formData.selectedTags.length === 0) {
+      alert('필수 항목을 모두 입력해주세요.\n* 별점 평가\n* 어떤 점이 좋았는지 선택\n* 상세한 후기 내용\n\n※ 사진 첨부는 선택사항입니다.');
       return;
     }
+    
+    // 사진은 선택사항임을 명시
+    console.log('📝 후기 제출:', {
+      content: formData.content,
+      rating: formData.rating,
+      selectedTags: formData.selectedTags,
+      hasImages: formData.images && formData.images.length > 0
+    });
+    
     onSubmit(formData);
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className={`fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 ${isClosing ? 'animate-fade-out' : 'animate-fade-in'}`}>
-      <div className={`bg-white rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto ${isClosing ? 'animate-scale-out' : 'animate-scale-in'}`}>
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">후기 작성하기</h2>
+    <div className={`fixed inset-0 flex items-center justify-center z-50 p-4 ${isClosing ? 'animate-fade-out' : 'animate-fade-in'}`}>
+      <div className={`bg-white rounded-lg p-8 max-w-4xl w-[85vw] shadow-xl border-4 border-blue-500 max-h-[90vh] overflow-y-auto ${isClosing ? 'animate-scale-out' : 'animate-scale-in'}`}>
+        {/* 헤더 */}
+        <div className="text-center mb-8 relative">
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">소중한 후기를 남겨주세요</h2>
+          <p className="text-sm text-gray-600">다른 학부모님에게 큰 도움이 됩니다.</p>
+          
+          {/* 닫기 버튼 */}
           <button 
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 transition-colors"
+            className="absolute -top-2 -right-2 text-gray-400 hover:text-gray-600 transition-colors"
           >
             <span className="text-2xl">×</span>
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* 카테고리 선택 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              치료 종류 *
-            </label>
-            <select
-              value={formData.category}
-              onChange={(e) => setFormData({...formData, category: e.target.value})}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              required
-            >
-              <option value="">치료 종류를 선택하세요</option>
-              {categories.map(category => (
-                <option key={category} value={category}>{category}</option>
-              ))}
-            </select>
+        {/* 사용자 정보 */}
+        <div className="bg-gray-50 rounded-lg p-4 mb-6 flex items-center">
+          <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center mr-3">
+            <span className="text-gray-600 text-sm">👤</span>
           </div>
-
-          {/* 별점 */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              만족도 *
-            </label>
-            <div className="flex items-center gap-2">
+            <div className="font-medium text-gray-900">
+              {currentUser && currentUser.email ? (currentUser.email.split('@')[0] + '00') : '사용자00'} 치료사
+            </div>
+            <div className="text-sm text-gray-600">언어치료 / 2025.08.04 ~ 2025.09.04</div>
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* 만족도 별점 */}
+          <div>
+            <label className="block text-base font-medium text-gray-900 mb-4">수업은 만족스러우셨나요?</label>
+            <div className="flex justify-center gap-2 mb-2">
               {[1,2,3,4,5].map(star => (
                 <button
                   key={star}
                   type="button"
-                  onClick={() => setFormData({...formData, rating: star})}
-                  className={`text-2xl ${star <= formData.rating ? 'text-yellow-400' : 'text-gray-300'}`}
+                  onClick={() => {
+                    console.log(`별점 클릭: ${star}점`);
+                    setFormData(prev => ({...prev, rating: star}));
+                  }}
+                  className={`text-3xl transition-all duration-200 hover:scale-110 cursor-pointer select-none ${
+                    star <= formData.rating ? 'text-yellow-400' : 'text-gray-300 hover:text-gray-400'
+                  }`}
                 >
-                  ⭐
+                  ★
                 </button>
               ))}
-              <span className="text-sm text-gray-600 ml-2">({formData.rating}점)</span>
             </div>
           </div>
 
-          {/* 제목 */}
+          {/* 좋았던 점 태그 */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              후기 제목 *
-            </label>
-            <input
-              type="text"
-              value={formData.title}
-              onChange={(e) => setFormData({...formData, title: e.target.value})}
-              placeholder="후기 제목을 입력하세요"
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              required
-            />
+            <label className="block text-base font-medium text-gray-900 mb-4">어떤 점이 좋았나요? <span className="text-sm text-gray-500">(중복 선택 가능)</span></label>
+            <div className="flex flex-wrap gap-2">
+              {['친절해요', '체계적이에요', '시간 약속을 잘 지켜요', '아이가 좋아해요', '꼼꼼한 피드백', '준비가 철저해요'].map(tag => {
+                const isSelected = formData.selectedTags.includes(tag);
+                return (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => {
+                      if (isSelected) {
+                        // 선택 해제
+                        setFormData({
+                          ...formData, 
+                          selectedTags: formData.selectedTags.filter(t => t !== tag)
+                        });
+                      } else {
+                        // 선택 추가
+                        setFormData({
+                          ...formData, 
+                          selectedTags: [...formData.selectedTags, tag]
+                        });
+                      }
+                    }}
+                    className={`px-4 py-2 rounded-full text-sm transition-all duration-200 hover:scale-105 ${
+                      isSelected
+                        ? 'bg-blue-100 text-blue-700 border border-blue-200'
+                        : 'bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200'
+                    }`}
+                  >
+                    {tag}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
-          {/* 치료사 */}
+          {/* 상세 후기 */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              담당 치료사 (선택)
-            </label>
-            <input
-              type="text"
-              value={formData.therapist}
-              onChange={(e) => setFormData({...formData, therapist: e.target.value})}
-              placeholder="담당 치료사 이름"
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-
-          {/* 작성자 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              작성자명 (선택)
-            </label>
-            <input
-              type="text"
-              value={formData.author}
-              onChange={(e) => setFormData({...formData, author: e.target.value})}
-              placeholder="작성자명 (미입력시 익명)"
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-
-          {/* 내용 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              후기 내용 *
-            </label>
+            <label className="block text-base font-medium text-gray-900 mb-3">상세한 후기를 남겨주세요</label>
             <textarea
               value={formData.content}
               onChange={(e) => setFormData({...formData, content: e.target.value})}
-              placeholder="치료 경험에 대해 자세히 작성해주세요. 다른 학부모님들에게 도움이 되는 솔직한 후기를 남겨주시면 감사하겠습니다."
-              rows={8}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+              placeholder="수업을 통해 아이가 어떻게 변화했는지, 어떤 점이 특히 만족스러웠는지 등을 자세히 알려주세요."
+              rows={6}
+              className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none text-sm transition-all duration-200"
               required
             />
           </div>
 
-          {/* 버튼 */}
-          <div className="flex justify-end gap-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              취소
-            </button>
+          {/* 사진 첨부 */}
+          <div>
+            <label className="block text-base font-medium text-gray-900 mb-3">사진 첨부 <span className="text-sm text-gray-500">(선택, 최대 3개)</span></label>
+            
+            {/* 업로드된 이미지 미리보기 */}
+            {formData.images && formData.images.length > 0 && (
+              <div className="mb-4 grid grid-cols-3 gap-3">
+                {formData.images.map((file, index) => (
+                  <div key={index} className="relative group">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={URL.createObjectURL(file)}
+                      alt={`업로드된 이미지 ${index + 1}`}
+                      className="w-full h-24 object-cover rounded-lg border border-gray-200"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeImage(index)}
+                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm hover:bg-red-600 transition-colors opacity-0 group-hover:opacity-100"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* 파일 업로드 영역 */}
+            {(!formData.images || formData.images.length < 3) && (
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-all duration-200 hover:bg-gray-50">
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleFileUpload}
+                  className="hidden"
+                  id="image-upload"
+                />
+                <label htmlFor="image-upload" className="cursor-pointer">
+                  <div className="text-gray-400 mb-2 text-2xl">
+                    📷
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    클릭하여 이미지 업로드 ({formData.images?.length || 0}/3)
+                  </div>
+                </label>
+              </div>
+            )}
+          </div>
+
+          {/* 등록 버튼 */}
+          <div className="pt-6">
             <button
               type="submit"
-              className="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
+              className="w-full py-4 bg-cyan-500 hover:bg-cyan-600 text-white text-lg font-medium rounded-lg transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
             >
-              후기 작성
-          </button>
-        </div>
+              후기 등록하기
+            </button>
+          </div>
         </form>
       </div>
     </div>
