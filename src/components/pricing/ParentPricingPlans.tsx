@@ -1,19 +1,126 @@
+'use client';
+
+import Link from 'next/link';
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { useRouter } from 'next/navigation';
+
+interface UserData {
+  userType: 'parent' | 'therapist';
+  name: string;
+}
+
 export default function ParentPricingPlans() {
+  const { currentUser } = useAuth();
+  const [userData, setUserData] = useState<UserData | null>(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      if (!currentUser) return;
+
+      try {
+        const userDocRef = doc(db, 'users', currentUser.uid);
+        const userDoc = await getDoc(userDocRef);
+        
+        if (userDoc.exists()) {
+          const data = userDoc.data() as UserData;
+          setUserData(data);
+        }
+      } catch (error) {
+        console.error('사용자 데이터 불러오기 오류:', error);
+      }
+    };
+
+    fetchUserData();
+  }, [currentUser]);
+
+  // 결제 페이지로 이동하는 함수
+  const handleStartSubscription = () => {
+    router.push('/parent-payment');
+  };
+
+  // 이용권 구매 메뉴 렌더링 함수
+  const renderPricingMenu = () => {
+    if (!currentUser || !userData) {
+      // 비로그인 사용자는 드롭다운으로 둘 다 표시 (현재 페이지가 학부모용이므로 강조)
+      return (
+        <div className="relative group">
+          <div className="w-full bg-blue-50 text-blue-600 text-left px-4 py-3 rounded-2xl text-sm font-medium flex items-center justify-between">
+            이용권 구매
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+          <div className="absolute left-0 top-full mt-1 w-full bg-white shadow-lg rounded-xl border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10">
+            <div className="block px-4 py-3 text-sm text-blue-600 bg-blue-50 rounded-t-xl font-medium">
+              학부모용
+            </div>
+            <Link href="/teacher-pricing" className="block px-4 py-3 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors rounded-b-xl">
+              선생님용
+            </Link>
+          </div>
+        </div>
+      );
+    }
+
+    // 로그인한 사용자는 해당 유형의 이용권으로 직접 링크 (현재 페이지이면 강조 표시)
+    if (userData.userType === 'parent') {
+      return (
+        <div className="w-full bg-blue-50 text-blue-600 text-left px-4 py-3 rounded-2xl text-sm font-medium">
+          이용권 구매
+        </div>
+      );
+    } else if (userData.userType === 'therapist') {
+      return (
+        <Link href="/teacher-pricing" className="block w-full text-gray-700 hover:bg-gray-50 text-left px-4 py-3 rounded-2xl text-sm font-medium transition-colors">
+          이용권 구매
+        </Link>
+      );
+    }
+  };
   return (
     <div className="min-h-screen bg-gray-50">
       <section className="py-12">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* 사이드바 */}
+          <div className="w-64 bg-white shadow-lg rounded-lg mr-8 h-fit">
+            <div className="p-4">
+              <div className="mb-6">
+                <button className="w-full bg-blue-500 text-white text-xl font-bold rounded-2xl h-[110px] flex items-center justify-center">
+                  이용안내
+                </button>
+              </div>
+              <div className="space-y-1">
+                <Link href="/parent-guide" className="block w-full text-gray-700 hover:bg-gray-50 text-left px-4 py-3 rounded-2xl text-sm font-medium transition-colors">
+                  학부모 이용안내
+                </Link>
+                <Link href="/teacher-guide" className="block w-full text-gray-700 hover:bg-gray-50 text-left px-4 py-3 rounded-2xl text-sm font-medium transition-colors">
+                  선생님 이용안내
+                </Link>
+                <Link href="/program-guide" className="block w-full text-gray-700 hover:bg-gray-50 text-left px-4 py-3 rounded-2xl text-sm font-medium transition-colors">
+                  프로그램 안내
+                </Link>
+                {renderPricingMenu()}
+              </div>
+            </div>
+          </div>
+          
+          {/* 메인 콘텐츠 */}
+          <div className="flex-1">
           <div className="bg-white border-4 border-blue-700 rounded-lg p-6">
             
             {/* 헤더 섹션 */}
-            <div className="text-center mt-16 mb-16">
+            <div className="text-center mt-12 mb-12">
               {/* 메인 제목 */}
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4 leading-snug">
+              <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-4 leading-snug">
                 홈티칭 비용의 거품을 빼고, 신뢰를 더했습니다.
               </h1>
               
               {/* 설명 */}
-              <p className="text-sm text-gray-600 leading-relaxed max-w-4xl mx-auto">
+              <p className="text-sm text-gray-600 leading-relaxed max-w-3xl mx-auto">
                 기존 홈티칭의 높은 수수료(약 20%) 때문에 부담스러우셨나요? 모든별 키즈은 치료비에 붙는 중개 수수료를 <span className="text-blue-600 font-bold">0원</span>으로 만들어 회기당 평균 1만원 이상 저렴한 합리적인 비용을 실현했습니다.
               </p>
             </div>
@@ -22,14 +129,14 @@ export default function ParentPricingPlans() {
             <div className="text-center">
               
               {/* 가격 박스 */}
-              <div className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-6 mb-20 max-w-4xl mx-auto">
+              <div className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-6 mb-16 max-w-3xl mx-auto">
                 <h2 className="text-base font-bold text-gray-900">
                   월 9,900원으로 누리는 핵심 혜택 3가지
                 </h2>
               </div>
               
               {/* 혜택 목록 */}
-              <div className="space-y-20 mb-20 max-w-4xl mx-auto">
+              <div className="space-y-16 mb-16 max-w-3xl mx-auto">
                 
                 {/* 첫 번째 혜택 */}
                 <div className="flex items-start space-x-4 text-left">
@@ -84,16 +191,20 @@ export default function ParentPricingPlans() {
               </div>
               
               {/* 추가 정보 */}
-              <p className="text-black text-base font-bold leading-relaxed mb-4 max-w-4xl mx-auto">
+              <p className="text-black text-base font-bold leading-relaxed mb-4 max-w-3xl mx-auto">
                 커피 두 잔 값으로, 매달 4만원 이상의 비용을 아끼고 우리 아이의 최고의 파트너를 만나보세요.
               </p>
               
               {/* CTA 버튼 */}
-              <button className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold text-lg py-4 px-6 rounded-2xl transition-colors shadow-lg max-w-4xl mx-auto">
+              <button 
+                onClick={handleStartSubscription}
+                className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold text-lg py-4 px-6 rounded-2xl transition-colors shadow-lg max-w-3xl mx-auto"
+              >
                 지금 바로 이용권 시작하고 최고의 선생님 찾기
               </button>
             </div>
 
+          </div>
           </div>
         </div>
       </section>

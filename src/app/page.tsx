@@ -49,6 +49,21 @@ export default function Home() {
               </div>
             </div>
 
+            {/* 오른쪽 이미지 영역 */}
+            <div className="flex items-center justify-center lg:justify-end lg:pr-8">
+              <div className="relative w-80 h-80 flex items-center justify-center">
+                <div className="absolute inset-0 bg-blue-100 rounded-full opacity-20"></div>
+                <Image
+                  src="/32.png"
+                  alt="모든별 키즈 마스코트 여우"
+                  width={300}
+                  height={300}
+                  className="relative z-10 object-contain"
+                  priority
+                />
+              </div>
+            </div>
+
           </div>
         </div>
       </section>
@@ -109,21 +124,25 @@ export default function Home() {
             <div className="bg-white rounded-2xl p-8 shadow-lg border border-gray-100 hover:shadow-xl transition-shadow duration-300">
               <div className="text-center space-y-6">
                 <div className="relative w-20 h-20 mx-auto mb-4">
-                  <Image 
-                    src="/30.png" 
-                    alt="1:1 맞춤 수업"
-                    width={80}
-                    height={80}
-                    className="object-contain" 
-                    style={{
-                      imageRendering: 'pixelated',
-                      filter: 'contrast(1.3) brightness(1.1) saturate(1.2) sharpen(1px)',
-                      WebkitFilter: 'contrast(1.3) brightness(1.1) saturate(1.2)',
-                      transform: 'translateZ(0)',
-                      backfaceVisibility: 'hidden',
-                      WebkitFontSmoothing: 'antialiased'
-                    }}
-                  />
+                  <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    {/* 흰색 배경 */}
+                    <rect width="80" height="80" fill="white" rx="10"/>
+                    
+                    {/* 파란색 사람 - 30.png와 동일 */}
+                    <path d="M40 12 
+                             C46 12, 50 16, 50 22 
+                             C50 28, 46 32, 40 32 
+                             C34 32, 30 28, 30 22 
+                             C30 16, 34 12, 40 12 Z
+                             
+                             M38 32 L38 48 
+                             L24 44 C22 43, 22 41, 24 42 L38 46 
+                             L38 52 L34 68 C34 70, 36 70, 36 68 L40 54
+                             L44 68 C44 70, 46 70, 46 68 L42 52
+                             L42 46 L56 42 C58 41, 58 43, 56 44 L42 48
+                             L42 32 C42 32, 38 32, 38 32 Z" 
+                          fill="#38BDF8"/>
+                  </svg>
                 </div>
                 <h3 className="text-2xl font-bold text-gray-900">1:1 맞춤 수업</h3>
                 <p className="text-gray-600 text-lg leading-relaxed">

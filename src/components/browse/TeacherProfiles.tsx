@@ -175,7 +175,8 @@ export default function TeacherProfiles() {
         return;
       }
 
-      const newTitle = `${postData.age} ${postData.gender} ${postData.frequency} 홈티`;
+      const genderText = postData.gender === '남' ? '남아' : postData.gender === '여' ? '여아' : postData.gender;
+      const newTitle = `${postData.age} ${genderText} ${postData.treatment} 홈티`;
       
       // 전송할 데이터 준비
       const postDataToSend = {
@@ -591,7 +592,7 @@ export default function TeacherProfiles() {
                       })()}</p>
                     </div>
                     <div className="col-span-2">
-                      <p><strong>제목:</strong> {newPost.age} {newPost.gender} {newPost.frequency} 홈티</p>
+                      <p><strong>제목:</strong> {newPost.age} {newPost.gender === '남' ? '남아' : newPost.gender === '여' ? '여아' : newPost.gender} {newPost.treatment} 홈티</p>
                     </div>
                   </div>
                 </div>

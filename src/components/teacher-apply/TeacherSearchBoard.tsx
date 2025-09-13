@@ -144,6 +144,9 @@ export default function TeacherSearchBoard() {
   const [experienceFiles, setExperienceFiles] = useState<File[]>([]);
   const [certificateFiles, setCertificateFiles] = useState<File[]>([]);
   const [bankBookFile, setBankBookFile] = useState<File | null>(null);
+  const [academicFiles, setAcademicFiles] = useState<File[]>([]);
+  const [careerFiles, setCareerFiles] = useState<File[]>([]);
+  const [licenseFiles, setLicenseFiles] = useState<File[]>([]);
 
   // 등록 폼 데이터
   const [formData, setFormData] = useState({
@@ -240,6 +243,21 @@ export default function TeacherSearchBoard() {
       return;
     }
 
+    if (academicFiles.length === 0) {
+      alert('학력 증빙 서류를 업로드해주세요.');
+      return;
+    }
+
+    if (careerFiles.length === 0) {
+      alert('경력 증빙 서류를 업로드해주세요.');
+      return;
+    }
+
+    if (licenseFiles.length === 0) {
+      alert('자격증 사본을 업로드해주세요.');
+      return;
+    }
+
     if (formData.availableDays.length === 0) {
       alert('치료 가능 요일을 선택해주세요.');
       return;
@@ -325,6 +343,9 @@ export default function TeacherSearchBoard() {
     setExperienceFiles([]);
     setCertificateFiles([]);
     setBankBookFile(null);
+    setAcademicFiles([]);
+    setCareerFiles([]);
+    setLicenseFiles([]);
 
     // 팝업 닫기
     closePopup();
@@ -1111,12 +1132,8 @@ export default function TeacherSearchBoard() {
                   {/* 치료 철학 및 강점 */}
                   <div className="mb-4">
                     <label className="block text-sm font-medium text-gray-700 mb-2">치료 철학 및 강점 *</label>
-                    <p className="text-sm text-gray-500 mb-3">
-                      어떤 치료 분야에서 어떤 활동을 해왔는지, 어떤 경험과 성과를 가지고 계신지 자세히 작성해주세요. 
-                      학부모님께 공개되는 내용입니다.
-                    </p>
                     <textarea 
-                      placeholder="예: 서울대학교병원 재활의학과에서 5년간 언어치료사로 근무하며 아동 언어발달 지연 전문 치료를 담당했습니다. 총 200명 이상의 아동을 담당하며 평균 80% 이상의 개선율을 보였습니다."
+                      placeholder="본인이 어떤 가치관을 가지고 아이들을 대하는지, 다른 치료사와 차별화되는 자신만의 강점은 무엇인지 어필하는 공간입니다."
                       rows={4}
                       value={formData.therapyActivity}
                       onChange={(e) => handleFormChange('therapyActivity', e.target.value)}
@@ -1127,12 +1144,8 @@ export default function TeacherSearchBoard() {
                   {/* 주요 치료 경험 및 사례 */}
                   <div className="mb-4">
                     <label className="block text-sm font-medium text-gray-700 mb-2">주요 치료 경험 및 사례 *</label>
-                    <p className="text-sm text-gray-500 mb-3">
-                      보유하신 전문 분야와 특화된 치료 기법, 주요 경력사항을 작성해주세요. 
-                      (예: 병원명, 근무기간, 담당 업무, 보유 자격증 등)
-                    </p>
                     <textarea 
-                      placeholder="예: 언어재활사 1급, 놀이치료사 자격증 보유. 발음교정, 언어발달지연, 자폐스펙트럼 아동 전문. 연세의료원 소아재활의학과 (2019-2024), 삼성서울병원 언어치료실 (2017-2019) 근무 경력."
+                      placeholder="비슷한 문제를 가진 아동을 성공적으로 치료했던 경험을 간략하게 소개하면 학부모에게 큰 신뢰를 줍니다.(개인정보 보호를 위해 익명으로 작성)"
                       rows={4}
                       value={formData.mainSpecialty}
                       onChange={(e) => handleFormChange('mainSpecialty', e.target.value)}
@@ -1288,8 +1301,98 @@ export default function TeacherSearchBoard() {
                   </div>
                   
                   <p className="text-base text-gray-600 mb-4">
-                    업로드하신 서류들은 관리자 검토 용도로만 사용되며, 학부모님께 공개되지 않습니다.
+                    제출된 서류는 자격 검증을 위해서만 사용되며, 학부모에게 공개되지 않습니다.
                   </p>
+                  
+                  {/* 학력 증빙 서류 */}
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">학력 증빙 서류(졸업증명서 등) *</label>
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center relative cursor-pointer hover:border-blue-300 transition-colors">
+                      <input
+                        type="file"
+                        multiple
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        onChange={(e) => handleFileUpload(e, setAcademicFiles)}
+                        className="absolute inset-0 opacity-0 cursor-pointer"
+                      />
+                      <p className="text-base text-gray-500">파일을 여기에 드래그하거나 클릭하며 업로드하세요.</p>
+                    </div>
+                    {academicFiles.length > 0 && (
+                      <div className="mt-2 space-y-1">
+                        {academicFiles.map((file, index) => (
+                          <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded">
+                            <span className="text-sm text-gray-700">{file.name}</span>
+                            <button
+                              onClick={() => removeFile(index, academicFiles, setAcademicFiles)}
+                              className="text-red-500 hover:text-red-700 text-sm"
+                            >
+                              삭제
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* 경력 증빙 서류 */}
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">경력 증빙 서류 (경력증명서 등) *</label>
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center relative cursor-pointer hover:border-blue-300 transition-colors">
+                      <input
+                        type="file"
+                        multiple
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        onChange={(e) => handleFileUpload(e, setCareerFiles)}
+                        className="absolute inset-0 opacity-0 cursor-pointer"
+                      />
+                      <p className="text-base text-gray-500">파일을 여기에 드래그하거나 클릭하며 업로드하세요.</p>
+                    </div>
+                    {careerFiles.length > 0 && (
+                      <div className="mt-2 space-y-1">
+                        {careerFiles.map((file, index) => (
+                          <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded">
+                            <span className="text-sm text-gray-700">{file.name}</span>
+                            <button
+                              onClick={() => removeFile(index, careerFiles, setCareerFiles)}
+                              className="text-red-500 hover:text-red-700 text-sm"
+                            >
+                              삭제
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* 자격증 사본 */}
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">자격증 사본 *</label>
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center relative cursor-pointer hover:border-blue-300 transition-colors">
+                      <input
+                        type="file"
+                        multiple
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        onChange={(e) => handleFileUpload(e, setLicenseFiles)}
+                        className="absolute inset-0 opacity-0 cursor-pointer"
+                      />
+                      <p className="text-base text-gray-500">파일을 여기에 드래그하거나 클릭하며 업로드하세요.</p>
+                    </div>
+                    {licenseFiles.length > 0 && (
+                      <div className="mt-2 space-y-1">
+                        {licenseFiles.map((file, index) => (
+                          <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded">
+                            <span className="text-sm text-gray-700">{file.name}</span>
+                            <button
+                              onClick={() => removeFile(index, licenseFiles, setLicenseFiles)}
+                              className="text-red-500 hover:text-red-700 text-sm"
+                            >
+                              삭제
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                   
                   {/* 성범죄 경력 조회 증명서 */}
                   <div className="mb-4">

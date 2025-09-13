@@ -613,10 +613,10 @@ function ReviewWriteModal({ isOpen, isClosing, onClose, onSubmit, currentUser }:
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      const newFiles = Array.from(files).slice(0, 3); // 최대 3개 파일만 허용
+      const newFiles = Array.from(files); // 제한 없이 모든 파일 허용
       setFormData(prev => ({
         ...prev,
-        images: [...(prev.images || []), ...newFiles].slice(0, 3)
+        images: [...(prev.images || []), ...newFiles]
       }));
     }
   };
@@ -780,26 +780,24 @@ function ReviewWriteModal({ isOpen, isClosing, onClose, onSubmit, currentUser }:
             )}
 
             {/* 파일 업로드 영역 */}
-            {(!formData.images || formData.images.length < 3) && (
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-all duration-200 hover:bg-gray-50">
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handleFileUpload}
-                  className="hidden"
-                  id="image-upload"
-                />
-                <label htmlFor="image-upload" className="cursor-pointer">
-                  <div className="text-gray-400 mb-2 text-2xl">
-                    📷
-                  </div>
-                  <div className="text-sm text-gray-600">
-                    클릭하여 이미지 업로드 ({formData.images?.length || 0}/3)
-                  </div>
-                </label>
-              </div>
-            )}
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-all duration-200 hover:bg-gray-50">
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleFileUpload}
+                className="hidden"
+                id="image-upload"
+              />
+              <label htmlFor="image-upload" className="cursor-pointer">
+                <div className="text-gray-400 mb-2 text-2xl">
+                  📷
+                </div>
+                <div className="text-sm text-gray-600">
+                  클릭하여 이미지 업로드 ({formData.images?.length || 0}개 선택됨)
+                </div>
+              </label>
+            </div>
           </div>
 
           {/* 등록 버튼 */}

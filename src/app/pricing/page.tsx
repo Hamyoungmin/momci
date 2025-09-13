@@ -1,12 +1,72 @@
-import type { Metadata } from "next";
-import Link from "next/link";
+'use client';
 
-export const metadata: Metadata = {
-  title: "이용권 구매 - 모든별 키즈",
-  description: "모든별 키즈 이용권을 구매하고 전문 치료사와 안전하게 매칭받으세요. 학부모와 선생님을 위한 합리적인 요금제를 확인하세요.",
-};
+import Link from "next/link";
+import { useAuth } from '@/contexts/AuthContext';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+
+interface UserData {
+  userType: 'parent' | 'therapist';
+  name: string;
+}
 
 export default function PricingPage() {
+  const { currentUser } = useAuth();
+  const router = useRouter();
+  const [, setUserData] = useState<UserData | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchUserDataAndRedirect = async () => {
+      // 비로그인 사용자는 바로 기존 UI 표시
+      if (!currentUser) {
+        setIsLoading(false);
+        return;
+      }
+
+      // 로그인한 사용자만 로딩 표시
+      setIsLoading(true);
+
+      try {
+        const userDocRef = doc(db, 'users', currentUser.uid);
+        const userDoc = await getDoc(userDocRef);
+        
+        if (userDoc.exists()) {
+          const data = userDoc.data() as UserData;
+          setUserData(data);
+          
+          // 사용자 타입에 따라 자동 리다이렉트
+          if (data.userType === 'parent') {
+            router.push('/parent-pricing');
+            return;
+          } else if (data.userType === 'therapist') {
+            router.push('/teacher-pricing');
+            return;
+          }
+        }
+      } catch (error) {
+        console.error('사용자 데이터 불러오기 오류:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchUserDataAndRedirect();
+  }, [currentUser, router]);
+
+  // 로딩 중일 때 표시
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">이용권 정보를 불러오는 중...</p>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="min-h-screen bg-gray-50">
       <section className="py-12">

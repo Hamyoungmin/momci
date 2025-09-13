@@ -82,10 +82,27 @@ service firebase.storage {
       // 본인만 업로드/수정/삭제 가능
       allow create, update, delete: if isOwner(userId) && 
                                        isValidProfileImage() && 
-                                       hasRecentActivity();
+                                       hasRecentActivity() &&
+                                       // 프로필 이미지 파일명 검증 (보안 강화)
+                                       filename.matches('^[a-zA-Z0-9_-]+\\.(jpg|jpeg|png)$');
       
       // 모든 인증된 사용자가 읽기 가능
       allow read: if isAuthenticated();
+    }
+    
+    // 회원정보 수정 관련 임시 파일 (프로필 이미지 업로드 등)
+    match /user-profile-temp/{userId}/{filename} {
+      // 본인만 임시 업로드 가능 (24시간 후 자동 삭제)
+      allow create: if isOwner(userId) && 
+                       isValidProfileImage() && 
+                       hasRecentActivity() &&
+                       filename.matches('^temp_[0-9]+\\.(jpg|jpeg|png)$');
+      
+      // 본인만 읽기 가능
+      allow read: if isOwner(userId);
+      
+      // 본인과 시스템(24시간 후)만 삭제 가능
+      allow delete: if isOwner(userId);
     }
     
     // 자격증/면허증 파일
@@ -180,6 +197,21 @@ service firebase.storage {
                      (isOwner(userId) || isAdmin());
     }
     
+    // 학력 증빙 서류 파일 (졸업증명서 등)
+    match /therapist-registration/{userId}/academic-credentials/{filename} {
+      // 치료사 본인만 업로드 가능
+      allow create: if isAuthenticated() && 
+                       isOwner(userId) &&
+                       isValidDocumentType() &&
+                       hasRecentActivity() &&
+                       // 학력 증빙 서류 파일 크기 제한 (15MB)
+                       request.resource.size < 15 * 1024 * 1024;
+      
+      // 관리자와 본인만 읽기/삭제 가능 (민감한 개인정보)
+      allow read, delete: if isAuthenticated() && 
+                             (isOwner(userId) || isAdmin());
+    }
+    
     // 경력증명서 파일
     match /therapist-registration/{userId}/experience-proof/{filename} {
       // 치료사 본인만 업로드 가능
@@ -221,6 +253,51 @@ service firebase.storage {
                        request.resource.size < 5 * 1024 * 1024;
       
       // 관리자와 본인만 읽기/삭제 가능 (민감한 개인정보)
+      allow read, delete: if isAuthenticated() && 
+                             (isOwner(userId) || isAdmin());
+    }
+    
+    // 성범죄 경력 조회 증명서 파일
+    match /therapist-registration/{userId}/criminal-background-check/{filename} {
+      // 치료사 본인만 업로드 가능
+      allow create: if isAuthenticated() && 
+                       isOwner(userId) &&
+                       isValidDocumentType() &&
+                       hasRecentActivity() &&
+                       // 성범죄 경력 조회 증명서 파일 크기 제한 (10MB)
+                       request.resource.size < 10 * 1024 * 1024;
+      
+      // 관리자와 본인만 읽기/삭제 가능 (민감한 개인정보)
+      allow read, delete: if isAuthenticated() && 
+                             (isOwner(userId) || isAdmin());
+    }
+    
+    // 기타 첨부파일
+    match /therapist-registration/{userId}/misc-documents/{filename} {
+      // 치료사 본인만 업로드 가능 (선택사항)
+      allow create: if isAuthenticated() && 
+                       isOwner(userId) &&
+                       isValidDocumentType() &&
+                       hasRecentActivity() &&
+                       // 기타 첨부파일 크기 제한 (15MB)
+                       request.resource.size < 15 * 1024 * 1024;
+      
+      // 관리자와 본인만 읽기/삭제 가능
+      allow read, delete: if isAuthenticated() && 
+                             (isOwner(userId) || isAdmin());
+    }
+    
+    // 1분 자기소개 영상 파일
+    match /therapist-registration/{userId}/introduction-video/{filename} {
+      // 치료사 본인만 업로드 가능 (선택사항)
+      allow create: if isAuthenticated() && 
+                       isOwner(userId) &&
+                       isValidVideoType() &&
+                       hasRecentActivity() &&
+                       // 1분 자기소개 영상 파일 크기 제한 (100MB)
+                       request.resource.size < 100 * 1024 * 1024;
+      
+      // 관리자와 본인만 읽기/삭제 가능
       allow read, delete: if isAuthenticated() && 
                              (isOwner(userId) || isAdmin());
     }
@@ -322,6 +399,149 @@ service firebase.storage {
       
       // 모든 사용자가 읽기 가능
       allow read: if true;
+    }
+    
+    // 이용권 구매 영수증 및 결제 서류
+    match /subscription-receipts/{userId}/{filename} {
+      // 본인과 관리자만 업로드/읽기/삭제 가능
+      allow create, read, delete: if (isOwner(userId) || isAdmin()) &&
+                                     isValidDocumentType() &&
+                                     hasRecentActivity() &&
+                                     // 영수증 파일명 검증
+                                     filename.matches('^receipt_[0-9]+_[a-zA-Z0-9_-]+\\.(pdf|jpg|jpeg|png)$') &&
+                                     // 영수증 파일 크기 제한 (5MB)
+                                     request.resource.size < 5 * 1024 * 1024;
+    }
+    
+    // 프로필 수정 백업 파일 (이전 프로필 이미지 등)
+    match /profile-backups/{userId}/{filename} {
+      // 시스템과 관리자만 생성 가능 (자동 백업)
+      allow create: if isAdmin() &&
+                       isValidProfileImage() &&
+                       filename.matches('^backup_[0-9]+_[a-zA-Z0-9_-]+\\.(jpg|jpeg|png)$') &&
+                       // 백업 파일 크기 제한 (10MB)
+                       request.resource.size < 10 * 1024 * 1024;
+      
+      // 본인과 관리자만 읽기 가능
+      allow read: if isOwnerOrAdmin(userId);
+      
+      // 관리자만 삭제 가능 (복구 목적)
+      allow delete: if isAdmin();
+    }
+    
+    // 사용자 데이터 내보내기 파일 (GDPR 대응)
+    match /user-exports/{userId}/{filename} {
+      // 본인만 읽기/삭제 가능
+      allow read, delete: if isOwner(userId) &&
+                             filename.matches('^export_[0-9]+_[a-zA-Z0-9_-]+\\.(json|pdf|zip)$');
+      
+      // 시스템/관리자만 생성 가능 (사용자 요청 시)
+      allow create: if isAdmin() &&
+                       request.resource.contentType in [
+                         'application/json', 'application/pdf', 'application/zip'
+                       ] &&
+                       request.resource.size < 50 * 1024 * 1024 && // 50MB 제한
+                       filename.matches('^export_[0-9]+_[a-zA-Z0-9_-]+\\.(json|pdf|zip)$');
+    }
+    
+    // 이용권 구매 관련 임시 파일
+    match /subscription-temp/{userId}/{filename} {
+      // 본인만 업로드 가능 (결제 과정 중)
+      allow create: if isOwner(userId) && 
+                       isValidDocumentType() &&
+                       hasRecentActivity() &&
+                       filename.matches('^temp_payment_[0-9]+\\.(pdf|jpg|jpeg|png)$') &&
+                       // 임시 파일 크기 제한 (10MB)
+                       request.resource.size < 10 * 1024 * 1024;
+      
+      // 본인만 읽기 가능
+      allow read: if isOwner(userId);
+      
+      // 본인과 시스템만 삭제 가능 (결제 완료 후 자동 삭제)
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+    
+    // 입금 증빙 자료 (결제 확인용)
+    match /payment-confirmations/{userId}/{filename} {
+      // 본인만 업로드 가능
+      allow create: if isOwner(userId) && 
+                       isValidDocumentType() &&
+                       hasRecentActivity() &&
+                       filename.matches('^deposit_proof_[0-9]+\\.(pdf|jpg|jpeg|png)$') &&
+                       // 입금 증빙 파일 크기 제한 (15MB)
+                       request.resource.size < 15 * 1024 * 1024;
+      
+      // 본인과 관리자만 읽기 가능
+      allow read: if isOwnerOrAdmin(userId);
+      
+      // 관리자만 삭제 가능 (확인 완료 후)
+      allow delete: if isAdmin();
+    }
+    
+    // 결제 관련 스크린샷 (입금 확인서 등)
+    match /payment-screenshots/{userId}/{filename} {
+      // 본인만 업로드 가능
+      allow create: if isOwner(userId) && 
+                       isValidImageType() &&
+                       hasRecentActivity() &&
+                       filename.matches('^screenshot_[0-9]+\\.(jpg|jpeg|png)$') &&
+                       // 스크린샷 파일 크기 제한 (5MB)
+                       request.resource.size < 5 * 1024 * 1024;
+      
+      // 본인과 관리자만 읽기 가능
+      allow read: if isOwnerOrAdmin(userId);
+      
+      // 본인과 관리자만 삭제 가능
+      allow delete: if isOwnerOrAdmin(userId);
+    }
+    
+    // 이용권 관련 증빙 파일 (학부모용)
+    match /subscription-documents/{userId}/{filename} {
+      // 본인만 업로드 가능
+      allow create: if isOwner(userId) && 
+                       isValidDocumentType() &&
+                       hasRecentActivity() &&
+                       filename.matches('^subscription_[0-9]+\\.(pdf|jpg|jpeg|png)$') &&
+                       // 이용권 관련 파일 크기 제한 (10MB)
+                       request.resource.size < 10 * 1024 * 1024;
+      
+      // 본인과 관리자만 읽기 가능
+      allow read: if isOwnerOrAdmin(userId);
+      
+      // 본인과 관리자만 삭제 가능
+      allow delete: if isOwnerOrAdmin(userId);
+    }
+    
+    // 이용권 사용 증빙 파일 (인터뷰 기록 등)
+    match /usage-evidence/{userId}/{filename} {
+      // 본인과 치료사만 업로드 가능
+      allow create: if isAuthenticated() && 
+                       (isOwner(userId) || 
+                        (request.auth != null && 
+                         firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
+                         firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.userType == 'therapist')) &&
+                       isValidImageType() &&
+                       hasRecentActivity() &&
+                       filename.matches('^usage_[0-9]+\\.(jpg|jpeg|png)$') &&
+                       // 사용 증빙 파일 크기 제한 (5MB)
+                       request.resource.size < 5 * 1024 * 1024;
+      
+      // 본인과 관리자만 읽기 가능
+      allow read: if isOwnerOrAdmin(userId);
+      
+      // 관리자만 삭제 가능 (기록 보존)
+      allow delete: if isAdmin();
+    }
+    
+    // 시스템 로그 파일 (관리자 전용)
+    match /system-logs/{logType}/{filename} {
+      // 관리자만 읽기/생성/삭제 가능
+      allow read, create, delete: if isAdmin() &&
+                                     logType in ['pricing-access', 'profile-edits', 'subscription-purchases', 'payment-confirmations', 'subscription-usage'] &&
+                                     filename.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}_[a-zA-Z0-9_-]+\\.log$') &&
+                                     request.resource.contentType == 'text/plain' &&
+                                     // 로그 파일 크기 제한 (100MB)
+                                     request.resource.size < 100 * 1024 * 1024;
     }
     
     // 기본적으로 모든 다른 경로는 거부

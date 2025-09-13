@@ -1,19 +1,117 @@
-import React from 'react';
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { useAuth } from '@/contexts/AuthContext';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+
+interface UserData {
+  userType: 'parent' | 'therapist';
+  name: string;
+}
 
 export default function TeacherGuidePage() {
+  const { currentUser } = useAuth();
+  const [userData, setUserData] = useState<UserData | null>(null);
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      if (!currentUser) return;
+
+      try {
+        const userDocRef = doc(db, 'users', currentUser.uid);
+        const userDoc = await getDoc(userDocRef);
+        
+        if (userDoc.exists()) {
+          const data = userDoc.data() as UserData;
+          setUserData(data);
+        }
+      } catch (error) {
+        console.error('사용자 데이터 불러오기 오류:', error);
+      }
+    };
+
+    fetchUserData();
+  }, [currentUser]);
+
+  // 이용권 구매 메뉴 렌더링 함수
+  const renderPricingMenu = () => {
+    if (!currentUser || !userData) {
+      // 비로그인 사용자는 드롭다운으로 둘 다 표시
+      return (
+        <div className="relative group">
+          <button className="w-full text-gray-700 hover:bg-gray-50 text-left px-4 py-3 rounded-2xl text-sm font-medium transition-colors flex items-center justify-between">
+            이용권 구매
+            <svg className="w-4 h-4 transition-transform group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          <div className="absolute left-0 top-full mt-1 w-full bg-white shadow-lg rounded-xl border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10">
+            <Link href="/parent-pricing" className="block px-4 py-3 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors rounded-t-xl">
+              학부모용
+            </Link>
+            <Link href="/teacher-pricing" className="block px-4 py-3 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors rounded-b-xl">
+              선생님용
+            </Link>
+          </div>
+        </div>
+      );
+    }
+
+    // 로그인한 사용자는 해당 유형의 이용권으로 직접 링크
+    if (userData.userType === 'parent') {
+      return (
+        <Link href="/parent-pricing" className="block w-full text-gray-700 hover:bg-gray-50 text-left px-4 py-3 rounded-2xl text-sm font-medium transition-colors">
+          이용권 구매
+        </Link>
+      );
+    } else if (userData.userType === 'therapist') {
+      return (
+        <Link href="/teacher-pricing" className="block w-full text-gray-700 hover:bg-gray-50 text-left px-4 py-3 rounded-2xl text-sm font-medium transition-colors">
+          이용권 구매
+        </Link>
+      );
+    }
+  };
   return (
     <div className="min-h-screen bg-gray-50">
       {/* 메인 가이드 섹션 */}
       <section className="py-12">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-white border-4 border-blue-700 rounded-lg p-6">
-            <div className="text-center mb-16 mt-16">
-              <h2 className="text-3xl font-bold text-gray-900 mb-4">모든별 키즈 치료사 이용 가이드</h2>
+        <div className="flex max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* 사이드바 */}
+          <div className="w-64 bg-white shadow-lg rounded-lg mr-8 h-fit">
+            <div className="p-4">
+              <div className="mb-6">
+                <button className="w-full bg-blue-500 text-white text-xl font-bold rounded-2xl h-[110px] flex items-center justify-center">
+                  이용안내
+                </button>
+              </div>
+              <div className="space-y-1">
+                <Link href="/parent-guide" className="block w-full text-gray-700 hover:bg-gray-50 text-left px-4 py-3 rounded-2xl text-sm font-medium transition-colors">
+                  학부모 이용안내
+                </Link>
+                <div className="w-full bg-blue-50 text-blue-600 text-left px-4 py-3 rounded-2xl text-sm font-medium">
+                  선생님 이용안내
+                </div>
+                <Link href="/program-guide" className="block w-full text-gray-700 hover:bg-gray-50 text-left px-4 py-3 rounded-2xl text-sm font-medium transition-colors">
+                  프로그램 안내
+                </Link>
+                {renderPricingMenu()}
+              </div>
+            </div>
+          </div>
+          
+          {/* 메인 콘텐츠 */}
+          <div className="flex-1">
+            <div className="bg-white border-4 border-blue-700 rounded-lg p-6">
+            <div className="text-center mb-12 mt-12">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">모든별 키즈 치료사 이용 가이드</h2>
             </div>
 
             {/* STEP 1 */}
-            <div className="mb-16">
-              <h3 className="text-xl font-bold text-black mb-4">STEP 1. 프로필 등록 및 활동 시작</h3>
+            <div className="mb-12">
+              <h3 className="text-lg font-bold text-black mb-4">STEP 1. 프로필 등록 및 활동 시작</h3>
               
               <div className="mb-4">
                 <p className="text-sm text-gray-700 mb-3">
@@ -30,8 +128,8 @@ export default function TeacherGuidePage() {
             <div className="border-t border-gray-300 my-12"></div>
 
             {/* STEP 2 */}
-            <div className="mb-16">
-              <h3 className="text-xl font-bold text-black mb-4">STEP 2. 매칭 시작 및 인터뷰</h3>
+            <div className="mb-12">
+              <h3 className="text-lg font-bold text-black mb-4">STEP 2. 매칭 시작 및 인터뷰</h3>
               
               <p className="text-sm text-gray-700 mb-4"><span className="text-black font-semibold">매칭 (2가지 방법)</span>:</p>
               <ul className="list-disc list-inside ml-4 space-y-1 text-sm text-gray-700 mb-4">
@@ -61,8 +159,8 @@ export default function TeacherGuidePage() {
             <div className="border-t border-gray-300 my-12"></div>
 
             {/* STEP 3 */}
-            <div className="mb-16">
-              <h3 className="text-xl font-bold text-black mb-4">STEP 3. 수업 확정 및 수익 창출</h3>
+            <div className="mb-12">
+              <h3 className="text-lg font-bold text-black mb-4">STEP 3. 수업 확정 및 수익 창출</h3>
               
               <p className="text-sm text-gray-700 mb-4">
                 <span className="text-black font-semibold">수업 확정</span>: 인터뷰 후 수업이 결정되면, 학부모님이 플랫폼을 통해 첫 수업료를 결제하고 매칭이 최종 확정 됩니다.
@@ -77,8 +175,8 @@ export default function TeacherGuidePage() {
             <div className="border-t border-gray-300 my-12"></div>
 
             {/* STEP 4 */}
-            <div className="mb-16">
-              <h3 className="text-xl font-bold text-black mb-4">STEP 4. 투명한 수수료 정책</h3>
+            <div className="mb-8">
+              <h3 className="text-lg font-bold text-black mb-4">STEP 4. 투명한 수수료 정책</h3>
               
               <p className="text-sm text-gray-700 mb-4">
                 <span className="text-black font-semibold">첫 매칭 수수료</span>: 첫 수업 확정시, <span className="text-blue-700 font-semibold">(주당 수업 횟수 x 1회분)</span>의 수업료가 매칭 성사 수수료를 발생합니다.
@@ -90,6 +188,7 @@ export default function TeacherGuidePage() {
               <p className="text-sm text-gray-700 mb-4">
                 <span className="text-black font-semibold">이후 수익 100% 보장</span>: 첫 매칭 수수료를 제외한 모든 이후의 수업료는 <span className="text-blue-700 font-semibold">100% 선생님의 수익</span>으로, 학부모님과 직접 정산하여 받으시면 됩니다.
               </p>
+            </div>
             </div>
           </div>
         </div>

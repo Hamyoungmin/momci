@@ -44,7 +44,8 @@ const menuItems: MenuItem[] = [
     children: [
       { title: '이용권 결제', href: '/admin/payments/subscriptions', adminOnly: true },
       { title: '첫 수업료', href: '/admin/payments/lessons', adminOnly: true },
-      { title: '환불 관리', href: '/admin/payments/refunds', adminOnly: true }
+      { title: '환불 관리', href: '/admin/payments/refunds', adminOnly: true },
+      { title: '결제 설정', href: '/admin/payments/settings', adminOnly: true }
     ]
   },
   {

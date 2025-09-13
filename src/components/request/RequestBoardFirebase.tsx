@@ -157,6 +157,27 @@ export default function RequestBoardFirebase() {
     '미술치료', '특수체육', '특수교사', '모니터링', '임상심리'
   ];
 
+  // 요일 옵션
+  const dayOptions = [
+    '월', '화', '수', '목', '금', '토', '일',
+    '월,화', '월,수', '월,목', '월,금', '월,토', '월,일',
+    '화,수', '화,목', '화,금', '화,토', '화,일',
+    '수,목', '수,금', '수,토', '수,일',
+    '목,금', '목,토', '목,일',
+    '금,토', '금,일',
+    '토,일',
+    '월,수,금', '월,화,수', '화,수,목', '수,목,금', '목,금,토', '금,토,일'
+  ];
+
+  // 시간 옵션
+  const timeOptions = [
+    '9시~10시', '10시~11시', '11시~12시', '12시~1시',
+    '1시~2시', '2시~3시', '3시~4시', '4시~5시',
+    '5시~6시', '6시~7시', '7시~8시', '8시~9시',
+    '9시~12시', '1시~4시', '2시~5시', '3시~6시',
+    '4시~7시', '5시~8시', '오전', '오후', '협의'
+  ];
+
   // Firebase에서 가져온 게시글 데이터 상태
   const [postsData, setPostsData] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
@@ -302,8 +323,14 @@ export default function RequestBoardFirebase() {
     }
   };
 
-  // 상세 요청 모달 열기 - 게시글 작성 내용 표시
+  // 상세 요청 모달 열기 - 게시글 작성 내용 표시 (로그인 체크 추가)
   const openProfileModal = async (post: Post) => {
+    // 비로그인 사용자는 상세 보기 불가
+    if (!currentUser) {
+      alert('게시글 상세 내용을 보려면 로그인이 필요합니다.');
+      return;
+    }
+    
     console.log('🔍 요청 모달 열기 - 게시글 ID:', post.id);
     
     try {
@@ -400,7 +427,8 @@ export default function RequestBoardFirebase() {
         email: auth.currentUser.email
       });
 
-      const newTitle = `${postData.age} ${postData.gender} ${postData.frequency} ${postData.treatment} 홈티 모집`;
+      const genderText = postData.gender === '남' ? '남아' : postData.gender === '여' ? '여아' : postData.gender;
+      const newTitle = `${postData.age} ${genderText} ${postData.treatment} 홈티 모집`;
       
       // 전송할 데이터 준비
       const postDataToSend = {
@@ -880,15 +908,15 @@ export default function RequestBoardFirebase() {
                           {/* 나이/성별 */}
                           <div className="col-span-2 text-center">
                             <div className="text-gray-900 font-medium text-sm">
-                              {post.age} {post.gender}
+                              {post.age}/{post.gender}
                             </div>
                           </div>
                           
                           {/* 주당횟수/희망시간 */}
                           <div className="col-span-2 text-center">
                             <div className="text-gray-900 text-sm">
-                              <div className="font-medium">{post.frequency}</div>
-                              <div className="text-xs text-gray-600 mt-1">{post.timeDetails}</div>
+                              <div className="font-bold">{post.frequency}</div>
+                              <div className="text-sm text-gray-600 mt-1 font-bold">{post.timeDetails}</div>
                             </div>
                           </div>
                           
@@ -1100,29 +1128,35 @@ export default function RequestBoardFirebase() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">요일 / 시간</label>
                   <div className="relative flex items-center border border-gray-300 rounded-2xl focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent">
-                    <input
-                      type="text"
+                    <select
                       value={newPost.timeDetails.split(' / ')[0] || ''}
                       onChange={(e) => {
                         const timePart = newPost.timeDetails.split(' / ')[1] || '';
                         setNewPost(prev => ({ ...prev, timeDetails: `${e.target.value} / ${timePart}` }));
                       }}
-                      placeholder="월,수"
-                      className="flex-1 px-4 py-3 border-0 rounded-l-2xl focus:outline-none text-center"
+                      className="flex-1 px-4 py-3 border-0 rounded-l-2xl focus:outline-none text-center bg-white"
                       required
-                    />
+                    >
+                      <option value="">요일 선택</option>
+                      {dayOptions.map((day) => (
+                        <option key={day} value={day}>{day}</option>
+                      ))}
+                    </select>
                     <div className="px-2 text-gray-400 font-medium">/</div>
-                    <input
-                      type="text"
+                    <select
                       value={newPost.timeDetails.split(' / ')[1] || ''}
                       onChange={(e) => {
                         const dayPart = newPost.timeDetails.split(' / ')[0] || '';
                         setNewPost(prev => ({ ...prev, timeDetails: `${dayPart} / ${e.target.value}` }));
                       }}
-                      placeholder="5시~6시"
-                      className="flex-1 px-4 py-3 border-0 rounded-r-2xl focus:outline-none text-center"
+                      className="flex-1 px-4 py-3 border-0 rounded-r-2xl focus:outline-none text-center bg-white"
                       required
-                    />
+                    >
+                      <option value="">시간 선택</option>
+                      {timeOptions.map((time) => (
+                        <option key={time} value={time}>{time}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
                 <div>
@@ -1166,7 +1200,33 @@ export default function RequestBoardFirebase() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">세부내용</label>
                 <textarea
                   value={newPost.additionalInfo}
-                  onChange={(e) => setNewPost(prev => ({ ...prev, additionalInfo: e.target.value }))}
+                  onChange={(e) => {
+                    let value = e.target.value;
+                    
+                    // 처음 입력할 때 기본 양식이 없으면 추가
+                    if (value.length > 0 && !value.includes('홈티위치 :') && !value.includes('치료정보 :')) {
+                      value = `홈티위치 : ${value}
+치료정보 : 
+희망시간 : 
+아동정보 : 
+
+* 지원자는 비공개 익명으로 표기되며, 본인만 확인하실 수 있습니다.`;
+                    }
+                    
+                    setNewPost(prev => ({ ...prev, additionalInfo: value }));
+                  }}
+                  onFocus={(e) => {
+                    // 포커스 시 기본 양식이 없으면 추가
+                    if (!e.target.value || (!e.target.value.includes('홈티위치 :') && !e.target.value.includes('치료정보 :'))) {
+                      const newValue = `홈티위치 : 
+치료정보 : 
+희망시간 : 
+아동정보 : 
+
+* 지원자는 비공개 익명으로 표기되며, 본인만 확인하실 수 있습니다.`;
+                      setNewPost(prev => ({ ...prev, additionalInfo: newValue }));
+                    }
+                  }}
                   placeholder={`홈티위치 : 사명역, 교대역 인근
 치료정보 : 주1회 언어치료
 희망시간 : 월2~5시, 화,목 7시~, 토 1~2시, 6시~, 일 전체
@@ -1201,7 +1261,7 @@ export default function RequestBoardFirebase() {
                       })()}</p>
                     </div>
                     <div className="col-span-2">
-                      <p><strong>제목:</strong> {newPost.age} {newPost.gender} {newPost.frequency} {newPost.treatment} 홈티 모집</p>
+                      <p><strong>제목:</strong> {newPost.age} {newPost.gender === '남' ? '남아' : newPost.gender === '여' ? '여아' : newPost.gender} {newPost.treatment} 홈티 모집</p>
                     </div>
                   </div>
                 </div>
@@ -1220,7 +1280,7 @@ export default function RequestBoardFirebase() {
                   type="submit"
                   className="px-6 py-3 bg-blue-500 text-white rounded-2xl hover:bg-blue-600 transition-colors"
                 >
-                  홈티지원하기
+                  선생님께 요청하기
                 </button>
               </div>
             </form>
@@ -1250,7 +1310,7 @@ export default function RequestBoardFirebase() {
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <h3 className="text-2xl font-bold text-gray-900 mb-3">
-                      {selectedProfile.age} {selectedProfile.gender} {selectedProfile.treatment} 홈티 모집
+                      {selectedProfile.age} {selectedProfile.gender === '남' ? '남아' : selectedProfile.gender === '여' ? '여아' : selectedProfile.gender} {selectedProfile.treatment} 홈티 모집
                     </h3>
                     <div className="flex items-center space-x-2">
                       <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-50 text-blue-700 border border-blue-200">
@@ -1309,29 +1369,29 @@ export default function RequestBoardFirebase() {
                     <div className="grid grid-cols-4 gap-6 mb-4">
                       <div>
                         <div className="text-sm font-medium text-gray-600 mb-1">치료 분야</div>
-                        <div className="text-sm text-gray-900">{selectedProfile.treatment}</div>
+                        <div className="text-sm text-gray-900 font-bold">{selectedProfile.treatment}</div>
                       </div>
                       <div>
                         <div className="text-sm font-medium text-gray-600 mb-1">대상 연령</div>
-                        <div className="text-sm text-gray-900">{selectedProfile.age}</div>
+                        <div className="text-sm text-gray-900 font-bold">{selectedProfile.age}</div>
                       </div>
                       <div>
                         <div className="text-sm font-medium text-gray-600 mb-1">성별</div>
-                        <div className="text-sm text-gray-900">{selectedProfile.gender}</div>
+                        <div className="text-sm text-gray-900 font-bold">{selectedProfile.gender}</div>
                       </div>
                       <div>
                         <div className="text-sm font-medium text-gray-600 mb-1">희망 횟수</div>
-                        <div className="text-sm text-gray-900">{selectedProfile.frequency}</div>
+                        <div className="text-sm text-gray-900 font-bold">{selectedProfile.frequency}</div>
                       </div>
                     </div>
                     <div className="grid grid-cols-4 gap-6">
                       <div>
                         <div className="text-sm font-medium text-gray-600 mb-1">지역</div>
-                        <div className="text-sm text-gray-900">{selectedProfile.region || selectedProfile.category}</div>
+                        <div className="text-sm text-gray-900 font-bold">{selectedProfile.region || selectedProfile.category}</div>
                       </div>
                       <div>
                         <div className="text-sm font-medium text-gray-600 mb-1">요일/시간</div>
-                        <div className="text-sm text-gray-900">{selectedProfile.timeDetails || '협의 후 결정'}</div>
+                        <div className="text-sm text-gray-900 font-bold">{selectedProfile.timeDetails || '협의 후 결정'}</div>
                       </div>
                       <div></div>
                       <div></div>
@@ -1344,9 +1404,9 @@ export default function RequestBoardFirebase() {
                   <div>
                     <h4 className="font-semibold mb-4 text-gray-900 text-lg">세부 내용</h4>
                     <div className="bg-gray-50 rounded-lg p-6">
-                      <pre className="text-sm text-gray-900 font-medium whitespace-pre-wrap leading-relaxed">
+                      <div className="text-sm text-gray-600 font-bold whitespace-pre-wrap leading-relaxed">
                         {selectedProfile.additionalInfo}
-                      </pre>
+                      </div>
                     </div>
                   </div>
                 )}

@@ -169,7 +169,7 @@ export default function BrowseBoard() {
           const teacher: Teacher = {
             id: postDoc.id,
             // 게시글 제목을 그대로 사용 (실제 사용자가 작성한 제목)
-            name: docData.title || `${docData.age || ''} ${docData.gender || ''} ${docData.treatment || '치료사'}`,
+            name: docData.title || `${docData.age || ''}/${docData.gender || ''} ${docData.treatment || '치료사'}`,
             specialty: docData.treatment || '재활치료',
             experience: 0, // 프로필에서 업데이트됨
             rating: 0.0, // 실제 후기 기반으로 계산됨
@@ -487,8 +487,14 @@ export default function BrowseBoard() {
     }, 300);
   };
 
-  // 상세 프로필 모달 열기 - 실제 사용자 데이터 가져오기
+  // 상세 프로필 모달 열기 - 실제 사용자 데이터 가져오기 (로그인 체크 추가)
   const openProfileModal = async (teacher: Teacher) => {
+    // 비로그인 사용자는 상세 보기 불가
+    if (!currentUser) {
+      alert('치료사 상세 프로필을 보려면 로그인이 필요합니다.');
+      return;
+    }
+    
     console.log('🔍 프로필 모달 열기 - 게시글 작성자 ID:', teacher.authorId);
     
     // authorId가 없으면 기본 정보로 표시
@@ -665,7 +671,8 @@ export default function BrowseBoard() {
         email: auth.currentUser.email
       });
 
-      const newTitle = `${postData.age} ${postData.gender} ${postData.frequency} 홈티`;
+      const genderText = postData.gender === '남' ? '남아' : postData.gender === '여' ? '여아' : postData.gender;
+      const newTitle = `${postData.age} ${genderText} ${postData.treatment} 홈티`;
       
       // 전송할 데이터 준비
       const postDataToSend = {
@@ -1363,7 +1370,7 @@ export default function BrowseBoard() {
                       })()}</p>
                     </div>
                     <div className="col-span-2">
-                      <p><strong>제목:</strong> {newPost.age} {newPost.gender} {newPost.frequency} 홈티</p>
+                      <p><strong>제목:</strong> {newPost.age} {newPost.gender === '남' ? '남아' : newPost.gender === '여' ? '여아' : newPost.gender} {newPost.treatment} 홈티</p>
                     </div>
                   </div>
                 </div>
@@ -1524,9 +1531,9 @@ export default function BrowseBoard() {
                     #{selectedProfile.postFrequency}
                   </span>
                 )}
-                {selectedProfile.postAge && (
+                {selectedProfile.postAge && selectedProfile.postGender && (
                   <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200">
-                    #{selectedProfile.postAge}
+                    #{selectedProfile.postAge}/{selectedProfile.postGender}
                   </span>
                 )}
               </div>
