@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import Image from 'next/image';
 
 // 치료사 지원자 정보 타입
@@ -31,150 +30,141 @@ interface TherapistApplication {
 interface TherapistApplicationCardProps {
   application: TherapistApplication;
   onChatStart: (therapistId: string) => void;
+  onViewProfile: (therapistId: string) => void;
 }
 
 export default function TherapistApplicationCard({ 
   application, 
-  onChatStart 
+  onChatStart,
+  onViewProfile
 }: TherapistApplicationCardProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
-
-  // 인증 뱃지 컴포넌트
-  const VerificationBadge = ({ type, isActive }: { type: string; isActive: boolean }) => {
-    const getBadgeInfo = (type: string) => {
-      switch (type) {
-        case 'certification':
-          return { label: '자격증', icon: '📋' };
-        case 'experience':
-          return { label: '경력확인', icon: '💼' };
-        case 'id':
-          return { label: '신원확인', icon: '🆔' };
-        case 'verified':
-          return { label: '모든별 인증', icon: '⭐' };
-        default:
-          return { label: type, icon: '✓' };
-      }
-    };
-
-    const { label, icon } = getBadgeInfo(type);
-    
-    return (
-      <span 
-        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-          isActive 
-            ? 'bg-green-100 text-green-800' 
-            : 'bg-gray-100 text-gray-400'
-        }`}
-      >
-        <span className="mr-1">{icon}</span>
-        {label}
-      </span>
-    );
-  };
-
-  // 별점 렌더링
-  const renderStars = (rating: number) => {
-    const stars = [];
-    const fullStars = Math.floor(rating);
-    const hasHalfStar = rating % 1 !== 0;
-
-    for (let i = 0; i < fullStars; i++) {
-      stars.push(
-        <span key={i} className="text-yellow-400">★</span>
-      );
-    }
-
-    if (hasHalfStar) {
-      stars.push(
-        <span key="half" className="text-yellow-400">☆</span>
-      );
-    }
-
-    const emptyStars = 5 - stars.length;
-    for (let i = 0; i < emptyStars; i++) {
-      stars.push(
-        <span key={`empty-${i}`} className="text-gray-300">☆</span>
-      );
-    }
-
-    return stars;
+  // 이름에서 성만 추출하는 함수 (선생님 둘러보기와 동일)
+  const getLastName = (fullName: string | undefined): string => {
+    if (!fullName) return '익명';
+    return fullName.charAt(0);
   };
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
-      {/* 치료사 기본 정보 */}
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center space-x-4">
+    <div className="bg-white rounded-2xl border-2 border-blue-100 p-6 hover:shadow-lg transition-all duration-200 hover:border-blue-200">
+      <div className="flex items-start justify-between">
+        {/* 왼쪽: 프로필 정보 */}
+        <div className="flex items-start space-x-4 flex-1">
           {/* 프로필 이미지 */}
-          <div className="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center">
+          <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden relative">
             {application.therapistProfileImage ? (
               <Image 
                 src={application.therapistProfileImage} 
-                alt={application.therapistName}
-                width={48}
-                height={48}
-                className="w-12 h-12 rounded-full object-cover"
+                alt={`${application.therapistName} 프로필`}
+                width={64}
+                height={64}
+                className="w-full h-full object-cover rounded-full"
               />
             ) : (
-              <span className="text-gray-600 text-lg font-medium">
-                {application.therapistName[0]}
-              </span>
+              <div className="text-center">
+                <span className="text-gray-500 text-xs font-medium block">프로필</span>
+                <span className="text-gray-400 text-xs block">사진</span>
+              </div>
             )}
           </div>
-
-          <div>
-            {/* 이름과 전문분야 */}
-            <h3 className="text-lg font-semibold text-gray-900 mb-1">
-              {application.therapistName} 치료사
-              <span className="text-sm text-gray-600 font-normal ml-2">
-                [{application.therapistExperience}년차 {application.therapistSpecialty}]
-              </span>
-            </h3>
-
-            {/* 별점과 후기 수 */}
-            <div className="flex items-center space-x-2 mb-2">
-              <div className="flex items-center">
-                {renderStars(application.therapistRating)}
-              </div>
-              <span className="text-sm font-medium text-gray-900">
-                {application.therapistRating.toFixed(1)}
-              </span>
-              <span className="text-sm text-gray-500">
-                (후기 {application.therapistReviewCount}개)
-              </span>
+          
+          {/* 치료사 정보 */}
+          <div className="flex-1">
+            <div className="flex items-center space-x-2 mb-1">
+              <h3 className="text-lg font-bold text-gray-900">
+                {/* 성 + 00 + 치료사 [년차 전문분야] 형태로 표시 */}
+                {getLastName(application.therapistName)}00 치료사 <span className="text-gray-600">[{application.therapistExperience || 0}년차 {application.therapistSpecialty}]</span>
+              </h3>
             </div>
-
-            {/* 전문분야 태그 */}
-            {application.therapistSpecialtyTags && application.therapistSpecialtyTags.length > 0 && (
-              <div className="flex flex-wrap gap-1 mb-3">
-                {application.therapistSpecialtyTags.map((tag, index) => (
-                  <span 
-                    key={index}
-                    className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200"
-                  >
-                    #{tag}
-                  </span>
-                ))}
+            
+            <div className="flex items-center space-x-2 mb-3">
+              <div className="flex items-center">
+                {/* 별 5개 틀 항상 표시 */}
+                <div className="flex items-center mr-2">
+                  {[1, 2, 3, 4, 5].map((star) => {
+                    const rating = application.therapistRating || 0;
+                    const filled = star <= Math.floor(rating);
+                    const halfFilled = star === Math.ceil(rating) && rating % 1 !== 0;
+                    
+                    return (
+                      <span
+                        key={star}
+                        className={`text-lg ${
+                          filled 
+                            ? 'text-orange-400' 
+                            : halfFilled 
+                            ? 'text-orange-300' 
+                            : 'text-gray-300'
+                        }`}
+                      >
+                        {filled ? '★' : halfFilled ? '☆' : '☆'}
+                      </span>
+                    );
+                  })}
+                </div>
+                <span className="text-sm font-medium text-gray-700">
+                  {application.therapistRating > 0 ? application.therapistRating.toFixed(1) : '0.0'}
+                </span>
+                <span className="text-xs text-gray-500 ml-1">
+                  (후기 {application.therapistReviewCount || 0}개)
+                </span>
               </div>
-            )}
-
-            {/* 인증 뱃지들 */}
-            <div className="flex flex-wrap gap-2">
-              <VerificationBadge type="certification" isActive={application.hasCertification} />
-              <VerificationBadge type="experience" isActive={application.hasExperienceProof} />
-              <VerificationBadge type="id" isActive={application.hasIdVerification} />
-              <VerificationBadge type="verified" isActive={application.isVerified} />
+            </div>
+            
+            <div className="flex items-center space-x-2 mb-3">
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                #{application.therapistSpecialty}
+              </span>
+              {application.therapistSpecialtyTags && application.therapistSpecialtyTags.map((tag, index) => (
+                <span key={index} className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                  #{tag}
+                </span>
+              ))}
+            </div>
+            
+            <div className="border-t border-gray-200 pt-3 mb-3"></div>
+            
+            <div className="flex flex-wrap items-center gap-2">
+              {/* 자격증 인증 - 실제 데이터 반영 */}
+              <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${application.hasCertification ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200'} border`}>
+                {application.hasCertification ? '✓' : '×'} 자격증
+              </span>
+              
+              {/* 경력 증명 */}
+              <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${application.hasExperienceProof ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200'} border`}>
+                {application.hasExperienceProof ? '✓' : '×'} 경력증명
+              </span>
+              
+              {/* 보험가입 - 기본 인증된 것으로 처리 */}
+              <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${application.isVerified ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200'} border`}>
+                {application.isVerified ? '✓' : '×'} 보험가입
+              </span>
+              
+              {/* 성범죄경력증명서 */}
+              <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${application.hasIdVerification ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200'} border`}>
+                {application.hasIdVerification ? '✓' : '×'} 성범죄경력증명서
+              </span>
+              
+              {/* 모든별 인증 */}
+              <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${application.isVerified ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200'} border`}>
+                {application.isVerified ? '⭐' : '☆'} 모든별 인증
+              </span>
             </div>
           </div>
         </div>
 
-        {/* 1:1 채팅 버튼 */}
-        <div className="flex flex-col items-end">
+        {/* 오른쪽: 버튼들과 지원일 */}
+        <div className="text-right">
           <button
             onClick={() => onChatStart(application.applicantId)}
-            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors mb-2"
+            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors mb-2 block w-full"
           >
             💬 1:1 채팅
+          </button>
+          <button
+            onClick={() => onViewProfile(application.applicantId)}
+            className="text-xs text-gray-500 hover:text-blue-600 mb-1 cursor-pointer transition-colors block text-right"
+          >
+            상세 프로필 보기 &gt;
           </button>
           <div className="text-xs text-gray-500">
             {application.createdAt ? 
@@ -191,38 +181,6 @@ export default function TherapistApplicationCard({
           </div>
         </div>
       </div>
-
-      {/* 지원 메시지 (토글 가능) */}
-      {application.message && (
-        <div className="border-t border-gray-100 pt-4">
-          <button
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="flex items-center text-sm text-gray-600 hover:text-gray-800 transition-colors"
-          >
-            <span className="mr-1">💬</span>
-            지원 메시지 
-            <span className="ml-1">
-              {isExpanded ? '접기' : '보기'}
-            </span>
-            <svg 
-              className={`w-4 h-4 ml-1 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
-              fill="none" 
-              stroke="currentColor" 
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
-          
-          {isExpanded && (
-            <div className="mt-3 p-3 bg-gray-50 rounded-lg">
-              <p className="text-sm text-gray-700 whitespace-pre-wrap">
-                {application.message}
-              </p>
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }

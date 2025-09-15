@@ -6,6 +6,8 @@ import Image from 'next/image';
 import { collection, onSnapshot, orderBy, query, where, limit, addDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore';
 import { db, auth } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
+import { startChatWithTherapist } from '@/lib/chat';
+import OneOnOneChat from '@/components/chat/OneOnOneChat';
 
 // 치료사 타입 정의
 interface Teacher {
@@ -81,6 +83,18 @@ export default function BrowseBoard() {
   // 1:1 채팅 모달 상태
   const [showSafetyModal, setShowSafetyModal] = useState(false);
   const [isSafetyModalClosing, setIsSafetyModalClosing] = useState(false);
+  
+  // 채팅 시작 전 확인 모달 상태 (학부모 전용)
+  const [showChatConfirmModal, setShowChatConfirmModal] = useState(false);
+  const [isChatConfirmModalClosing, setIsChatConfirmModalClosing] = useState(false);
+  
+  // 1:1 채팅 상태
+  const [showChat, setShowChat] = useState(false);
+  const [chatRoomId, setChatRoomId] = useState('');
+  const [chatOtherUserId, setChatOtherUserId] = useState('');
+  const [chatOtherUserName, setChatOtherUserName] = useState('');
+  const [chatOtherUserType, setChatOtherUserType] = useState<'parent' | 'therapist'>('therapist');
+  const [isStartingChat, setIsStartingChat] = useState(false);
 
   // 사용자 권한 체크 (치료사 또는 관리자, 또는 특정 관리자 이메일만 게시글 작성 가능)
   const canCreatePost = currentUser?.email === 'dudals7334@naver.com' || 
@@ -383,13 +397,18 @@ export default function BrowseBoard() {
       if (showConfirmModal && !target.closest('.confirm-modal')) {
         closeConfirmModal();
       }
+      
+      // 채팅 확인 모달 외부 클릭 시 모달 닫기
+      if (showChatConfirmModal && !target.closest('.chat-confirm-modal')) {
+        closeChatConfirmModal();
+      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [showCreatePostModal, showProfileModal, showConfirmModal]);
+  }, [showCreatePostModal, showProfileModal, showConfirmModal, showChatConfirmModal]);
 
   // 현재 선택된 지역의 치료사 필터링
   const getCurrentTeachers = () => {
@@ -653,7 +672,89 @@ export default function BrowseBoard() {
     setTimeout(() => {
       setShowSafetyModal(false);
       setIsSafetyModalClosing(false);
+      
+      // 학부모인 경우 채팅 확인 모달 열기
+      if (userData?.userType === 'parent') {
+        setTimeout(() => {
+          setShowChatConfirmModal(true);
+        }, 100);
+      }
     }, 300);
+  };
+  
+  // 채팅 확인 모달 닫기 (취소)
+  const closeChatConfirmModal = () => {
+    setIsChatConfirmModalClosing(true);
+    setTimeout(() => {
+      setShowChatConfirmModal(false);
+      setIsChatConfirmModalClosing(false);
+    }, 300);
+  };
+
+  // 실제 채팅 시작 (동의하고 채팅 시작 버튼)
+  const handleStartChat = async () => {
+    if (!currentUser || !userData || !selectedProfile) {
+      alert('로그인이 필요합니다.');
+      return;
+    }
+
+    if (userData.userType !== 'parent') {
+      alert('학부모만 채팅을 시작할 수 있습니다.');
+      return;
+    }
+
+    setIsStartingChat(true);
+    
+    try {
+      // 치료사 정보 설정
+      const therapistId = selectedProfile.authorId || selectedProfile.id;
+      const therapistName = selectedProfile.name || selectedProfile.userName || '치료사';
+
+      console.log('채팅 시작 시도:', {
+        currentUserId: currentUser.uid,
+        currentUserName: userData.name,
+        therapistId,
+        therapistName
+      });
+
+      // 채팅방 생성 또는 기존 채팅방 찾기
+      const roomId = await startChatWithTherapist(
+        currentUser.uid,
+        userData.name || '학부모',
+        therapistId,
+        therapistName
+      );
+
+      // 채팅 상태 설정
+      setChatRoomId(roomId);
+      setChatOtherUserId(therapistId);
+      setChatOtherUserName(therapistName);
+      setChatOtherUserType('therapist');
+
+      // 모달들 닫고 채팅창 열기
+      setShowChatConfirmModal(false);
+      setIsChatConfirmModalClosing(false);
+      setShowProfileModal(false);
+      setIsProfileModalClosing(false);
+      
+      setTimeout(() => {
+        setShowChat(true);
+      }, 100);
+
+    } catch (error) {
+      console.error('채팅 시작 실패:', error);
+      alert('채팅을 시작할 수 없습니다. 다시 시도해주세요.');
+    } finally {
+      setIsStartingChat(false);
+    }
+  };
+
+  // 채팅창 닫기
+  const handleCloseChat = () => {
+    setShowChat(false);
+    setChatRoomId('');
+    setChatOtherUserId('');
+    setChatOtherUserName('');
   };
 
   // 새 게시글 Firebase에 저장
@@ -1733,7 +1834,7 @@ export default function BrowseBoard() {
                   <svg className="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
                   </svg>
-                  1:! 채팅으로 인터뷰 시작하기
+                  1:1 채팅으로 인터뷰 시작하기
                 </button>
               </div>
             </div>
@@ -1895,6 +1996,118 @@ export default function BrowseBoard() {
         </div>
       )}
 
+      {/* 채팅 시작 전 확인 모달 (학부모 전용) */}
+      {showChatConfirmModal && (
+        <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50">
+          <div className={`bg-white border-4 border-blue-700 rounded-lg max-w-md w-[95vw] max-h-[90vh] overflow-y-auto shadow-xl chat-confirm-modal ${isChatConfirmModalClosing ? 'animate-slideOut' : 'animate-slideIn'}`}>
+            {/* 헤더 */}
+            <div className="flex justify-end p-4">
+              <button
+                onClick={closeChatConfirmModal}
+                className="text-gray-400 hover:text-gray-600 text-2xl"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* 메인 내용 */}
+            <div className="px-6 pb-6">
+              <div className="text-center mb-6">
+                <h2 className="text-xl font-bold text-gray-900 mb-2">
+                  채팅 시작 전 필수 확인 사항
+                </h2>
+              </div>
+
+              {/* 인터뷰권 사용 안내 */}
+              <div className="mb-4">
+                <div className="flex items-center mb-3">
+                  <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center mr-2">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="white">
+                      <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                  </div>
+                  <h3 className="text-base font-bold text-blue-600">인터뷰권 사용 안내</h3>
+                </div>
+                
+                <div className="bg-blue-50 rounded-lg p-4 space-y-2">
+                  <p className="text-sm text-gray-700">
+                    채팅 시작 후 <span className="font-bold text-blue-600">치료사님이 응답하면 인터권 1회가 사용</span>되며, 
+                    이후에는 환불되지 않습니다.
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    ※ 응답 전에 취소하시면 인터뷰권은 차감되지 않습니다.
+                  </p>
+                </div>
+              </div>
+
+              {/* 직거래 금지 안내 */}
+              <div className="mb-6">
+                <div className="flex items-center mb-3">
+                  <div className="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center mr-2">
+                    <span className="text-white text-xs font-bold">!</span>
+                  </div>
+                  <h3 className="text-base font-bold text-red-600">직거래 금지 안내</h3>
+                </div>
+                
+                <div className="bg-red-50 rounded-lg p-4 space-y-2">
+                  <p className="text-sm text-red-600">
+                    플랫폼 외부 거래(현금, 계좌이체 등)는 <span className="font-bold text-red-600">엄격히 금지</span>됩니다.
+                  </p>
+                  <p className="text-sm text-red-600">
+                    직거래 시 발생하는 모든 문제에 대해 플랫폼은 어떠한 보호나 
+                    책임도 지지 않습니다.
+                  </p>
+                  <p className="text-sm text-red-600">
+                    직거래 유도 신고 시, 확인 후 <span className="font-bold text-red-600">이용권 1개월을 포상</span>으로 지급합니다.
+                  </p>
+                </div>
+              </div>
+
+              {/* 동의 체크박스 */}
+              <div className="mb-6">
+                <label className="flex items-start space-x-3 cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 mt-0.5"
+                  />
+                  <span className="text-sm text-gray-700 font-bold">
+                    위 내용을 모두 확인했으며, 플랫폼의 안전 규정을 준수하는 것에 동의합니다.
+                  </span>
+                </label>
+              </div>
+
+              {/* 버튼들 */}
+              <div className="flex gap-3">
+                <button
+                  onClick={closeChatConfirmModal}
+                  className="flex-1 px-4 py-3 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition-colors"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleStartChat}
+                  disabled={isStartingChat}
+                  className={`flex-1 px-4 py-3 rounded-lg font-medium transition-colors ${
+                    isStartingChat
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-blue-500 text-white hover:bg-blue-600'
+                  }`}
+                >
+                  {isStartingChat ? (
+                    <div className="flex items-center justify-center space-x-2">
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <span>채팅방 생성 중...</span>
+                    </div>
+                  ) : (
+                    '동의하고 채팅 시작'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 프로필 등록 확인 팝업 */}
       {showConfirmModal && (
         <div className="fixed inset-0 flex items-center justify-center z-50">
@@ -1944,6 +2157,18 @@ export default function BrowseBoard() {
           </div>
         </div>
       )}
+
+      {/* 1:1 채팅창 */}
+      {showChat && (
+        <OneOnOneChat
+          chatRoomId={chatRoomId}
+          otherUserId={chatOtherUserId}
+          otherUserName={chatOtherUserName}
+          otherUserType={chatOtherUserType}
+          onClose={handleCloseChat}
+        />
+      )}
+
     </section>
   );
 }
