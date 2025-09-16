@@ -60,6 +60,7 @@ export default function Home() {
                   height={300}
                   className="relative z-10 object-contain"
                   priority
+                  unoptimized
                 />
               </div>
             </div>

@@ -19,6 +19,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "모든별 키즈 - 아이 맞춤 홈티칭 플랫폼",
   description: "모든별 키즈는 전문 치료사와 학부모를 안전하게 연결하는 홈티칭 매칭 플랫폼입니다.",
+  icons: {
+    icon: '/favicon.ico',
+    shortcut: '/favicon.ico',
+    apple: '/favicon.ico',
+  },
 };
 
 export default function RootLayout({
