@@ -27,7 +27,7 @@ export default function PaymentCheckoutPage() {
   const [paymentData, setPaymentData] = useState<PaymentData | null>(null);
   const [bankInfo, setBankInfo] = useState<BankInfo | null>(null);
   const [loading, setLoading] = useState(true);
-  const [paymentMethod, setPaymentMethod] = useState<'bank' | 'card'>('bank');
+  const paymentMethod = 'bank'; // 무통장입금만 지원
   const [isProcessing, setIsProcessing] = useState(false);
 
   // URL 파라미터에서 결제 정보 가져오기
@@ -200,100 +200,53 @@ export default function PaymentCheckoutPage() {
             </div>
           </div>
 
-          {/* 결제 방법 선택 */}
+          {/* 결제 방법 */}
           <div className="mb-8">
             <h2 className="text-xl font-bold text-gray-900 mb-4">결제 방법</h2>
-            <div className="space-y-3">
-              {/* 무통장입금 */}
-              <div 
-                className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
-                  paymentMethod === 'bank' 
-                    ? 'border-blue-500 bg-blue-50' 
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-                onClick={() => setPaymentMethod('bank')}
-              >
-                <div className="flex items-center space-x-3">
-                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                    paymentMethod === 'bank' ? 'border-blue-500 bg-blue-500' : 'border-gray-300'
-                  }`}>
-                    {paymentMethod === 'bank' && (
-                      <div className="w-2 h-2 bg-white rounded-full"></div>
-                    )}
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                    </svg>
-                    <span className="font-medium text-gray-900">무통장입금</span>
-                  </div>
+            <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+              <div className="flex items-center space-x-3">
+                <div className="w-5 h-5 rounded-full border-2 border-blue-500 bg-blue-500 flex items-center justify-center">
+                  <div className="w-2 h-2 bg-white rounded-full"></div>
                 </div>
-              </div>
-
-              {/* 카드결제 */}
-              <div 
-                className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
-                  paymentMethod === 'card' 
-                    ? 'border-blue-500 bg-blue-50' 
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-                onClick={() => setPaymentMethod('card')}
-              >
-                <div className="flex items-center space-x-3">
-                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                    paymentMethod === 'card' ? 'border-blue-500 bg-blue-500' : 'border-gray-300'
-                  }`}>
-                    {paymentMethod === 'card' && (
-                      <div className="w-2 h-2 bg-white rounded-full"></div>
-                    )}
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                    </svg>
-                    <span className="font-medium text-gray-900">신용카드/체크카드</span>
-                  </div>
+                <div className="flex items-center space-x-2">
+                  <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                  </svg>
+                  <span className="font-medium text-blue-900">무통장입금</span>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* 무통장입금 정보 (무통장입금 선택 시) */}
-          {paymentMethod === 'bank' && bankInfo && (
-            <div className="mb-8">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">입금 계좌 정보</h2>
-              <div className="bg-blue-50 rounded-lg p-6 border border-blue-200">
-                <div className="text-center space-y-3">
-                  <div>
-                    <div className="text-sm text-blue-600 mb-1">은행명</div>
-                    <div className="text-lg font-bold text-gray-900">{bankInfo.bankName}</div>
-                  </div>
-                  
-                  <div>
-                    <div className="text-sm text-blue-600 mb-1">계좌번호</div>
-                    <div className="text-xl font-bold text-gray-900 font-mono">{bankInfo.accountNumber}</div>
-                  </div>
-                  
-                  <div>
-                    <div className="text-sm text-blue-600 mb-1">예금주</div>
-                    <div className="text-lg font-bold text-gray-900">{bankInfo.accountHolder}</div>
-                  </div>
+          {/* 입금 안내 */}
+          <div className="mb-8">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">입금 안내</h2>
+            <div className="bg-blue-50 rounded-lg p-6 border border-blue-200">
+              <div className="text-center space-y-3">
+                <div>
+                  <div className="text-sm text-blue-600 mb-1">은행명</div>
+                  <div className="text-lg font-bold text-gray-900">{bankInfo?.bankName || '모든별은행'}</div>
                 </div>
                 
-                <div className="mt-4 p-3 bg-yellow-100 rounded-lg border border-yellow-300">
-                  <div className="flex items-start space-x-2">
-                    <svg className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                    </svg>
-                    <div className="text-sm text-yellow-800">
-                      <strong>입금자명은 반드시 가입하신 성함으로 입금해주세요.</strong><br />
-                      입금 확인은 즉시 자동으로 처리되며, 완료 후 바로 이용권을 사용하실 수 있습니다.
-                    </div>
+                <div>
+                  <div className="text-sm text-blue-600 mb-1">예금주</div>
+                  <div className="text-lg font-bold text-gray-900">{bankInfo?.accountHolder || '모든일 주식회사'}</div>
+                </div>
+              </div>
+              
+              <div className="mt-4 p-3 bg-yellow-100 rounded-lg border border-yellow-300">
+                <div className="flex items-start space-x-2">
+                  <svg className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                  <div className="text-sm text-yellow-800">
+                    <strong>입금자명은 반드시 가입하신 성함으로 입금해주세요.</strong><br />
+                    입금 확인은 즉시 자동으로 처리되며, 완료 후 바로 이용권을 사용하실 수 있습니다.
                   </div>
                 </div>
               </div>
             </div>
-          )}
+          </div>
 
           {/* 결제 버튼 */}
           <div className="space-y-4">
@@ -312,7 +265,7 @@ export default function PaymentCheckoutPage() {
                   <span>결제 처리 중...</span>
                 </div>
               ) : (
-                paymentMethod === 'bank' ? '입금 완료 확인' : '카드 결제하기'
+                '입금 완료 확인'
               )}
             </button>
             
