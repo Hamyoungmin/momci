@@ -1,0 +1,330 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { doc, getDoc, setDoc, Timestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { useAuth } from '@/contexts/AuthContext';
+
+interface PaymentData {
+  planType: '1month' | '3month';
+  planName: string;
+  price: number;
+  benefits: string;
+  userType: 'parent' | 'therapist';
+}
+
+interface BankInfo {
+  bankName: string;
+  accountNumber: string;
+  accountHolder: string;
+}
+
+export default function PaymentCheckoutPage() {
+  const { currentUser, userData, loading: authLoading } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [paymentData, setPaymentData] = useState<PaymentData | null>(null);
+  const [bankInfo, setBankInfo] = useState<BankInfo | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [paymentMethod, setPaymentMethod] = useState<'bank' | 'card'>('bank');
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  // URL 파라미터에서 결제 정보 가져오기
+  useEffect(() => {
+    const planType = searchParams.get('plan') as '1month' | '3month';
+    const planName = searchParams.get('planName');
+    const price = searchParams.get('price');
+    const benefits = searchParams.get('benefits');
+    const userType = searchParams.get('userType') as 'parent' | 'therapist';
+
+    if (planType && planName && price && benefits && userType) {
+      setPaymentData({
+        planType,
+        planName,
+        price: parseInt(price),
+        benefits,
+        userType
+      });
+    } else {
+      // 파라미터가 없으면 이전 페이지로 돌아가기
+      router.back();
+    }
+  }, [searchParams, router]);
+
+  // 은행 정보 가져오기
+  useEffect(() => {
+    const fetchBankInfo = async () => {
+      try {
+        const settingsDoc = await getDoc(doc(db, 'system_settings', 'payment_config'));
+        if (settingsDoc.exists()) {
+          const data = settingsDoc.data();
+          setBankInfo(data.bankInfo);
+        } else {
+          // 기본값
+          setBankInfo({
+            bankName: '모든별은행',
+            accountNumber: '123-456-789012',
+            accountHolder: '모든일 주식회사'
+          });
+        }
+      } catch (error) {
+        console.error('은행 정보 로딩 실패:', error);
+        setBankInfo({
+          bankName: '모든별은행',
+          accountNumber: '123-456-789012',
+          accountHolder: '모든일 주식회사'
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (paymentData) {
+      fetchBankInfo();
+    }
+  }, [paymentData]);
+
+  // 접근 권한 확인
+  useEffect(() => {
+    if (!authLoading) {
+      if (!currentUser) {
+        router.push('/auth/login');
+        return;
+      }
+      
+      if (userData && paymentData && userData.userType !== paymentData.userType) {
+        alert('접근 권한이 없습니다.');
+        router.push('/');
+        return;
+      }
+    }
+  }, [currentUser, userData, authLoading, paymentData, router]);
+
+  const handlePaymentComplete = async () => {
+    if (!paymentData || !currentUser || !userData) return;
+    
+    setIsProcessing(true);
+    
+    try {
+      // 결제 완료 시 이용권 상태 업데이트
+      const planDuration = paymentData.planType === '3month' ? 90 : 30; // 일 수
+      const expiryDate = new Date(Date.now() + planDuration * 24 * 60 * 60 * 1000);
+      
+      const totalInterviews = paymentData.userType === 'parent' 
+        ? (paymentData.planType === '3month' ? 6 : 2)
+        : 0; // 치료사는 인터뷰 횟수 없음
+      
+      await setDoc(doc(db, 'user-subscription-status', currentUser.uid), {
+        userId: currentUser.uid,
+        hasActiveSubscription: true,
+        subscriptionType: paymentData.userType,
+        expiryDate: Timestamp.fromDate(expiryDate),
+        planName: paymentData.planName,
+        lastUpdated: Timestamp.now(),
+        purchaseDate: Timestamp.now(),
+        amount: paymentData.price,
+        remainingInterviews: totalInterviews,
+        totalInterviews: totalInterviews,
+        paymentMethod: paymentMethod
+      });
+
+      alert('결제가 완료되었습니다! 이용권이 활성화되었습니다.');
+      
+      // 결제 완료 후 이동할 페이지
+      const redirectPath = paymentData.userType === 'parent' 
+        ? '/subscription-management?type=parent'
+        : '/subscription-management?type=therapist';
+      
+      router.push(redirectPath);
+      
+    } catch (error) {
+      console.error('결제 처리 실패:', error);
+      alert('결제 처리 중 오류가 발생했습니다. 다시 시도해주세요.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  if (authLoading || loading || !paymentData) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">결제 정보를 불러오는 중...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!currentUser || !userData) {
+    return null;
+  }
+
+  const userTypeTitle = paymentData.userType === 'parent' ? '학부모' : '치료사';
+
+  return (
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* 헤더 */}
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">결제하기</h1>
+          <p className="text-gray-600">{userTypeTitle} 이용권 결제를 완료해주세요</p>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-lg p-8">
+          {/* 주문 정보 */}
+          <div className="mb-8">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">주문 정보</h2>
+            <div className="bg-gray-50 rounded-lg p-6">
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">{paymentData.planName}</h3>
+                  <p className="text-gray-600">{paymentData.benefits}</p>
+                </div>
+                <div className="text-right">
+                  <div className="text-2xl font-bold text-blue-600">
+                    {paymentData.price.toLocaleString()}원
+                  </div>
+                </div>
+              </div>
+              
+              <div className="border-t border-gray-200 pt-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-lg font-semibold text-gray-900">총 결제 금액</span>
+                  <span className="text-2xl font-bold text-blue-600">
+                    {paymentData.price.toLocaleString()}원
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 결제 방법 선택 */}
+          <div className="mb-8">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">결제 방법</h2>
+            <div className="space-y-3">
+              {/* 무통장입금 */}
+              <div 
+                className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
+                  paymentMethod === 'bank' 
+                    ? 'border-blue-500 bg-blue-50' 
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+                onClick={() => setPaymentMethod('bank')}
+              >
+                <div className="flex items-center space-x-3">
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                    paymentMethod === 'bank' ? 'border-blue-500 bg-blue-500' : 'border-gray-300'
+                  }`}>
+                    {paymentMethod === 'bank' && (
+                      <div className="w-2 h-2 bg-white rounded-full"></div>
+                    )}
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                    </svg>
+                    <span className="font-medium text-gray-900">무통장입금</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 카드결제 */}
+              <div 
+                className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
+                  paymentMethod === 'card' 
+                    ? 'border-blue-500 bg-blue-50' 
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+                onClick={() => setPaymentMethod('card')}
+              >
+                <div className="flex items-center space-x-3">
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                    paymentMethod === 'card' ? 'border-blue-500 bg-blue-500' : 'border-gray-300'
+                  }`}>
+                    {paymentMethod === 'card' && (
+                      <div className="w-2 h-2 bg-white rounded-full"></div>
+                    )}
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                    </svg>
+                    <span className="font-medium text-gray-900">신용카드/체크카드</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 무통장입금 정보 (무통장입금 선택 시) */}
+          {paymentMethod === 'bank' && bankInfo && (
+            <div className="mb-8">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">입금 계좌 정보</h2>
+              <div className="bg-blue-50 rounded-lg p-6 border border-blue-200">
+                <div className="text-center space-y-3">
+                  <div>
+                    <div className="text-sm text-blue-600 mb-1">은행명</div>
+                    <div className="text-lg font-bold text-gray-900">{bankInfo.bankName}</div>
+                  </div>
+                  
+                  <div>
+                    <div className="text-sm text-blue-600 mb-1">계좌번호</div>
+                    <div className="text-xl font-bold text-gray-900 font-mono">{bankInfo.accountNumber}</div>
+                  </div>
+                  
+                  <div>
+                    <div className="text-sm text-blue-600 mb-1">예금주</div>
+                    <div className="text-lg font-bold text-gray-900">{bankInfo.accountHolder}</div>
+                  </div>
+                </div>
+                
+                <div className="mt-4 p-3 bg-yellow-100 rounded-lg border border-yellow-300">
+                  <div className="flex items-start space-x-2">
+                    <svg className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                    </svg>
+                    <div className="text-sm text-yellow-800">
+                      <strong>입금자명은 반드시 가입하신 성함으로 입금해주세요.</strong><br />
+                      입금 확인은 즉시 자동으로 처리되며, 완료 후 바로 이용권을 사용하실 수 있습니다.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 결제 버튼 */}
+          <div className="space-y-4">
+            <button 
+              onClick={handlePaymentComplete}
+              disabled={isProcessing}
+              className={`w-full py-4 px-6 rounded-xl font-bold text-lg transition-all ${
+                isProcessing 
+                  ? 'bg-gray-400 cursor-not-allowed' 
+                  : 'bg-blue-500 hover:bg-blue-600 transform hover:scale-105'
+              } text-white shadow-lg`}
+            >
+              {isProcessing ? (
+                <div className="flex items-center justify-center space-x-2">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                  <span>결제 처리 중...</span>
+                </div>
+              ) : (
+                paymentMethod === 'bank' ? '입금 완료 확인' : '카드 결제하기'
+              )}
+            </button>
+            
+            <button 
+              onClick={() => router.back()}
+              className="w-full py-3 px-6 rounded-xl font-medium text-gray-600 border border-gray-300 hover:bg-gray-50 transition-colors"
+            >
+              이전으로 돌아가기
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

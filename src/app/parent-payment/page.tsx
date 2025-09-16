@@ -138,35 +138,17 @@ export default function ParentPaymentPage() {
 
   const selectedPlanData = plans[selectedPlan as keyof typeof plans];
 
-  const handlePaymentComplete = async () => {
-    try {
-      // 결제 완료 시 이용권 상태 업데이트 (시연용)
-      const planDuration = selectedPlan === '3month' ? 90 : 30; // 일 수
-      const expiryDate = new Date(Date.now() + planDuration * 24 * 60 * 60 * 1000);
-      const planName = selectedPlan === '3month' ? '3개월 이용권' : '1개월 이용권';
-      
-      const totalInterviews = selectedPlan === '3month' ? 6 : 2;
-      
-      await setDoc(doc(db, 'user-subscription-status', currentUser!.uid), {
-        userId: currentUser!.uid,
-        hasActiveSubscription: true,
-        subscriptionType: 'parent',
-        expiryDate: Timestamp.fromDate(expiryDate),
-        planName: planName,
-        lastUpdated: Timestamp.now(),
-        purchaseDate: Timestamp.now(),
-        amount: selectedPlanData.price,
-        remainingInterviews: totalInterviews,
-        totalInterviews: totalInterviews
-      });
-
-      alert('결제 신청이 완료되었습니다. 입금 확인 후 이용권이 활성화됩니다.');
-      router.push('/subscription-management?type=parent');
-    } catch (error) {
-      console.error('이용권 상태 업데이트 실패:', error);
-      alert('결제 신청은 완료되었지만, 일시적인 오류가 발생했습니다.');
-      router.push('/mypage');
-    }
+  const handlePaymentComplete = () => {
+    // 결제 페이지로 이동 (URL 파라미터로 결제 정보 전달)
+    const params = new URLSearchParams({
+      plan: selectedPlan,
+      planName: selectedPlanData.name,
+      price: selectedPlanData.price.toString(),
+      benefits: selectedPlanData.duration,
+      userType: 'parent'
+    });
+    
+    router.push(`/payment-checkout?${params.toString()}`);
   };
 
   if (authLoading) {
