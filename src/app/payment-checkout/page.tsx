@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { doc, getDoc, setDoc, Timestamp } from 'firebase/firestore';
+import { doc, setDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -14,18 +14,12 @@ interface PaymentData {
   userType: 'parent' | 'therapist';
 }
 
-interface BankInfo {
-  bankName: string;
-  accountNumber: string;
-  accountHolder: string;
-}
 
-export default function PaymentCheckoutPage() {
+function PaymentCheckoutContent() {
   const { currentUser, userData, loading: authLoading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [paymentData, setPaymentData] = useState<PaymentData | null>(null);
-  const [bankInfo, setBankInfo] = useState<BankInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const paymentMethod = 'bank'; // 무통장입금만 지원
   const [isProcessing, setIsProcessing] = useState(false);
@@ -52,36 +46,10 @@ export default function PaymentCheckoutPage() {
     }
   }, [searchParams, router]);
 
-  // 은행 정보 가져오기
+  // 결제 데이터가 로드되면 loading 완료
   useEffect(() => {
-    const fetchBankInfo = async () => {
-      try {
-        const settingsDoc = await getDoc(doc(db, 'system_settings', 'payment_config'));
-        if (settingsDoc.exists()) {
-          const data = settingsDoc.data();
-          setBankInfo(data.bankInfo);
-        } else {
-          // 기본값
-          setBankInfo({
-            bankName: '모든별은행',
-            accountNumber: '123-456-789012',
-            accountHolder: '모든일 주식회사'
-          });
-        }
-      } catch (error) {
-        console.error('은행 정보 로딩 실패:', error);
-        setBankInfo({
-          bankName: '모든별은행',
-          accountNumber: '123-456-789012',
-          accountHolder: '모든일 주식회사'
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
     if (paymentData) {
-      fetchBankInfo();
+      setLoading(false);
     }
   }, [paymentData]);
 
@@ -250,5 +218,20 @@ export default function PaymentCheckoutPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function PaymentCheckoutPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">결제 페이지를 불러오는 중...</p>
+        </div>
+      </div>
+    }>
+      <PaymentCheckoutContent />
+    </Suspense>
   );
 }
