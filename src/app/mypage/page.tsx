@@ -34,6 +34,25 @@ interface ChatRoom {
   postTitle?: string;
 }
 
+interface Application {
+  id: string;
+  postId: string;
+  postTitle: string;
+  postRegion: string;
+  postAge: string;
+  postGender: string;
+  appliedAt: Timestamp;
+  status: string;
+}
+
+interface ChatRequest {
+  id: string;
+  parentName: string;
+  postTitle: string;
+  requestedAt: Timestamp;
+  status: string;
+}
+
 export default function MyPage() {
   const { currentUser, userData, loading } = useAuth();
   const router = useRouter();
@@ -41,6 +60,12 @@ export default function MyPage() {
   const [chats, setChats] = useState<ChatRoom[]>([]);
   const [postsLoading, setPostsLoading] = useState(true);
   const [chatsLoading, setChatsLoading] = useState(true);
+  // 치료사가 지원한 게시글들
+  const [appliedPosts, setAppliedPosts] = useState<Application[]>([]);
+  const [appliedPostsLoading, setAppliedPostsLoading] = useState(true);
+  // 새로운 채팅 요청들
+  const [chatRequests, setChatRequests] = useState<ChatRequest[]>([]);
+  const [chatRequestsLoading, setChatRequestsLoading] = useState(true);
 
   useEffect(() => {
     if (!loading && !currentUser) {
@@ -113,6 +138,127 @@ export default function MyPage() {
 
     return () => unsubscribe();
   }, [currentUser]);
+
+  // 치료사가 지원한 게시글 가져오기 (치료사만)
+  useEffect(() => {
+    if (!currentUser || !userData || userData.userType !== 'therapist') {
+      setAppliedPostsLoading(false);
+      return;
+    }
+
+    console.log('🎯 치료사가 지원한 게시글 가져오기 시작');
+    
+    const applicationsQuery = query(
+      collection(db, 'applications'),
+      where('therapistId', '==', currentUser.uid)
+    );
+
+    const unsubscribe = onSnapshot(applicationsQuery, async (snapshot) => {
+      const applications: Application[] = [];
+      
+      for (const applicationDoc of snapshot.docs) {
+        const applicationData = applicationDoc.data();
+        
+        // 해당 게시글 정보 가져오기
+        try {
+          const postDoc = await getDoc(doc(db, 'posts', applicationData.postId));
+          if (postDoc.exists()) {
+            const postData = postDoc.data();
+            applications.push({
+              id: applicationDoc.id,
+              postId: applicationData.postId,
+              postTitle: postData.title,
+              postRegion: postData.region,
+              postAge: postData.age,
+              postGender: postData.gender,
+              appliedAt: applicationData.createdAt,
+              status: applicationData.status || 'pending'
+            });
+          }
+        } catch (error) {
+          console.error('게시글 정보 가져오기 오류:', error);
+        }
+      }
+      
+      // 지원 시간 기준으로 정렬
+      applications.sort((a, b) => {
+        const timeA = a.appliedAt ? a.appliedAt.toDate() : new Date(0);
+        const timeB = b.appliedAt ? b.appliedAt.toDate() : new Date(0);
+        return timeB.getTime() - timeA.getTime();
+      });
+      
+      console.log('✅ 지원한 게시글 조회 완료:', applications.length, '개');
+      setAppliedPosts(applications.slice(0, 3)); // 최대 3개만 표시
+      setAppliedPostsLoading(false);
+    }, (error) => {
+      console.error('❌ 지원한 게시글 조회 오류:', error);
+      setAppliedPosts([]);
+      setAppliedPostsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [currentUser, userData]);
+
+  // 새로운 채팅 요청 가져오기 (치료사만)
+  useEffect(() => {
+    if (!currentUser || !userData || userData.userType !== 'therapist') {
+      setChatRequestsLoading(false);
+      return;
+    }
+
+    console.log('💬 새로운 채팅 요청 가져오기 시작');
+    
+    const chatsQuery = query(
+      collection(db, 'chats'),
+      where('participants', 'array-contains', currentUser.uid),
+      where('status', '==', 'pending')
+    );
+
+    const unsubscribe = onSnapshot(chatsQuery, async (snapshot) => {
+      const requests: ChatRequest[] = [];
+      
+      for (const chatDoc of snapshot.docs) {
+        const chatData = chatDoc.data();
+        const otherParticipantId = chatData.participants?.find((id: string) => id !== currentUser.uid);
+        
+        // 상대방(학부모) 정보 가져오기
+        if (otherParticipantId) {
+          try {
+            const userDoc = await getDoc(doc(db, 'users', otherParticipantId));
+            if (userDoc.exists()) {
+              const userData = userDoc.data();
+              requests.push({
+                id: chatDoc.id,
+                parentName: userData.name || '익명',
+                postTitle: chatData.postTitle || '게시글',
+                requestedAt: chatData.createdAt || Timestamp.fromDate(new Date()),
+                status: chatData.status
+              });
+            }
+          } catch (error) {
+            console.error('학부모 정보 가져오기 오류:', error);
+          }
+        }
+      }
+      
+      // 요청 시간 기준으로 정렬
+      requests.sort((a, b) => {
+        const timeA = a.requestedAt ? a.requestedAt.toDate() : new Date(0);
+        const timeB = b.requestedAt ? b.requestedAt.toDate() : new Date(0);
+        return timeB.getTime() - timeA.getTime();
+      });
+      
+      console.log('✅ 새로운 채팅 요청 조회 완료:', requests.length, '개');
+      setChatRequests(requests.slice(0, 3)); // 최대 3개만 표시
+      setChatRequestsLoading(false);
+    }, (error) => {
+      console.error('❌ 새로운 채팅 요청 조회 오류:', error);
+      setChatRequests([]);
+      setChatRequestsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [currentUser, userData]);
 
   // 진행중인 채팅 가져오기
   useEffect(() => {
@@ -329,121 +475,231 @@ export default function MyPage() {
           </div>
         </div>
 
-        {/* 나의 요청글 관리 섹션 */}
+        {/* 사용자 타입에 따른 섹션 제목 */}
         <div className="mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">나의 요청글 관리</h2>
+          <h2 className="text-lg font-semibold text-gray-900">
+            {userData?.userType === 'therapist' ? '내가 지원한 곳' : '나의 요청글 관리'}
+          </h2>
         </div>
 
         <div className="bg-white rounded-xl shadow-sm mb-6">
-          {postsLoading ? (
-            <div className="p-6 text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
-              <p className="mt-2 text-sm text-gray-500">로딩 중...</p>
-            </div>
-          ) : posts.length === 0 ? (
-            <div className="p-6 text-center">
-              <div className="text-4xl text-gray-300 mb-2">📝</div>
-              <p className="text-gray-500">작성한 게시글이 없습니다</p>
-            </div>
-          ) : (
-            <div className="divide-y divide-gray-200">
-              {posts.map((post) => (
-                <div key={post.id} className="p-4">
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex-1">
-                      <h3 className="text-base font-medium text-gray-900 mb-1">
-                        {post.age} {post.gender === '남' ? '남아' : '여아'}, {post.treatment} 홈티 구합니다.
-                      </h3>
-                      <p className="text-sm text-gray-500">
-                        {post.createdAt?.toDate?.()?.toLocaleDateString('ko-KR')} | 지원자 {post.applications}명
-              </p>
-            </div>
-                    <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(post.status)}`}>
-                      {getStatusText(post.status)}
-                    </span>
+          {userData?.userType === 'therapist' ? (
+            // 치료사용: 지원한 게시글
+            appliedPostsLoading ? (
+              <div className="p-6 text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
+                <p className="mt-2 text-sm text-gray-500">로딩 중...</p>
+              </div>
+            ) : appliedPosts.length === 0 ? (
+              <div className="p-6 text-center">
+                <div className="text-4xl text-gray-300 mb-2">🎯</div>
+                <p className="text-gray-500">지원한 게시글이 없습니다</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-200">
+                {appliedPosts.map((application) => (
+                  <div key={application.id} className="p-4">
+                    <div className="flex items-start justify-between mb-2">
+                      <h3 className="font-medium text-gray-900">{application.postTitle}</h3>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        application.status === 'accepted' ? 'bg-green-100 text-green-800' :
+                        application.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                        'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {application.status === 'accepted' ? '승인됨' :
+                         application.status === 'rejected' ? '거절됨' : '대기중'}
+                      </span>
+                    </div>
+                    <div className="text-sm text-gray-600 mb-1">
+                      {application.postRegion} • {application.postAge} • {application.postGender}
+                    </div>
+                    <div className="text-xs text-gray-400">
+                      {application.appliedAt ? new Date(application.appliedAt.toDate()).toLocaleDateString() : '날짜 없음'}
+                    </div>
                   </div>
-                </div>
-              ))}
-              {posts.length > 0 && (
-                <div className="p-4">
+                ))}
+                <div className="p-4 text-center">
                   <button 
-                    onClick={() => handleMenuClick('/mypage/my-posts')}
-                    className="w-full text-center text-blue-500 hover:text-blue-700 text-sm font-medium"
+                    onClick={() => router.push('/mypage/applications')}
+                    className="text-blue-600 hover:text-blue-800 text-sm font-medium"
                   >
-                    더보기
+                    전체 지원 내역 보기
                   </button>
                 </div>
-              )}
-            </div>
+              </div>
+            )
+          ) : (
+            // 학부모용: 기존 게시글 관리
+            postsLoading ? (
+              <div className="p-6 text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
+                <p className="mt-2 text-sm text-gray-500">로딩 중...</p>
+              </div>
+            ) : posts.length === 0 ? (
+              <div className="p-6 text-center">
+                <div className="text-4xl text-gray-300 mb-2">📝</div>
+                <p className="text-gray-500">작성한 게시글이 없습니다</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-200">
+                {posts.map((post) => (
+                  <div key={post.id} className="p-4">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex-1">
+                        <h3 className="text-base font-medium text-gray-900 mb-1">
+                          {post.age} {post.gender === '남' ? '남아' : '여아'}, {post.treatment} 홈티 구합니다.
+                        </h3>
+                        <p className="text-sm text-gray-500">
+                          {post.createdAt?.toDate?.()?.toLocaleDateString('ko-KR')} | 지원자 {post.applications}명
+                        </p>
+                      </div>
+                      <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(post.status)}`}>
+                        {getStatusText(post.status)}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+                {posts.length > 0 && (
+                  <div className="p-4">
+                    <button 
+                      onClick={() => handleMenuClick('/mypage/my-posts')}
+                      className="w-full text-center text-blue-500 hover:text-blue-700 text-sm font-medium"
+                    >
+                      더보기
+                    </button>
+                  </div>
+                )}
+              </div>
+            )
           )}
         </div>
 
-        {/* 진행중인 채팅 섹션 */}
+        {/* 사용자 타입에 따른 두 번째 섹션 제목 */}
         <div className="mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">진행중인 채팅</h2>
+          <h2 className="text-lg font-semibold text-gray-900">
+            {userData?.userType === 'therapist' ? '새로운 1:1 채팅 요청' : '진행중인 채팅'}
+          </h2>
         </div>
 
         <div className="bg-white rounded-xl shadow-sm">
-          {chatsLoading ? (
-            <div className="p-6 text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
-              <p className="mt-2 text-sm text-gray-500">로딩 중...</p>
-            </div>
-          ) : chats.length === 0 ? (
-            <div className="p-6 text-center">
-              <div className="text-4xl text-gray-300 mb-2">💬</div>
-              <p className="text-gray-500">진행중인 채팅이 없습니다</p>
-            </div>
-          ) : (
-            <div className="divide-y divide-gray-200">
-              {chats.map((chat) => (
-                <div 
-                  key={chat.id}
-                  onClick={() => router.push(`/chat/${chat.id}`)}
-                  className="p-4 cursor-pointer hover:bg-gray-50 transition-colors"
-                >
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
-                      <span className="text-gray-600 text-sm font-medium">
-                        {chat.otherParticipantName?.charAt(0) || '?'}
-                      </span>
-          </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-1">
-                        <h3 className="text-base font-medium text-gray-900">
-                          {chat.otherParticipantName} 치료사
-                        </h3>
-                        <span className="text-sm text-gray-500">
-                          {formatTime(chat.lastMessageTime)}
-                        </span>
-        </div>
-                      <p className="text-sm text-gray-600 truncate">
-                        {chat.lastMessage}
-                      </p>
-                </div>
-                    <div className="flex flex-col items-end space-y-1">
-                      {chat.id.includes('completed') ? (
-                        <span className="text-orange-500 text-sm font-medium">접수완료</span>
-              ) : (
-                        <div className="bg-blue-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium">
-                          1
-                        </div>
-              )}
+          {userData?.userType === 'therapist' ? (
+            // 치료사용: 새로운 채팅 요청
+            chatRequestsLoading ? (
+              <div className="p-6 text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
+                <p className="mt-2 text-sm text-gray-500">로딩 중...</p>
               </div>
-            </div>
-                </div>
-              ))}
-              {chats.length > 0 && (
-                <div className="p-4">
-                  <button 
-                    onClick={() => handleMenuClick('/mypage/chat')}
-                    className="w-full text-center text-blue-500 hover:text-blue-700 text-sm font-medium"
+            ) : chatRequests.length === 0 ? (
+              <div className="p-6 text-center">
+                <div className="text-4xl text-gray-300 mb-2">💬</div>
+                <p className="text-gray-500">새로운 채팅 요청이 없습니다</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-200">
+                {chatRequests.map((request) => (
+                  <div 
+                    key={request.id}
+                    onClick={() => router.push(`/chat/${request.id}`)}
+                    className="p-4 cursor-pointer hover:bg-gray-50 transition-colors"
                   >
-                    더보기
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <span className="text-blue-600 text-sm font-medium">
+                          {request.parentName?.charAt(0) || '?'}
+                        </span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-1">
+                          <h3 className="text-base font-medium text-gray-900">
+                            {request.parentName} 학부모님
+                          </h3>
+                          <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                            새 요청
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-600 truncate">
+                          {request.postTitle}
+                        </p>
+                        <div className="text-xs text-gray-400 mt-1">
+                          {request.requestedAt ? new Date(request.requestedAt.toDate()).toLocaleDateString() : '날짜 없음'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                <div className="p-4 text-center">
+                  <button 
+                    onClick={() => router.push('/mypage/chat-requests')}
+                    className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                  >
+                    모든 채팅 요청 보기
                   </button>
                 </div>
-              )}
-            </div>
+              </div>
+            )
+          ) : (
+            // 학부모용: 기존 진행중인 채팅
+            chatsLoading ? (
+              <div className="p-6 text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
+                <p className="mt-2 text-sm text-gray-500">로딩 중...</p>
+              </div>
+            ) : chats.length === 0 ? (
+              <div className="p-6 text-center">
+                <div className="text-4xl text-gray-300 mb-2">💬</div>
+                <p className="text-gray-500">진행중인 채팅이 없습니다</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-200">
+                {chats.map((chat) => (
+                  <div 
+                    key={chat.id}
+                    onClick={() => router.push(`/chat/${chat.id}`)}
+                    className="p-4 cursor-pointer hover:bg-gray-50 transition-colors"
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
+                        <span className="text-gray-600 text-sm font-medium">
+                          {chat.otherParticipantName?.charAt(0) || '?'}
+                        </span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-1">
+                          <h3 className="text-base font-medium text-gray-900">
+                            {chat.otherParticipantName} 치료사
+                          </h3>
+                          <span className="text-sm text-gray-500">
+                            {formatTime(chat.lastMessageTime)}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-600 truncate">
+                          {chat.lastMessage}
+                        </p>
+                      </div>
+                      <div className="flex flex-col items-end space-y-1">
+                        {chat.id.includes('completed') ? (
+                          <span className="text-orange-500 text-sm font-medium">접수완료</span>
+                        ) : (
+                          <div className="bg-blue-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium">
+                            1
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {chats.length > 0 && (
+                  <div className="p-4">
+                    <button 
+                      onClick={() => handleMenuClick('/mypage/chat')}
+                      className="w-full text-center text-blue-500 hover:text-blue-700 text-sm font-medium"
+                    >
+                      더보기
+                    </button>
+                  </div>
+                )}
+              </div>
+            )
           )}
         </div>
         </div> {/* 컨텐츠 영역 - 연한 파란색 배경 끝 */}

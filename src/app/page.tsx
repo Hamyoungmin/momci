@@ -66,12 +66,14 @@ export default function Home() {
             </div>
 
           </div>
+          
+          {/* 히어로섹션 내 통계 */}
+          <div>
+            <Statistics />
+          </div>
         </div>
       </section>
 
-
-      {/* 통계 섹션 */}
-      <Statistics />
 
       {/* 핵심 역량 섹션 */}
       <section className="py-20 bg-white">

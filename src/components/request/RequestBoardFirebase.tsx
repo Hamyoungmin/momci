@@ -178,8 +178,8 @@ export default function RequestBoardFirebase() {
   const [currentTherapistId, setCurrentTherapistId] = useState<string | null>(null);
   
 
-  const sidebarItems = ['홈티매칭', '서울', '인천/경기북부', '경기남부', '충청,강원,대전', '전라,경상,부산'];
   const tabs = ['서울', '인천/경기북부', '경기남부', '충청,강원,대전', '전라,경상,부산'];
+
   
   // 지역별 상세 구역들
   const locationsByRegion = {
@@ -293,6 +293,17 @@ export default function RequestBoardFirebase() {
       console.log('📊 전체 문서 개수:', snapshot.size);
       console.log('📊 빈 결과인가?', snapshot.empty);
       console.log('📊 문서 변경 개수:', snapshot.docChanges().length);
+      
+      // 문서 변경사항 상세 로그
+      snapshot.docChanges().forEach((change, index) => {
+        if (change.type === 'added') {
+          console.log(`➕ [${index + 1}] 새 게시글 추가:`, change.doc.id, change.doc.data().title);
+        } else if (change.type === 'modified') {
+          console.log(`✏️ [${index + 1}] 게시글 수정:`, change.doc.id);
+        } else if (change.type === 'removed') {
+          console.log(`❌ [${index + 1}] 게시글 삭제:`, change.doc.id);
+        }
+      });
       
       // ⭐ 만약 빈 결과라면 더 자세히 조사
       if (snapshot.empty) {
@@ -1075,6 +1086,14 @@ export default function RequestBoardFirebase() {
       setCurrentPage(1);
       
       // 실시간 업데이트는 onSnapshot에 의해 자동으로 처리됨
+      console.log('📝 새 게시글 작성 완료 - 실시간 업데이트 대기 중...');
+      
+      // 선택된 지역이 새 게시글의 지역과 다르면 자동으로 맞춤
+      if (postData.region && selectedSidebarItem !== postData.region) {
+        setSelectedSidebarItem(postData.region);
+        setSelectedTab(postData.region);
+        console.log(`🎯 지역 필터를 ${postData.region}으로 자동 변경`);
+      }
     } catch (error) {
       console.error('Error adding document: ', error);
       const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다';
@@ -1156,13 +1175,6 @@ export default function RequestBoardFirebase() {
     return `${selectedSidebarItem} 홈티매칭`;
   };
 
-  const handleSidebarClick = (item: string) => {
-    setSelectedSidebarItem(item);
-    setCurrentPage(1); // 지역 변경 시 1페이지로 리셋
-    if (item !== '홈티매칭') {
-      setSelectedTab(item);
-    }
-  };
 
   // 현재 선택된 탭에 따른 지역 목록 가져오기
   const getCurrentLocations = () => {
@@ -1215,31 +1227,28 @@ export default function RequestBoardFirebase() {
   return (
     <div>
       <section className="bg-gray-50 min-h-screen">
-        <div className="flex">
+        <div className="flex max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           {/* 사이드바 */}
-        <div className="w-64 bg-white shadow-lg min-h-screen">
+        <div className="w-64 bg-white shadow-lg rounded-lg mr-8 h-fit">
           <div className="p-4">
-            {sidebarItems.map((item) => (
-              <div key={item} className={item === '홈티매칭' ? 'mb-6' : 'mb-1'}>
-                <button
-                  onClick={() => handleSidebarClick(item)}
-                  className={`w-full transition-colors ${
-                    item === '홈티매칭'
-                      ? 'bg-blue-500 text-white text-xl font-bold rounded-2xl h-[110px] flex items-center justify-center'
-                      : selectedSidebarItem === item
-                      ? 'bg-blue-50 text-blue-600 text-left px-4 py-3 rounded-2xl text-sm font-medium'
-                      : 'text-gray-700 hover:bg-gray-50 text-left px-4 py-3 rounded-2xl text-sm font-medium'
-                  }`}
-                >
-                  {item}
-                </button>
+            <div className="mb-6">
+              <button className="w-full bg-blue-500 text-white text-xl font-bold rounded-2xl h-[110px] flex items-center justify-center">
+                홈티매칭
+              </button>
+            </div>
+            <div className="space-y-1">
+              <div className="w-full bg-blue-50 text-blue-600 text-left px-4 py-3 rounded-2xl text-sm font-medium">
+                선생님께 요청하기
               </div>
-            ))}
+              <Link href="/browse" className="block w-full text-gray-700 hover:bg-gray-50 text-left px-4 py-3 rounded-2xl text-sm font-medium transition-colors">
+                선생님 둘러보기
+              </Link>
+            </div>
           </div>
         </div>
 
         {/* 메인 콘텐츠 */}
-        <div className="flex-1 p-8">
+        <div className="flex-1">
           {/* 제목과 브레드크럼 */}
           <div className="flex items-center justify-between mb-6">
             {/* 제목 */}
@@ -1441,17 +1450,17 @@ export default function RequestBoardFirebase() {
                   선생님께 요청하기
                 </button>
               ) : (
-                <div className="text-center">
+                <div className="flex flex-col items-center">
                   <button
                     disabled
-                    className="bg-gray-400 cursor-not-allowed text-white px-6 py-3 rounded-2xl font-medium flex items-center gap-2 mb-2"
+                    className="bg-gray-400 cursor-not-allowed text-white px-6 py-3 rounded-2xl font-medium flex items-center gap-2 mb-2 ml-12"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                     </svg>
                     선생님께 요청하기
                   </button>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-gray-600 text-center">
                     {currentUser ? 
                       '학부모 계정만 게시글을 작성할 수 있습니다.' : 
                       '로그인 후 이용해주세요.'}
@@ -1482,7 +1491,7 @@ export default function RequestBoardFirebase() {
                       <div className="col-span-1 text-center font-medium">번호</div>
                       <div className="col-span-2 text-center font-medium">분야</div>
                       <div className="col-span-2 text-center font-medium">지역</div>
-                      <div className="col-span-2 text-center font-medium">나이/성별</div>
+                      <div className="col-span-2 text-center font-medium">나이 / 성별</div>
                       <div className="col-span-2 text-center font-medium">주당횟수/희망시간</div>
                       <div className="col-span-2 text-center font-medium">희망금액(회당)</div>
                       <div className="col-span-1 text-center font-medium">진행</div>
@@ -1517,10 +1526,10 @@ export default function RequestBoardFirebase() {
                             </span>
                           </div>
                           
-                          {/* 나이/성별 */}
+                          {/* 나이 / 성별 */}
                           <div className="col-span-2 text-center">
                             <div className="text-gray-900 font-medium text-sm">
-                              {post.age}/{post.gender}
+                              {post.age} / {post.gender}
                             </div>
                           </div>
                           

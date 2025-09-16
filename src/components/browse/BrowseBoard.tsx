@@ -114,8 +114,8 @@ export default function BrowseBoard() {
     additionalInfo: ''
   });
 
-  const sidebarItems = ['홈티매칭', '서울', '인천/경기북부', '경기남부', '충청,강원,대전', '전라,경상,부산'];
   const tabs = ['서울', '인천/경기북부', '경기남부', '충청,강원,대전', '전라,경상,부산'];
+
   
   // 지역별 상세 구역들
   const locationsByRegion = {
@@ -183,7 +183,7 @@ export default function BrowseBoard() {
           const teacher: Teacher = {
             id: postDoc.id,
             // 게시글 제목을 그대로 사용 (실제 사용자가 작성한 제목)
-            name: docData.title || `${docData.age || ''}/${docData.gender || ''} ${docData.treatment || '치료사'}`,
+            name: docData.title || `${docData.age || ''} / ${docData.gender || ''} ${docData.treatment || '치료사'}`,
             specialty: docData.treatment || '재활치료',
             experience: 0, // 프로필에서 업데이트됨
             rating: 0.0, // 실제 후기 기반으로 계산됨
@@ -440,13 +440,6 @@ export default function BrowseBoard() {
     return `${selectedSidebarItem} 홈티매칭`;
   };
 
-  const handleSidebarClick = (item: string) => {
-    setSelectedSidebarItem(item);
-    setCurrentPage(1);
-    if (item !== '홈티매칭') {
-      setSelectedTab(item);
-    }
-  };
 
   // 현재 선택된 탭에 따른 지역 목록 가져오기
   const getCurrentLocations = () => {
@@ -843,31 +836,28 @@ export default function BrowseBoard() {
 
   return (
     <section className="bg-gray-50 min-h-screen">
-      <div className="flex">
+      <div className="flex max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* 사이드바 */}
-        <div className="w-64 bg-white shadow-lg min-h-screen">
+        <div className="w-64 bg-white shadow-lg rounded-lg mr-8 h-fit">
           <div className="p-4">
-            {sidebarItems.map((item) => (
-              <div key={item} className={item === '홈티매칭' ? 'mb-6' : 'mb-1'}>
-                <button
-                  onClick={() => handleSidebarClick(item)}
-                  className={`w-full transition-colors ${
-                    item === '홈티매칭'
-                      ? 'bg-blue-500 text-white text-xl font-bold rounded-2xl h-[110px] flex items-center justify-center'
-                      : selectedSidebarItem === item
-                      ? 'bg-blue-50 text-blue-600 text-left px-4 py-3 rounded-2xl text-sm font-medium'
-                      : 'text-gray-700 hover:bg-gray-50 text-left px-4 py-3 rounded-2xl text-sm font-medium'
-                  }`}
-                >
-                  {item}
-                </button>
+            <div className="mb-6">
+              <button className="w-full bg-blue-500 text-white text-xl font-bold rounded-2xl h-[110px] flex items-center justify-center">
+                홈티매칭
+              </button>
+            </div>
+            <div className="space-y-1">
+              <Link href="/request" className="block w-full text-gray-700 hover:bg-gray-50 text-left px-4 py-3 rounded-2xl text-sm font-medium transition-colors">
+                선생님께 요청하기
+              </Link>
+              <div className="w-full bg-blue-50 text-blue-600 text-left px-4 py-3 rounded-2xl text-sm font-medium">
+                선생님 둘러보기
               </div>
-            ))}
+            </div>
           </div>
         </div>
 
         {/* 메인 콘텐츠 */}
-        <div className="flex-1 p-8">
+        <div className="flex-1">
           {/* 제목과 브레드크럼 */}
           <div className="flex items-center justify-between mb-6">
             <h1 className="text-2xl font-bold text-gray-900">{getRegionTitle()}</h1>
@@ -1051,17 +1041,17 @@ export default function BrowseBoard() {
                 내 프로필 등록하기
               </button>
             ) : (
-              <div className="text-center">
+              <div className="flex flex-col items-center">
                 <button
                   disabled
-                  className="bg-gray-400 cursor-not-allowed text-white px-6 py-3 rounded-2xl font-medium flex items-center gap-2 mb-2"
+                  className="bg-gray-400 cursor-not-allowed text-white px-6 py-3 rounded-2xl font-medium flex items-center gap-2 mb-2 ml-12"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
                   내 프로필 등록하기
                 </button>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-gray-600 text-center">
                   {currentUser ? 
                     '치료사 계정만 게시글을 작성할 수 있습니다.' : 
                     '로그인 후 이용해주세요.'

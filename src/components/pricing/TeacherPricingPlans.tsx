@@ -142,53 +142,59 @@ export default function TeacherPricingPlans() {
               <div className="space-y-16 mb-16 max-w-3xl mx-auto">
                 
                 {/* 첫 번째 혜택 */}
-                <div className="flex items-start space-x-4 text-left">
-                  <div className="bg-blue-100 p-3 rounded-full flex-shrink-0">
-                    <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                    </svg>
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-base font-bold text-gray-900 mb-2">
-                      수익 극대화 (수수료 0%)
-                    </h3>
-                    <p className="text-sm text-gray-600 leading-relaxed">
-                      첫 매칭 수수료(주당 수업 횟수 x 1회분)를 제외한 모든 수업료는 <span className="font-semibold">100% 선생님의 수익</span>입니다. 더 이상 매번 수수료를 내지 마세요.
-                    </p>
+                <div className="bg-gray-50 rounded-2xl p-6">
+                  <div className="flex items-start space-x-4 text-left">
+                    <div className="bg-blue-100 p-3 rounded-full flex-shrink-0">
+                      <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-base font-bold text-gray-900 mb-2">
+                        수익 극대화 (수수료 0%)
+                      </h3>
+                      <p className="text-sm text-gray-600 leading-relaxed">
+                        첫 매칭 수수료(주당 수업 횟수 x 1회분)를 제외한 모든 수업료는 <span className="font-semibold">100% 선생님의 수익</span>입니다. 더 이상 매번 수수료를 내지 마세요.
+                      </p>
+                    </div>
                   </div>
                 </div>
 
                 {/* 두 번째 혜택 */}
-                <div className="flex items-start space-x-4 text-left">
-                  <div className="bg-blue-100 p-3 rounded-full flex-shrink-0">
-                    <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-base font-bold text-gray-900 mb-2">
-                      주도적인 활동
-                    </h3>
-                    <p className="text-sm text-gray-600 leading-relaxed">
-                      기관 배정에 의존하지 않고, 원하는 시간, 장소, 비용을 직접 자유롭게 정하며 더 많은 기회를 만드세요.
-                    </p>
+                <div className="bg-gray-50 rounded-2xl p-6">
+                  <div className="flex items-start space-x-4 text-left">
+                    <div className="bg-blue-100 p-3 rounded-full flex-shrink-0">
+                      <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-base font-bold text-gray-900 mb-2">
+                        주도적인 활동
+                      </h3>
+                      <p className="text-sm text-gray-600 leading-relaxed">
+                        기관 배정에 의존하지 않고, 원하는 시간, 장소, 비용을 직접 자유롭게 정하며 더 많은 기회를 만드세요.
+                      </p>
+                    </div>
                   </div>
                 </div>
 
                 {/* 세 번째 혜택 */}
-                <div className="flex items-start space-x-4 text-left">
-                  <div className="bg-blue-100 p-3 rounded-full flex-shrink-0">
-                    <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
-                    </svg>
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-base font-bold text-gray-900 mb-2">
-                      신뢰의 성장
-                    </h3>
-                    <p className="text-sm text-gray-600 leading-relaxed">
-                      플랫폼 내 성실한 활동은 <span className="font-semibold">&apos;모든별 키즈 인증 선생님&apos; 배지</span>로 이어져, 학부모의 신뢰를 얻는 가장 확실한 방법이 됩니다.
-                    </p>
+                <div className="bg-gray-50 rounded-2xl p-6">
+                  <div className="flex items-start space-x-4 text-left">
+                    <div className="bg-blue-100 p-3 rounded-full flex-shrink-0">
+                      <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-base font-bold text-gray-900 mb-2">
+                        신뢰의 성장
+                      </h3>
+                      <p className="text-sm text-gray-600 leading-relaxed">
+                        플랫폼 내 성실한 활동은 <span className="font-semibold">&apos;모든별 키즈 인증 선생님&apos; 배지</span>로 이어져, 학부모의 신뢰를 얻는 가장 확실한 방법이 됩니다.
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>

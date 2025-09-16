@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 export default function RegisterGuide() {
   // 대괄호와 중괄호로 감싸진 텍스트를 파란색으로 변환하는 함수
   const formatTextWithBlueHighlight = (text: string) => {
@@ -87,10 +89,32 @@ export default function RegisterGuide() {
   ];
 
   return (
-    <section className="py-12">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* 메인 등록 안내 박스 */}
-        <div className="bg-white border-4 border-blue-700 rounded-lg p-6">
+    <div className="min-h-screen bg-gray-50">
+      {/* 메인 가이드 섹션 */}
+      <section className="py-12">
+        <div className="flex max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* 사이드바 */}
+          <div className="w-64 bg-white shadow-lg rounded-lg mr-8 h-fit">
+            <div className="p-4">
+              <div className="mb-6">
+                <button className="w-full bg-blue-500 text-white text-xl font-bold rounded-2xl h-[110px] flex items-center justify-center">
+                  치료사 등록
+                </button>
+              </div>
+              <div className="space-y-1">
+                <div className="w-full bg-blue-50 text-blue-600 text-left px-4 py-3 rounded-2xl text-sm font-medium">
+                  치료사 등록안내
+                </div>
+                <Link href="/teacher-apply" className="block w-full text-gray-700 hover:bg-gray-50 text-left px-4 py-3 rounded-2xl text-sm font-medium transition-colors">
+                  치료사 신청
+                </Link>
+              </div>
+            </div>
+          </div>
+          
+          {/* 메인 콘텐츠 */}
+          <div className="flex-1">
+            <div className="bg-white border-4 border-blue-700 rounded-lg p-6">
           {/* 제목 */}
           <div className="text-center mb-16 mt-16">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">
@@ -134,8 +158,10 @@ export default function RegisterGuide() {
               </div>
             ))}
           </div>
+            </div>
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
+    </div>
   );
 }

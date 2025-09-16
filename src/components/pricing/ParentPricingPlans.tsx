@@ -139,53 +139,59 @@ export default function ParentPricingPlans() {
               <div className="space-y-16 mb-16 max-w-3xl mx-auto">
                 
                 {/* 첫 번째 혜택 */}
-                <div className="flex items-start space-x-4 text-left">
-                  <div className="bg-blue-100 p-3 rounded-full flex-shrink-0">
-                    <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-base font-bold text-gray-900 mb-2">
-                      검증된 전문가, 무제한 열람
-                    </h3>
-                    <p className="text-sm text-gray-600 leading-relaxed">
-                      자격/경력을 100% 사전 검증한 모든 선생님의 프로필을 확인하고 우리 아이에게 꼭 맞는 분을 직접 찾으세요.
-                    </p>
+                <div className="bg-gray-50 rounded-2xl p-6">
+                  <div className="flex items-start space-x-4 text-left">
+                    <div className="bg-blue-100 p-3 rounded-full flex-shrink-0">
+                      <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-base font-bold text-gray-900 mb-2">
+                        검증된 전문가, 무제한 열람
+                      </h3>
+                      <p className="text-sm text-gray-600 leading-relaxed">
+                        자격/경력을 100% 사전 검증한 모든 선생님의 프로필을 확인하고 우리 아이에게 꼭 맞는 분을 직접 찾으세요.
+                      </p>
+                    </div>
                   </div>
                 </div>
 
                 {/* 두 번째 혜택 */}
-                <div className="flex items-start space-x-4 text-left">
-                  <div className="bg-blue-100 p-3 rounded-full flex-shrink-0">
-                    <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                    </svg>
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-base font-bold text-gray-900 mb-2">
-                      수수료 0%로 비용 절감
-                    </h3>
-                    <p className="text-sm text-gray-600 leading-relaxed">
-                      선생님은 수수료 부담 없이 비용을 제안하고, 학부모님은 거품 없는 가격으로 최고의 수업을 받습니다.
-                    </p>
+                <div className="bg-gray-50 rounded-2xl p-6">
+                  <div className="flex items-start space-x-4 text-left">
+                    <div className="bg-blue-100 p-3 rounded-full flex-shrink-0">
+                      <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-base font-bold text-gray-900 mb-2">
+                        수수료 0%로 비용 절감
+                      </h3>
+                      <p className="text-sm text-gray-600 leading-relaxed">
+                        선생님은 수수료 부담 없이 비용을 제안하고, 학부모님은 거품 없는 가격으로 최고의 수업을 받습니다.
+                      </p>
+                    </div>
                   </div>
                 </div>
 
                 {/* 세 번째 혜택 */}
-                <div className="flex items-start space-x-4 text-left">
-                  <div className="bg-blue-100 p-3 rounded-full flex-shrink-0">
-                    <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                    </svg>
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-base font-bold text-gray-900 mb-2">
-                      1:1 실시간 채팅으로 직접 소통
-                    </h3>
-                    <p className="text-sm text-gray-600 leading-relaxed">
-                      궁금한 점은 바로 묻고, 인터뷰를 통해 아이와의 합을 미리 확인하며 신뢰를 쌓을 수 있습니다.
-                    </p>
+                <div className="bg-gray-50 rounded-2xl p-6">
+                  <div className="flex items-start space-x-4 text-left">
+                    <div className="bg-blue-100 p-3 rounded-full flex-shrink-0">
+                      <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-base font-bold text-gray-900 mb-2">
+                        1:1 실시간 채팅으로 직접 소통
+                      </h3>
+                      <p className="text-sm text-gray-600 leading-relaxed">
+                        궁금한 점은 바로 묻고, 인터뷰를 통해 아이와의 합을 미리 확인하며 신뢰를 쌓을 수 있습니다.
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
