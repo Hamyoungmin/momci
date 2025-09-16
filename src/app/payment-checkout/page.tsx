@@ -218,35 +218,6 @@ export default function PaymentCheckoutPage() {
             </div>
           </div>
 
-          {/* 입금 안내 */}
-          <div className="mb-8">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">입금 안내</h2>
-            <div className="bg-blue-50 rounded-lg p-6 border border-blue-200">
-              <div className="text-center space-y-3">
-                <div>
-                  <div className="text-sm text-blue-600 mb-1">은행명</div>
-                  <div className="text-lg font-bold text-gray-900">{bankInfo?.bankName || '모든별은행'}</div>
-                </div>
-                
-                <div>
-                  <div className="text-sm text-blue-600 mb-1">예금주</div>
-                  <div className="text-lg font-bold text-gray-900">{bankInfo?.accountHolder || '모든일 주식회사'}</div>
-                </div>
-              </div>
-              
-              <div className="mt-4 p-3 bg-yellow-100 rounded-lg border border-yellow-300">
-                <div className="flex items-start space-x-2">
-                  <svg className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                  </svg>
-                  <div className="text-sm text-yellow-800">
-                    <strong>입금자명은 반드시 가입하신 성함으로 입금해주세요.</strong><br />
-                    입금 확인은 즉시 자동으로 처리되며, 완료 후 바로 이용권을 사용하실 수 있습니다.
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
 
           {/* 결제 버튼 */}
           <div className="space-y-4">

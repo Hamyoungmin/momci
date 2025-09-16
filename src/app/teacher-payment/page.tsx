@@ -288,27 +288,6 @@ export default function TeacherPaymentPage() {
             </div>
           </div>
 
-          {/* 3. 입금 계좌 안내 */}
-          <div className="mb-8">
-            <h2 className="text-lg font-bold text-gray-900 mb-4">3. 입금 계좌 안내</h2>
-            
-            <div className="bg-gray-50 rounded-xl p-6 text-center">
-              <div className="mb-4">
-                <div className="text-sm text-gray-600 mb-1">은행명</div>
-                <div className="text-lg font-bold text-gray-900">{settings.bankInfo.bankName}</div>
-              </div>
-              
-              <div className="mb-4">
-                <div className="text-sm text-gray-600 mb-1">계좌번호</div>
-                <div className="text-xl font-bold text-gray-900">{settings.bankInfo.accountNumber}</div>
-              </div>
-              
-              <div className="mb-4">
-                <div className="text-sm text-gray-600 mb-1">예금주</div>
-                <div className="text-lg font-bold text-gray-900">{settings.bankInfo.accountHolder}</div>
-              </div>
-            </div>
-          </div>
 
           {/* 안내사항 */}
           <div className="mb-6">
