@@ -126,26 +126,15 @@ export default function Home() {
             
             <div className="bg-white rounded-2xl p-8 shadow-lg border border-gray-100 hover:shadow-xl transition-shadow duration-300">
               <div className="text-center space-y-6">
-                <div className="relative w-20 h-20 mx-auto mb-4">
-                  <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    {/* 흰색 배경 */}
-                    <rect width="80" height="80" fill="white" rx="10"/>
-                    
-                    {/* 파란색 사람 - 30.png와 동일 */}
-                    <path d="M40 12 
-                             C46 12, 50 16, 50 22 
-                             C50 28, 46 32, 40 32 
-                             C34 32, 30 28, 30 22 
-                             C30 16, 34 12, 40 12 Z
-                             
-                             M38 32 L38 48 
-                             L24 44 C22 43, 22 41, 24 42 L38 46 
-                             L38 52 L34 68 C34 70, 36 70, 36 68 L40 54
-                             L44 68 C44 70, 46 70, 46 68 L42 52
-                             L42 46 L56 42 C58 41, 58 43, 56 44 L42 48
-                             L42 32 C42 32, 38 32, 38 32 Z" 
-                          fill="#38BDF8"/>
-                  </svg>
+                <div className="relative w-20 h-20 mx-auto mb-4 flex items-center justify-center">
+                  <Image
+                    src="/33.png"
+                    alt="1:1 맞춤 수업"
+                    width={80}
+                    height={80}
+                    className="object-contain scale-150"
+                    unoptimized
+                  />
                 </div>
                 <h3 className="text-2xl font-bold text-gray-900">1:1 맞춤 수업</h3>
                 <p className="text-gray-600 text-lg leading-relaxed">

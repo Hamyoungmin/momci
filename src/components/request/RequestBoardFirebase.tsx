@@ -1227,7 +1227,7 @@ export default function RequestBoardFirebase() {
   return (
     <div>
       <section className="bg-gray-50 min-h-screen">
-        <div className="flex max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="flex max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           {/* 사이드바 */}
         <div className="w-64 bg-white shadow-lg rounded-lg mr-8 h-fit">
           <div className="p-4">
@@ -2446,24 +2446,24 @@ export default function RequestBoardFirebase() {
 
               {/* 인증 정보 - 회색줄 바로 밑에 */}
               <div className="flex flex-wrap items-center gap-2 mb-3">
-                {/* 자격증 인증 */}
-                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${selectedTherapistProfile.hasCertification ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200'} border`}>
-                  {selectedTherapistProfile.hasCertification ? '✓' : '×'} 자격증
+                {/* 자격증 인증 - 항상 체크/연초록 배지로 표시 */}
+                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 border-green-200 border`}>
+                  ✓ 자격증
                 </span>
                 
-                {/* 경력증명 */}
-                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${selectedTherapistProfile.hasExperienceProof ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200'} border`}>
-                  {selectedTherapistProfile.hasExperienceProof ? '✓' : '×'} 경력증명
+                {/* 경력증명 - 항상 체크/연초록 배지로 표시 */}
+                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 border-green-200 border`}>
+                  ✓ 경력증명
                 </span>
-                
+
+                {/* 성범죄경력증명서 - 항상 체크/연초록 배지로 표시 */}
+                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 border-green-200 border`}>
+                  ✓ 성범죄경력증명서
+                </span>
+
                 {/* 보험가입 */}
                 <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${selectedTherapistProfile.isVerified ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200'} border`}>
                   {selectedTherapistProfile.isVerified ? '✓' : '×'} 보험가입
-                </span>
-
-                {/* 성범죄경력증명서 */}
-                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${selectedTherapistProfile.hasIdVerification ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200'} border`}>
-                  {selectedTherapistProfile.hasIdVerification ? '✓' : '×'} 성범죄경력증명서
                 </span>
                 
                 {/* 모든별 인증 - 파란색 별과 함께 */}

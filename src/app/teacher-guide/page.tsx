@@ -38,24 +38,10 @@ export default function TeacherGuidePage() {
   // 이용권 구매 메뉴 렌더링 함수
   const renderPricingMenu = () => {
     if (!currentUser || !userData) {
-      // 비로그인 사용자는 드롭다운으로 둘 다 표시
       return (
-        <div className="relative group">
-          <button className="w-full text-gray-700 hover:bg-gray-50 text-left px-4 py-3 rounded-2xl text-sm font-medium transition-colors flex items-center justify-between">
-            이용권 구매
-            <svg className="w-4 h-4 transition-transform group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
-          <div className="absolute left-0 top-full mt-1 w-full bg-white shadow-lg rounded-xl border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10">
-            <Link href="/parent-pricing" className="block px-4 py-3 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors rounded-t-xl">
-              학부모용
-            </Link>
-            <Link href="/teacher-pricing" className="block px-4 py-3 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors rounded-b-xl">
-              선생님용
-            </Link>
-          </div>
-        </div>
+        <Link href="/pricing" className="block w-full text-gray-700 hover:bg-gray-50 text-left px-4 py-3 rounded-2xl text-sm font-medium transition-colors">
+          이용권 구매
+        </Link>
       );
     }
 

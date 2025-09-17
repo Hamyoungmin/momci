@@ -124,24 +124,24 @@ export default function TherapistApplicationCard({
             <div className="border-t border-gray-200 pt-3 mb-3"></div>
             
             <div className="flex flex-wrap items-center gap-2">
-              {/* 자격증 인증 - 실제 데이터 반영 */}
-              <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${application.hasCertification ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200'} border`}>
-                {application.hasCertification ? '✓' : '×'} 자격증
+              {/* 자격증 인증 - 항상 체크/연초록 배지로 표시 */}
+              <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 border-green-200 border`}>
+                ✓ 자격증
               </span>
               
-              {/* 경력 증명 */}
-              <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${application.hasExperienceProof ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200'} border`}>
-                {application.hasExperienceProof ? '✓' : '×'} 경력증명
+              {/* 경력 증명 - 항상 체크/연초록 배지로 표시 */}
+              <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 border-green-200 border`}>
+                ✓ 경력증명
               </span>
-              
+
+              {/* 성범죄경력증명서 - 항상 체크/연초록 배지로 표시 */}
+              <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 border-green-200 border`}>
+                ✓ 성범죄경력증명서
+              </span>
+
               {/* 보험가입 - 기본 인증된 것으로 처리 */}
               <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${application.isVerified ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200'} border`}>
                 {application.isVerified ? '✓' : '×'} 보험가입
-              </span>
-              
-              {/* 성범죄경력증명서 */}
-              <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${application.hasIdVerification ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200'} border`}>
-                {application.hasIdVerification ? '✓' : '×'} 성범죄경력증명서
               </span>
               
               {/* 모든별 인증 */}

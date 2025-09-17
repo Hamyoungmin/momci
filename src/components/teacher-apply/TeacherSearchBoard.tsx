@@ -258,6 +258,11 @@ export default function TeacherSearchBoard() {
       return;
     }
 
+    if (educationFiles.length === 0) {
+      alert('성범죄 경력 조회 증명서를 업로드해주세요.');
+      return;
+    }
+
     if (formData.availableDays.length === 0) {
       alert('치료 가능 요일을 선택해주세요.');
       return;
