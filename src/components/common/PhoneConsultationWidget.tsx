@@ -1,12 +1,22 @@
 'use client';
 
 import { useState } from 'react';
+import OneOnOneChat from '@/components/chat/OneOnOneChat';
+import ChatListPopup from '@/components/chat/ChatListPopup';
+import { startChatWithTherapist } from '@/lib/chat';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function PhoneConsultationWidget() {
+  const { currentUser, userData } = useAuth();
   const [isPhoneOpen, setIsPhoneOpen] = useState(false);
   const [isNoticeOpen, setIsNoticeOpen] = useState(false);
   const [isPhoneClosing, setIsPhoneClosing] = useState(false);
   const [isNoticeClosing, setIsNoticeClosing] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isChatClosing, setIsChatClosing] = useState(false);
+  const [chatRoomId, setChatRoomId] = useState<string | null>(null);
+  const [isLoginNoticeOpen, setIsLoginNoticeOpen] = useState(false);
+  const [isChatListOpen, setIsChatListOpen] = useState(false);
 
   const togglePhonePopup = () => {
     if (isPhoneOpen) {
@@ -36,8 +46,84 @@ export default function PhoneConsultationWidget() {
     window.location.href = 'tel:010-4549-1903';
   };
 
+  // 톡 버튼: 지원 계정과 1:1 채팅 시작
+  const openChatSupport = async () => {
+    if (!currentUser || !userData) {
+      setIsLoginNoticeOpen(true);
+      return;
+    }
+
+    try {
+      const roomId = await startChatWithTherapist(
+        currentUser.uid,
+        userData.name || '익명',
+        'support', // 운영자/지원용 가상 계정 ID
+        '운영자'
+      );
+      setChatRoomId(roomId);
+      setIsChatOpen(true);
+    } catch (e) {
+      console.error(e);
+      alert('채팅을 시작할 수 없습니다.');
+    }
+  };
+
+  const toggleChatPopup = () => {
+    if (isChatOpen) {
+      setIsChatClosing(true);
+      setTimeout(() => {
+        setIsChatOpen(false);
+        setIsChatClosing(false);
+      }, 300);
+    } else {
+      void openChatSupport();
+    }
+  };
+
+  const toggleChatListPopup = () => {
+    if (!currentUser || !userData) {
+      setIsLoginNoticeOpen(true);
+      return;
+    }
+    setIsChatListOpen((prev) => !prev);
+  };
+
   return (
     <div className="fixed bottom-6 right-6 z-50">
+      {/* 로그인 유도 팝업 */}
+      {isLoginNoticeOpen && (!currentUser || !userData) && (
+        <div className={`absolute bottom-[168px] right-0 mb-4 ${isChatClosing ? 'animate-fadeOutDown' : 'animate-fadeInUp'}`}>
+          <div className="bg-white rounded-xl shadow-2xl border border-gray-200 p-5 w-80">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-base font-bold text-gray-900">로그인이 필요해요</h3>
+              <button onClick={() => setIsLoginNoticeOpen(false)} className="text-gray-400 hover:text-gray-600">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <p className="text-sm text-gray-600 mb-4">1:1 채팅을 이용하려면 먼저 로그인해주세요.</p>
+            <div className="flex gap-2">
+              <a href="/auth/login" className="flex-1 text-center bg-blue-600 text-white rounded-md py-2 text-sm font-semibold hover:bg-blue-700">로그인</a>
+              <a href="/auth/signup" className="flex-1 text-center bg-gray-100 text-gray-800 rounded-md py-2 text-sm font-semibold hover:bg-gray-200">회원가입</a>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 1:1 채팅 패널 */}
+      {isChatOpen && chatRoomId && (
+        <div className={`absolute bottom-20 right-0 ${isChatClosing ? 'animate-fadeOutDown' : 'animate-fadeInUp'}`}>
+          <OneOnOneChat
+            chatRoomId={chatRoomId}
+            otherUserId={'support'}
+            otherUserName={'운영자'}
+            otherUserType={'therapist'}
+            onClose={toggleChatPopup}
+            position={'anchored'}
+          />
+        </div>
+      )}
       {/* 공지사항 팝업 */}
       {isNoticeOpen && (
         <div className={`absolute bottom-32 right-0 mb-4 ${isNoticeClosing ? 'animate-fadeOutDown' : 'animate-fadeInUp'}`}>
@@ -160,6 +246,31 @@ export default function PhoneConsultationWidget() {
         </div>
       )}
 
+      {/* 톡 버튼 (목록 팝업) */}
+      <button
+        onClick={toggleChatListPopup}
+        className={`w-14 h-14 bg-gradient-to-r from-green-500 to-teal-500 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-110 flex items-center justify-center group mb-3 ${
+          isChatListOpen ? 'rotate-12' : ''
+        }`}
+        aria-label="1:1 채팅 열기"
+      >
+        <svg
+          className={`w-6 h-6 transition-transform duration-300 ${isChatListOpen ? 'scale-110' : 'group-hover:scale-110'}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8-1.528 0-2.965-.312-4.2-.86L3 20l1.24-3.1C3.46 15.4 3 13.76 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+        </svg>
+      </button>
+
+      {/* 채팅 목록 팝업 */}
+      {isChatListOpen && (
+        <div className="absolute bottom-20 right-0">
+          <ChatListPopup onClose={() => setIsChatListOpen(false)} />
+        </div>
+      )}
+
       {/* 공지사항 버튼 */}
       <button
         onClick={toggleNoticePopup}
@@ -205,8 +316,14 @@ export default function PhoneConsultationWidget() {
       </button>
 
       {/* 툴팁들 */}
-      {!isPhoneOpen && !isNoticeOpen && (
+      {!isPhoneOpen && !isNoticeOpen && !isChatOpen && !isChatListOpen && (
         <>
+          <div className="absolute bottom-40 right-0 mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+            <div className="bg-gray-900 text-white text-sm px-3 py-2 rounded-lg whitespace-nowrap">
+              1:1 채팅
+              <div className="absolute top-full right-4 w-2 h-2 bg-gray-900 transform rotate-45 -mt-1"></div>
+            </div>
+          </div>
           <div className="absolute bottom-20 right-0 mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
             <div className="bg-gray-900 text-white text-sm px-3 py-2 rounded-lg whitespace-nowrap">
               전화 상담하기

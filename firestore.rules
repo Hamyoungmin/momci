@@ -26,6 +26,18 @@ service cloud.firestore {
       return isOwner(userId) || isAdmin();
     }
     
+    // 채팅/상담 보조 함수들
+    function isSupportAccount(userId) {
+      // 클라이언트에서 운영자와의 1:1 문의용 가상 ID
+      return userId == 'support';
+    }
+    
+    function isTherapistUser(userId) {
+      // 실제 치료사 계정인지 확인 (users 컬렉션의 userType)
+      return exists(/databases/$(database)/documents/users/$(userId)) &&
+             (get(/databases/$(database)/documents/users/$(userId)).data.userType in ['therapist', 'teacher']);
+    }
+    
     // 추가 보안 헬퍼 함수들
     function isValidEmail(email) {
       return email.matches('^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$');
@@ -241,7 +253,7 @@ service cloud.firestore {
                      (isAdmin() || 
                       request.auth.uid in resource.data.participants);
       
-      // 채팅방 생성 - 매칭된 사용자들만, 중복 방지, 인터뷰권 필드 포함
+      // 채팅방 생성 - (1) 실제 치료사와의 채팅 또는 (2) 운영자 지원(support) 채널
       allow create: if isAuthenticated() && 
                        request.resource.data.participants.hasAny([request.auth.uid]) &&
                        request.resource.data.participants.size() == 2 &&
@@ -255,6 +267,8 @@ service cloud.firestore {
                        request.resource.data.firstResponseReceived is bool &&
                        (request.resource.data.parentId == request.auth.uid || 
                         request.resource.data.therapistId == request.auth.uid) &&
+                       // 치료사 ID가 실제 치료사 계정이거나, 운영자 지원 채널(support)일 때 허용
+                       (isTherapistUser(request.resource.data.therapistId) || isSupportAccount(request.resource.data.therapistId)) &&
                        hasRecentActivity();
       
       // 채팅방 정보 수정 - 참여자만 (상태 변경 등)
@@ -288,6 +302,12 @@ service cloud.firestore {
                          request.resource.data.senderType in ['parent', 'therapist'] &&
                          request.resource.data.senderName is string &&
                          request.resource.data.isRead is bool &&
+                         // 발신자 타입 검증: 치료사 메시지인 경우 채팅방의 치료사이거나 관리자(운영자)
+                         (
+                           request.resource.data.senderType != 'therapist' ||
+                           request.auth.uid == get(/databases/$(database)/documents/chats/$(chatId)).data.therapistId ||
+                           isAdmin()
+                         ) &&
                          // 전화번호/금지어 필터링 강화 (다양한 패턴 차단)
                          !request.resource.data.message.lower().matches('.*직거래.*|.*외부.*|.*카톡.*|.*전화.*|.*010.*|.*011.*|.*016.*|.*017.*|.*018.*|.*019.*|.*공일영.*|.*일이삼.*|.*핸드폰.*|.*번호.*|.*연락처.*') &&
                          // 숫자 연속 패턴 차단 (전화번호 가능성)
@@ -364,7 +384,8 @@ service cloud.firestore {
                        request.resource.data.keys().hasAll(['userId', 'amount', 'type', 'createdAt']) &&
                        request.resource.data.amount is number &&
                        request.resource.data.amount > 0 &&
-                       request.resource.data.type in ['subscription', 'lesson', 'refund'];
+                       request.resource.data.type in ['subscription', 'lesson', 'refund'] &&
+                       (!request.resource.data.keys().hasAny(['note']) || request.resource.data.note is string);
       
       // 결제 수정은 관리자만
       allow update: if isAdmin();
@@ -1614,7 +1635,10 @@ service cloud.firestore {
                                 (request.resource.data.amount is number && 
                                  request.resource.data.amount > 0)) &&
                                (!request.resource.data.keys().hasAny(['purchaseDate']) || 
-                                request.resource.data.purchaseDate is timestamp);
+                                request.resource.data.purchaseDate is timestamp) &&
+                               // 추가 허용: 관리자 수기 부여 메모 필드
+                               (!request.resource.data.keys().hasAny(['adminNote']) || 
+                                request.resource.data.adminNote is string);
       
       // 삭제 불가 (상태 보존)
       allow delete: if false;

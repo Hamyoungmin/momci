@@ -18,6 +18,7 @@ interface OneOnOneChatProps {
   onClose: () => void;
   isMinimized?: boolean;
   onToggleMinimize?: () => void;
+  position?: 'fixed' | 'anchored';
 }
 
 export default function OneOnOneChat({ 
@@ -27,7 +28,8 @@ export default function OneOnOneChat({
   otherUserType,
   onClose,
   isMinimized = false,
-  onToggleMinimize
+  onToggleMinimize,
+  position = 'fixed'
 }: OneOnOneChatProps) {
   const { currentUser, userData } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -138,7 +140,7 @@ export default function OneOnOneChat({
 
   if (loading) {
     return (
-      <div className="fixed bottom-4 right-4 w-80 h-16 bg-white rounded-lg shadow-xl border flex items-center justify-center z-50">
+      <div className={`${position === 'fixed' ? 'fixed bottom-4 right-4' : 'absolute bottom-20 right-0'} w-96 h-16 bg-white rounded-lg shadow-xl border flex items-center justify-center z-50`}>
         <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mr-3"></div>
         <p className="text-gray-600 text-sm">채팅방 연결 중...</p>
       </div>
@@ -148,7 +150,7 @@ export default function OneOnOneChat({
   // 최소화된 상태
   if (isMinimized) {
     return (
-      <div className="fixed bottom-4 right-4 w-80 h-16 bg-white rounded-lg shadow-xl border z-50">
+      <div className={`${position === 'fixed' ? 'fixed bottom-4 right-4' : 'absolute bottom-20 right-0'} w-96 h-16 bg-white rounded-lg shadow-xl border z-50`}>
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center space-x-3">
             <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
@@ -183,9 +185,9 @@ export default function OneOnOneChat({
   }
 
   return (
-    <div className="fixed bottom-4 right-4 w-80 h-[500px] bg-white rounded-lg shadow-xl border flex flex-col z-50">
+    <div className={`${position === 'fixed' ? 'fixed bottom-4 right-4' : 'absolute bottom-20 right-0'} w-96 h-[560px] bg-white rounded-2xl shadow-2xl border flex flex-col z-50`}>
       {/* 헤더 - 카카오톡 스타일 */}
-      <div className="flex items-center justify-between p-3 border-b bg-gray-50 rounded-t-lg">
+      <div className="flex items-center justify-between px-4 py-3 border-b bg-gray-50 rounded-t-2xl">
         <div className="flex items-center space-x-3">
           <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
             <span className="text-gray-600 text-sm font-medium">
@@ -193,7 +195,7 @@ export default function OneOnOneChat({
             </span>
           </div>
           <div>
-            <h3 className="text-sm font-medium text-gray-900">{otherUserName}</h3>
+            <h3 className="text-sm font-semibold text-gray-900">{otherUserName}</h3>
             <p className="text-xs text-green-500">온라인</p>
           </div>
         </div>
@@ -213,20 +215,23 @@ export default function OneOnOneChat({
         </div>
       </div>
 
-      {/* 상단 고정 배너 - 안전 규칙 */}
-      <div className="bg-red-50 border-b border-red-200 px-3 py-2">
-        <div className="flex items-center space-x-2">
-          <div className="w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
-            <span className="text-white text-xs font-bold">!</span>
-          </div>
-          <p className="text-xs text-red-600 font-medium">
-            안전한 소통을 위해 전화번호 교환이 금지됩니다
+      {/* 안내 배너 영역 */}
+      <div className="border-b">
+        {/* 인터뷰 안내 (노란 배너) */}
+        <div className="px-4 py-3 bg-yellow-50">
+          <p className="text-xs text-gray-800 font-semibold mb-1">인터뷰 후 수업을 결정하셨나요?</p>
+          <p className="text-[11px] text-gray-700">
+            매칭 확정을 위해 대표번호로 문자 안내를 보내주세요. 응답 전 교환된 연락처는 차단됩니다.
           </p>
+        </div>
+        {/* 안전 안내 (붉은 텍스트 라벨 느낌) */}
+        <div className="px-4 py-2 bg-red-50 border-t border-red-100">
+          <p className="text-[11px] text-red-600 font-semibold">안전한 소통을 위해 연락처 교환은 금지됩니다.</p>
         </div>
       </div>
 
       {/* 메시지 영역 - 카카오톡 스타일 */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-3 bg-blue-50">
+      <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50">
         {messages.length === 0 ? (
           <div className="text-center py-8">
             <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-3">
@@ -240,18 +245,18 @@ export default function OneOnOneChat({
             return (
               <div
                 key={message.id}
-                className={`flex items-end space-x-2 ${isMyMessage ? 'justify-end' : 'justify-start'}`}
+                className={`flex items-end ${isMyMessage ? 'justify-end' : 'justify-start'}`}
               >
                 {/* 프로필 이미지 (상대방만) */}
                 {!isMyMessage && (
-                  <div className="w-7 h-7 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
+                  <div className="w-7 h-7 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0 mr-2">
                     <span className="text-gray-600 text-xs">
                       {message.senderName.charAt(0)}
                     </span>
                   </div>
                 )}
                 
-                <div className={`max-w-[200px] ${isMyMessage ? 'order-1' : 'order-2'}`}>
+                <div className={`max-w-[240px] ${isMyMessage ? 'order-1' : 'order-2'}`}>
                   {/* 발신자 이름 (상대방만) */}
                   {!isMyMessage && (
                     <p className="text-xs text-gray-500 mb-1 px-1">
@@ -261,21 +266,17 @@ export default function OneOnOneChat({
                   
                   {/* 메시지 말풍선 */}
                   <div
-                    className={`px-3 py-2 rounded-2xl ${
+                    className={`px-3 py-2 rounded-2xl shadow-sm ${
                       isMyMessage
-                        ? 'bg-yellow-400 text-gray-900 rounded-br-sm'
+                        ? 'bg-yellow-300 text-gray-900 rounded-br-sm'
                         : 'bg-white border text-gray-900 rounded-bl-sm'
                     }`}
                   >
                     <p className="text-sm whitespace-pre-wrap break-words">{message.message}</p>
                   </div>
-                </div>
-
-                {/* 시간 표시 */}
-                <div className={`flex flex-col justify-end ${isMyMessage ? 'order-2 items-end' : 'order-3 items-start'}`}>
-                  <p className="text-xs text-gray-400 mb-1">
+                  <div className={`mt-1 text-[10px] text-gray-400 ${isMyMessage ? 'text-right' : 'text-left'} px-1`}>
                     {formatTime(message.timestamp)}
-                  </p>
+                  </div>
                 </div>
               </div>
             );
@@ -322,7 +323,7 @@ export default function OneOnOneChat({
       </div>
 
       {/* 메시지 입력 영역 - 카카오톡 스타일 */}
-      <div className="border-t bg-white rounded-b-lg">
+      <div className="border-t bg-white rounded-b-2xl">
         <div className="flex items-end space-x-2 p-3">
           <div className="flex-1">
             <textarea
@@ -330,7 +331,7 @@ export default function OneOnOneChat({
               onChange={(e) => setNewMessage(e.target.value)}
               onKeyPress={handleKeyPress}
               placeholder="메시지를 입력하세요..."
-              className="w-full resize-none px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              className="w-full resize-none px-3 py-2 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
               rows={1}
               style={{
                 minHeight: '36px',
@@ -341,14 +342,14 @@ export default function OneOnOneChat({
           <button
             onClick={handleSendMessage}
             disabled={!newMessage.trim() || sending}
-            className={`w-8 h-8 rounded-full flex items-center justify-center ${
+            className={`w-9 h-9 rounded-full flex items-center justify-center ${
               newMessage.trim() && !sending
                 ? 'bg-blue-500 text-white hover:bg-blue-600'
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
             }`}
           >
             {sending ? (
-              <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></div>
+              <div className="w-4 h-4 border border-white border-t-transparent rounded-full animate-spin"></div>
             ) : (
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"/>

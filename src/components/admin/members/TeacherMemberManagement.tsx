@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import SearchFilters from './SearchFilters';
 import MemberTable, { TableRow } from './MemberTable';
 import MemberDetailModal from './MemberDetailModal';
-import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 interface TeacherMember {
@@ -58,54 +58,61 @@ export default function TeacherMemberManagement() {
   };
 
   useEffect(() => {
-    const fetchMembers = async () => {
-      try {
-        // setLoading(true);
-        console.log('치료사 회원 데이터 로딩 시작...');
-        
-        // Firebase에서 치료사 타입 사용자들 가져오기
-        const usersSnapshot = await getDocs(collection(db, 'users'));
-        const teacherMembers: TeacherMember[] = [];
-        
-        usersSnapshot.docs.forEach((doc) => {
-          const userData = doc.data();
-          if (userData.userType === 'therapist' || userData.userType === 'teacher') {
-            const member: TeacherMember = {
-              id: doc.id,
-              name: userData.name || '이름 없음',
-              email: userData.email || '',
-              phone: userData.phone || '연락처 없음',
-              joinDate: userData.createdAt 
-                ? new Date(userData.createdAt.toDate()).toLocaleDateString('ko-KR')
-                : '가입일 미상',
-              region: userData.region || '지역 미상',
-              status: userData.status || 'active',
-              profileStatus: userData.profileStatus || 'pending',
-              specialties: userData.specialties || ['정보 없음'],
-              experience: userData.experience || 0,
-              rating: userData.rating || 0,
-              totalMatches: userData.totalMatches || 0,
-              certificationBadge: userData.certificationBadge || 'regular',
-              lastActivity: userData.lastLoginAt 
-                ? new Date(userData.lastLoginAt.toDate()).toLocaleDateString('ko-KR')
-                : '활동 기록 없음',
-              isVerified: userData.isVerified || false, // 모든별 인증 상태
-            };
-            teacherMembers.push(member);
-          }
-        });
-        
-        console.log(`${teacherMembers.length}명의 치료사 회원 데이터를 불러왔습니다.`);
-        setMembers(teacherMembers);
-        
-      } catch (error) {
-        console.error('치료사 회원 데이터 로딩 실패:', error);
-      } finally {
-        // setLoading(false);
-      }
-    };
+    // 실시간 치료사 회원 목록 구독
+    const q = query(
+      collection(db, 'users'),
+      where('userType', 'in', ['therapist', 'teacher'])
+    );
 
-    fetchMembers();
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const teacherMembers: TeacherMember[] = snapshot.docs.map((docSnap) => {
+        const userData = docSnap.data() as Record<string, unknown>;
+
+        const toDateString = (value: unknown): string => {
+          try {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            if (value && typeof (value as any).toDate === 'function') {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              return new Date((value as any).toDate()).toLocaleDateString('ko-KR');
+            }
+            if (typeof value === 'number' || typeof value === 'string') {
+              return new Date(value as number).toLocaleDateString('ko-KR');
+            }
+          } catch {
+            /* ignore */
+          }
+          return '정보 없음';
+        };
+
+        return {
+          id: docSnap.id,
+          name: (userData.name as string) || '이름 없음',
+          email: (userData.email as string) || '',
+          phone: (userData.phone as string) || '연락처 없음',
+          joinDate: toDateString(userData.createdAt),
+          region: (userData.region as string) || '지역 미상',
+          status: (userData.status as TeacherMember['status']) || 'active',
+          profileStatus: (userData.profileStatus as TeacherMember['profileStatus']) || 'pending',
+          specialties: (userData.specialties as string[]) || [],
+          experience: (userData.experience as number) || 0,
+          rating: (userData.rating as number) || 0,
+          totalMatches: (userData.totalMatches as number) || 0,
+          certificationBadge: (userData.certificationBadge as TeacherMember['certificationBadge']) || 'regular',
+          lastActivity: toDateString((userData as Record<string, unknown>).lastLoginAt),
+          isVerified: (userData.isVerified as boolean) || false,
+          // extra fields for detail modal
+          education: (userData.education as string) || '',
+          certifications: (userData.certifications as string[]) || [],
+        };
+      });
+
+      console.log(`${teacherMembers.length}명의 치료사 회원 데이터를 수신했습니다.`);
+      setMembers(teacherMembers);
+    }, (error) => {
+      console.error('치료사 회원 실시간 로드 실패:', error);
+    });
+
+    return () => unsubscribe();
   }, []);
 
   const handleMemberSelect = (member: TeacherMember) => {

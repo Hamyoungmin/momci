@@ -1,6 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { db } from '@/lib/firebase';
+import { doc, onSnapshot, collection, query, where, limit, getDoc, setDoc, updateDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 
 interface Member {
   id: string;
@@ -11,6 +13,17 @@ interface Member {
   joinDate: string;
   lastActivity: string;
   status: 'active' | 'suspended' | 'withdrawn';
+  // optional fields for richer display
+  subscriptionStatus?: 'active' | 'expired' | 'none';
+  totalMatches?: number;
+  // teacher-specific
+  specialties?: string[];
+  experience?: number;
+  education?: string;
+  certifications?: string[];
+  profileStatus?: 'pending' | 'approved' | 'rejected' | 'hold';
+  rating?: number;
+  isVerified?: boolean;
 }
 
 interface MemberDetailModalProps {
@@ -22,6 +35,147 @@ interface MemberDetailModalProps {
 
 export default function MemberDetailModal({ isOpen, onClose, member, memberType }: MemberDetailModalProps) {
   const [activeTab, setActiveTab] = useState('basic');
+
+  // 실시간 데이터 상태
+  const [liveUser, setLiveUser] = useState<Record<string, unknown> | null>(null);
+  const [subscription, setSubscription] = useState<Record<string, unknown> | null>(null);
+  const [payments, setPayments] = useState<Array<Record<string, unknown>>>([]);
+  const [granting, setGranting] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  // 편집 가능한 상태 값 (회원 상태)
+  const [editStatus, setEditStatus] = useState(member.status);
+  const [sanctionReason, setSanctionReason] = useState('');
+
+  useEffect(() => {
+    // 모달이 열릴 때마다 현재 회원 상태로 동기화
+    setEditStatus(member.status);
+    setSanctionReason('');
+  }, [member.id, member.status, isOpen]);
+
+  // 모달 열릴 때 해당 회원 데이터 실시간 구독
+  useEffect(() => {
+    if (!isOpen || !member?.id) return;
+
+    // users 문서 구독
+    const unUser = onSnapshot(doc(db, 'users', member.id), (snap) => {
+      if (snap.exists()) setLiveUser(snap.data());
+    }, () => {});
+
+    // 구독 상태 구독
+    const unSub = onSnapshot(doc(db, 'user-subscription-status', member.id), (snap) => {
+      if (snap.exists()) setSubscription(snap.data());
+      else setSubscription(null);
+    }, () => {});
+
+    // 결제 내역 구독 (최근 10개)
+    const q = query(
+      collection(db, 'payments'),
+      where('userId', '==', member.id),
+      limit(10)
+    );
+    const unPay = onSnapshot(q, (snap) => {
+      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      // createdAt 기준 내림차순 정렬 (서버 인덱스 없이 클라이언트 정렬)
+      list.sort((a, b) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const ta: any = (a as any).createdAt;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const tb: any = (b as any).createdAt;
+        const da = ta && typeof ta.toDate === 'function' ? ta.toDate().getTime() : 0;
+        const dbt = tb && typeof tb.toDate === 'function' ? tb.toDate().getTime() : 0;
+        return dbt - da;
+      });
+      setPayments(list);
+    }, (err) => {
+      console.error('결제 내역 구독 실패:', err);
+      setPayments([]);
+    });
+
+    return () => {
+      unUser();
+      unSub();
+      unPay();
+    };
+  }, [isOpen, member?.id]);
+
+  // 관리자: 이용권 부여 (1개월 / 3개월)
+  const grantSubscription = async (months: number) => {
+    if (!member?.id) return;
+    try {
+      setGranting(true);
+      const statusRef = doc(db, 'user-subscription-status', member.id);
+      const statusSnap = await getDoc(statusRef);
+
+      const now = new Date();
+      // 기존 만료일이 미래면 거기서 연장, 아니면 오늘 기준
+      let base = now;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const snapExpiry: any = statusSnap.exists() ? statusSnap.data().expiryDate : null;
+      try {
+        if (snapExpiry && typeof snapExpiry.toDate === 'function') {
+          const d = snapExpiry.toDate() as Date;
+          if (d.getTime() > now.getTime()) base = d;
+        }
+      } catch {/* ignore */}
+
+      const newExpiry = new Date(base);
+      newExpiry.setMonth(newExpiry.getMonth() + months);
+
+      const payload = {
+        userId: member.id,
+        hasActiveSubscription: true,
+        subscriptionType: 'parent',
+        expiryDate: newExpiry,
+        lastUpdated: serverTimestamp(),
+      } as Record<string, unknown>;
+
+      if (!statusSnap.exists()) {
+        await setDoc(statusRef, payload);
+      } else {
+        await updateDoc(statusRef, payload);
+      }
+
+      // 결제 기록 생성 (관리자 수기 부여)
+      const amount = months === 1 ? 9900 : months === 3 ? 29700 : 0;
+      await addDoc(collection(db, 'payments'), {
+        userId: member.id,
+        amount,
+        type: 'subscription',
+        createdAt: serverTimestamp(),
+        note: `관리자 부여 ${months}개월`,
+      });
+
+      alert(`${months}개월 이용권을 부여했습니다.`);
+    } catch (e) {
+      console.error('이용권 부여 실패:', e);
+      alert('이용권 부여 중 오류가 발생했습니다.');
+    } finally {
+      setGranting(false);
+    }
+  };
+
+  // 저장 버튼: 변경사항 저장 후 모달 닫기
+  const handleSaveAndClose = async () => {
+    try {
+      setSaving(true);
+      // 상태 변경이 있을 때만 업데이트
+      if (editStatus !== member.status) {
+        await updateDoc(doc(db, 'users', member.id), {
+          status: editStatus,
+          // 선택 사항: 제재 사유 남기기 (감사 추적용 필드)
+          lastAdminActionReason: sanctionReason || null,
+          lastAdminActionAt: serverTimestamp()
+        });
+      }
+      onClose();
+    } catch (e) {
+      console.error('저장 실패:', e);
+      alert('저장 중 문제가 발생했습니다. 다시 시도해주세요.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   if (!isOpen || !member) return null;
 
@@ -40,11 +194,11 @@ export default function MemberDetailModal({ isOpen, onClose, member, memberType 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-        {/* 배경 오버레이 */}
-        <div className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onClick={onClose}></div>
+        {/* 배경 오버레이 (모달 아래) - 투명 처리 */}
+        <div className="fixed inset-0 z-40 bg-transparent" onClick={onClose}></div>
 
-        {/* 모달 */}
-        <div className="inline-block w-full max-w-4xl p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-lg">
+        {/* 모달 (오버레이 위) */}
+        <div className="relative z-50 inline-block w-full max-w-6xl p-8 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-xl border-2 border-blue-500 ring-4 ring-blue-100">
           {/* 헤더 */}
           <div className="flex items-center justify-between pb-4 border-b border-gray-200">
             <div>
@@ -121,19 +275,19 @@ export default function MemberDetailModal({ isOpen, onClose, member, memberType 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
                         <label className="block text-sm font-medium text-gray-700">전문 분야</label>
-                        <p className="mt-1 text-sm text-gray-900">언어치료, 놀이치료</p>
+                        <p className="mt-1 text-sm text-gray-900">{(member.specialties && member.specialties.length > 0) ? member.specialties.join(', ') : '정보 없음'}</p>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700">경력</label>
-                        <p className="mt-1 text-sm text-gray-900">7년</p>
+                        <p className="mt-1 text-sm text-gray-900">{typeof member.experience === 'number' ? `${member.experience}년` : '-'}</p>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700">학력</label>
-                        <p className="mt-1 text-sm text-gray-900">○○대학교 언어치료학과</p>
+                        <p className="mt-1 text-sm text-gray-900">{member.education || '-'}</p>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700">자격증</label>
-                        <p className="mt-1 text-sm text-gray-900">언어재활사 2급</p>
+                        <p className="mt-1 text-sm text-gray-900">{(member.certifications && member.certifications.length > 0) ? member.certifications.join(', ') : '-'}</p>
                       </div>
                     </div>
                   </div>
@@ -146,19 +300,32 @@ export default function MemberDetailModal({ isOpen, onClose, member, memberType 
                 <h4 className="text-base font-medium text-gray-900">활동 내역</h4>
                 <div className="space-y-3">
                   <div className="p-3 bg-gray-50 rounded-md">
-                    <p className="text-sm font-medium text-gray-900">매칭 완료</p>
-                    <p className="text-sm text-gray-600">서울 강남구 언어치료 매칭</p>
-                    <p className="text-xs text-gray-500">2024-01-20 14:30</p>
+                    <p className="text-sm font-medium text-gray-900">최근 로그인</p>
+                    <p className="text-sm text-gray-600">{(() => {
+                      const v = liveUser?.lastLoginAt as unknown;
+                      try {
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        if (v && typeof (v as any).toDate === 'function') return new Date((v as any).toDate()).toLocaleString('ko-KR');
+                        if (typeof v === 'number' || typeof v === 'string') return new Date(v as number).toLocaleString('ko-KR');
+                      } catch {}
+                      return '기록 없음';
+                    })()}</p>
                   </div>
                   <div className="p-3 bg-gray-50 rounded-md">
-                    <p className="text-sm font-medium text-gray-900">채팅 시작</p>
-                    <p className="text-sm text-gray-600">김○○ 치료사와 1:1 채팅</p>
-                    <p className="text-xs text-gray-500">2024-01-19 10:15</p>
+                    <p className="text-sm font-medium text-gray-900">남은 인터뷰권</p>
+                    <p className="text-sm text-gray-600">{typeof (liveUser?.interviewTokens) === 'number' ? `${liveUser?.interviewTokens}개` : '정보 없음'}</p>
                   </div>
                   <div className="p-3 bg-gray-50 rounded-md">
-                    <p className="text-sm font-medium text-gray-900">요청글 작성</p>
-                    <p className="text-sm text-gray-600">언어치료 선생님 구해요</p>
-                    <p className="text-xs text-gray-500">2024-01-18 16:45</p>
+                    <p className="text-sm font-medium text-gray-900">이용권 만료일</p>
+                    <p className="text-sm text-gray-600">{(() => {
+                      const v = subscription?.expiryDate as unknown;
+                      try {
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        if (v && typeof (v as any).toDate === 'function') return new Date((v as any).toDate()).toLocaleDateString('ko-KR');
+                        if (typeof v === 'number' || typeof v === 'string') return new Date(v as number).toLocaleDateString('ko-KR');
+                      } catch {}
+                      return '-';
+                    })()}</p>
                   </div>
                 </div>
               </div>
@@ -167,33 +334,60 @@ export default function MemberDetailModal({ isOpen, onClose, member, memberType 
             {activeTab === 'payment' && (
               <div className="space-y-4">
                 <h4 className="text-base font-medium text-gray-900">결제 내역</h4>
+                {memberType === 'parent' && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => grantSubscription(1)}
+                      disabled={granting}
+                      className="px-3 py-2 text-sm font-semibold rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      1개월 이용권 부여
+                    </button>
+                    <button
+                      onClick={() => grantSubscription(3)}
+                      disabled={granting}
+                      className="px-3 py-2 text-sm font-semibold rounded-md bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
+                    >
+                      3개월 이용권 부여
+                    </button>
+                    <div className="text-sm text-gray-600 ml-2">
+                      {subscription?.hasActiveSubscription === true ? '현재 활성화됨' : '비활성'}
+                      {(() => {
+                        const v = subscription?.expiryDate as unknown;
+                        try {
+                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                          if (v && typeof (v as any).toDate === 'function') return ` · 만료 ${new Date((v as any).toDate()).toLocaleDateString('ko-KR')}`;
+                          if (typeof v === 'number' || typeof v === 'string') return ` · 만료 ${new Date(v as number).toLocaleDateString('ko-KR')}`;
+                        } catch {}
+                        return '';
+                      })()}
+                    </div>
+                  </div>
+                )}
                 <div className="space-y-3">
-                  <div className="p-3 bg-gray-50 rounded-md">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">
-                          {memberType === 'parent' ? '학부모 이용권' : '치료사 이용권'}
-                        </p>
-                        <p className="text-sm text-gray-600">월간 이용권</p>
-                        <p className="text-xs text-gray-500">2024-01-15</p>
+                  {payments.length === 0 && (
+                    <div className="p-3 bg-gray-50 rounded-md text-sm text-gray-500">결제 내역이 없습니다.</div>
+                  )}
+                  {payments.map((p, idx) => (
+                    <div key={String(p.id || idx)} className="p-3 bg-gray-50 rounded-md">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">{String(p.type || '결제')}</p>
+                          <p className="text-sm text-gray-600">{typeof p.amount === 'number' ? `${p.amount.toLocaleString()}원` : '-'}</p>
+                          <p className="text-xs text-gray-500">{(() => {
+                            const v = p.createdAt as unknown;
+                            try {
+                              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                              if (v && typeof (v as any).toDate === 'function') return new Date((v as any).toDate()).toLocaleString('ko-KR');
+                              if (typeof v === 'number' || typeof v === 'string') return new Date(v as number).toLocaleString('ko-KR');
+                            } catch {}
+                            return '-';
+                          })()}</p>
+                        </div>
+                        <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">완료</span>
                       </div>
-                      <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
-                        완료
-                      </span>
                     </div>
-                  </div>
-                  <div className="p-3 bg-gray-50 rounded-md">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">첫 수업료</p>
-                        <p className="text-sm text-gray-600">65,000원</p>
-                        <p className="text-xs text-gray-500">2024-01-20</p>
-                      </div>
-                      <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
-                        정산 완료
-                      </span>
-                    </div>
-                  </div>
+                  ))}
                 </div>
               </div>
             )}
@@ -208,8 +402,8 @@ export default function MemberDetailModal({ isOpen, onClose, member, memberType 
                     회원 상태 변경
                   </label>
                   <select
-                    value={member.status}
-                    onChange={(e) => handleStatusChange(e.target.value)}
+                    value={editStatus}
+                    onChange={(e) => { setEditStatus(e.target.value as typeof editStatus); handleStatusChange(e.target.value); }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="active">정상</option>
@@ -227,6 +421,8 @@ export default function MemberDetailModal({ isOpen, onClose, member, memberType 
                     rows={3}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="제재 사유를 입력하세요"
+                    value={sanctionReason}
+                    onChange={(e) => setSanctionReason(e.target.value)}
                   />
                 </div>
 
@@ -254,8 +450,12 @@ export default function MemberDetailModal({ isOpen, onClose, member, memberType 
             >
               닫기
             </button>
-            <button className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
-              저장
+            <button
+              onClick={handleSaveAndClose}
+              disabled={saving}
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
+            >
+              {saving ? '저장 중...' : '저장'}
             </button>
           </div>
         </div>

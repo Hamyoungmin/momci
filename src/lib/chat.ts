@@ -1,6 +1,6 @@
-import { collection, addDoc, doc, getDoc, updateDoc, serverTimestamp, query, where, getDocs, orderBy, onSnapshot, Unsubscribe, Timestamp, FieldValue } from 'firebase/firestore';
+import { collection, addDoc, setDoc, doc, getDoc, updateDoc, serverTimestamp, query, where, orderBy, onSnapshot, Unsubscribe, Timestamp, FieldValue } from 'firebase/firestore';
 import { db } from './firebase';
-import { handleFirstResponse } from './interviewTokens';
+import { handleFirstResponse, deductInterviewToken } from './interviewTokens';
 import { notifyFirstResponse, notifyNewMessage } from './notifications';
 
 // 채팅 메시지 타입
@@ -38,21 +38,11 @@ export async function createOrGetChatRoom(
   therapistName: string
 ): Promise<string> {
   try {
-    // 기존 채팅방이 있는지 확인
-    const chatsQuery = query(
-      collection(db, 'chats'),
-      where('parentId', '==', parentId),
-      where('therapistId', '==', therapistId)
-    );
-    
-    const existingChats = await getDocs(chatsQuery);
-    
-    if (!existingChats.empty) {
-      // 기존 채팅방이 있으면 해당 ID 반환
-      const existingChat = existingChats.docs[0];
-      console.log('✅ 기존 채팅방 찾음:', existingChat.id);
-      return existingChat.id;
-    }
+    // 인덱스 없이 확정적으로 찾기 위해 결정적(docId) 키 사용
+    // 두 사용자 ID를 정렬하여 항상 같은 chatId를 생성
+    const chatId = [parentId, therapistId].sort().join('_');
+
+    const chatDocRef = doc(db, 'chats', chatId);
 
     // 새 채팅방 생성
     const chatRoomData: Omit<ChatRoomInfo, 'id'> = {
@@ -70,10 +60,27 @@ export async function createOrGetChatRoom(
     };
 
     console.log('🔥 새 채팅방 생성 중...', chatRoomData);
-    const chatRoomRef = await addDoc(collection(db, 'chats'), chatRoomData);
-    
-    console.log('✅ 채팅방 생성 완료:', chatRoomRef.id);
-    return chatRoomRef.id;
+    try {
+      // 최초 생성 시도 (필수 필드 모두 포함)
+      await setDoc(chatDocRef, chatRoomData, { merge: false });
+      console.log('✅ 채팅방 생성 완료:', chatDocRef.id);
+      return chatDocRef.id;
+    } catch (e) {
+      // 이미 존재하거나 업데이트 제약으로 실패한 경우: 업데이트 허용 필드만 병합
+      console.warn('ℹ️ 채팅방 생성 실패 → 업데이트로 재시도:', e);
+      await setDoc(
+        chatDocRef,
+        {
+          // participants/createdAt은 업데이트 규칙상 변경 금지 → 제외
+          lastMessage: '',
+          lastMessageTime: serverTimestamp(),
+          status: 'active'
+        },
+        { merge: true }
+      );
+      console.log('✅ 기존 채팅방 업데이트/연결 완료:', chatDocRef.id);
+      return chatDocRef.id;
+    }
     
   } catch (error) {
     console.error('❌ 채팅방 생성/조회 실패:', error);
@@ -122,7 +129,7 @@ export async function sendMessage(
     // 2. messages 서브컬렉션에 메시지 추가
     await addDoc(collection(db, 'chats', chatRoomId, 'messages'), messageData);
 
-    // 3. 치료사의 첫 응답인 경우 인터뷰권 차감 처리 및 알림 발송
+    // 3-A. 치료사의 첫 응답인 경우 (이미 학부모 쪽에서 차감되었을 수 있으므로 중복 방지)
     if (senderType === 'therapist') {
       console.log('👨‍⚕️ 치료사 메시지 감지 - 첫 응답 확인 중...');
       
@@ -130,38 +137,84 @@ export async function sendMessage(
       const chatRoomDoc = await getDoc(doc(db, 'chats', chatRoomId));
       if (chatRoomDoc.exists()) {
         const chatData = chatRoomDoc.data() as ChatRoomInfo;
-        
-        // 첫 응답 처리 (인터뷰권 차감 포함)
-        const result = await handleFirstResponse(
-          chatRoomId,
-          senderId,
-          chatData.parentId
-        );
-        
-        if (result.tokenDeducted) {
-          console.log('💳 인터뷰권 차감 완료 - 치료사 첫 응답');
+        // 이미 학부모 첫 메시지로 인터뷰권이 사용되었으면 스킵
+        if (!chatData.interviewTokenUsed) {
+          // 첫 응답 처리 (인터뷰권 차감 포함)
+          const result = await handleFirstResponse(
+            chatRoomId,
+            senderId,
+            chatData.parentId
+          );
           
-          // 🔔 첫 응답 알림 발송 (학부모에게)
-          try {
-            await notifyFirstResponse(
-              chatData.parentName,
-              senderName,
-              chatRoomId,
-              message.trim()
-            );
-          } catch (notifyError) {
-            console.error('❌ 첫 응답 알림 발송 실패:', notifyError);
+          if (result.tokenDeducted) {
+            console.log('💳 인터뷰권 차감 완료 - 치료사 첫 응답');
+            
+            // 🔔 첫 응답 알림 발송 (학부모에게)
+            try {
+              await notifyFirstResponse(
+                chatData.parentName,
+                senderName,
+                chatRoomId,
+                message.trim()
+              );
+            } catch (notifyError) {
+              console.error('❌ 첫 응답 알림 발송 실패:', notifyError);
+            }
+          } else if (!result.success) {
+            console.error('❌ 첫 응답 처리 실패');
           }
-        } else if (!result.success) {
-          console.error('❌ 첫 응답 처리 실패');
         }
       }
     } else if (senderType === 'parent') {
-      // 4. 학부모 메시지인 경우 치료사에게 알림
+      // 3-B. 학부모의 첫 메시지인 경우 인터뷰권 차감 후 알림 발송
       const chatRoomDoc = await getDoc(doc(db, 'chats', chatRoomId));
       if (chatRoomDoc.exists()) {
         const chatData = chatRoomDoc.data() as ChatRoomInfo;
-        
+        // 인터뷰권이 아직 사용되지 않았다면 학부모 쪽에서 차감
+        if (!chatData.interviewTokenUsed) {
+          try {
+            // 구독 활성 여부 확인: 구독이 있으면 토큰 차감 없이 통과
+            const subDoc = await getDoc(doc(db, 'user-subscription-status', chatData.parentId));
+            let hasActiveSubscription = false;
+            if (subDoc.exists()) {
+              const data = subDoc.data() as { hasActiveSubscription?: boolean; expiryDate?: Timestamp | { toDate?: () => Date } | null };
+              const nowTs = Date.now();
+              const expiryMs = data?.expiryDate && typeof data.expiryDate.toDate === 'function' ? data.expiryDate.toDate().getTime() : 0;
+              hasActiveSubscription = !!data?.hasActiveSubscription && expiryMs > nowTs;
+            }
+
+            if (hasActiveSubscription) {
+              await updateDoc(doc(db, 'chats', chatRoomId), {
+                interviewTokenUsed: true,
+                firstResponseReceived: false,
+                firstMessageByParentAt: serverTimestamp(),
+                interviewAccessBy: 'subscription'
+              });
+              console.log('🟦 구독 활성: 토큰 차감 없이 채팅 시작 허용');
+            } else {
+              const deducted = await deductInterviewToken(
+                chatData.parentId,
+                chatRoomId,
+                chatData.therapistId,
+                chatData.therapistName
+              );
+              if (deducted) {
+                await updateDoc(doc(db, 'chats', chatRoomId), {
+                  interviewTokenUsed: true,
+                  firstResponseReceived: false,
+                  firstMessageByParentAt: serverTimestamp(),
+                  interviewAccessBy: 'token'
+                });
+                console.log('💳 인터뷰권 차감 완료 - 학부모 첫 메시지');
+              } else {
+                console.warn('⚠️ 인터뷰권 차감 실패 또는 잔액 부족');
+              }
+            }
+          } catch (tokenError) {
+            console.error('❌ 인터뷰권 차감 중 오류:', tokenError);
+          }
+        }
+
         // 🔔 새 메시지 알림 발송 (치료사에게)
         try {
           await notifyNewMessage(

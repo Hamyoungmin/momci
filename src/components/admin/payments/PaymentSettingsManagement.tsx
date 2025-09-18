@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import AdminCard from '../shared/AdminCard';
 import AdminButton from '../shared/AdminButton';
@@ -93,38 +93,37 @@ export default function PaymentSettingsManagement() {
   const [activeTab, setActiveTab] = useState<'parent' | 'teacher'>('parent');
 
   useEffect(() => {
-    fetchSettings();
-  }, []);
-
-  const fetchSettings = async () => {
-    try {
+    let unsubParent: (() => void) | null = null;
+    let unsubTeacher: (() => void) | null = null;
+    (async () => {
       setLoading(true);
-      
-      // 학부모 설정 조회
-      const parentSettingsDoc = await getDoc(doc(db, 'system_settings', 'payment_config'));
-      if (parentSettingsDoc.exists()) {
-        setParentSettings(parentSettingsDoc.data() as PaymentSettings);
-      } else {
-        // 초기 설정이 없으면 기본값 저장
-        await setDoc(doc(db, 'system_settings', 'payment_config'), defaultParentSettings);
-        setParentSettings(defaultParentSettings);
+      try {
+        const parentRef = doc(db, 'system_settings', 'payment_config');
+        const teacherRef = doc(db, 'system_settings', 'teacher_payment_config');
+
+        // 존재하지 않으면 기본값으로 초기화
+        const [pSnap, tSnap] = await Promise.all([getDoc(parentRef), getDoc(teacherRef)]);
+        if (!pSnap.exists()) await setDoc(parentRef, defaultParentSettings);
+        if (!tSnap.exists()) await setDoc(teacherRef, defaultTeacherSettings);
+
+        unsubParent = onSnapshot(parentRef, (snap) => {
+          if (snap.exists()) setParentSettings(snap.data() as PaymentSettings);
+        });
+        unsubTeacher = onSnapshot(teacherRef, (snap) => {
+          if (snap.exists()) setTeacherSettings(snap.data() as PaymentSettings);
+        });
+      } catch (e) {
+        console.error('설정 구독 실패:', e);
+      } finally {
+        setLoading(false);
       }
-      
-      // 치료사 설정 조회
-      const teacherSettingsDoc = await getDoc(doc(db, 'system_settings', 'teacher_payment_config'));
-      if (teacherSettingsDoc.exists()) {
-        setTeacherSettings(teacherSettingsDoc.data() as PaymentSettings);
-      } else {
-        // 초기 설정이 없으면 기본값을 Firebase에 저장
-        await setDoc(doc(db, 'system_settings', 'teacher_payment_config'), defaultTeacherSettings);
-        setTeacherSettings(defaultTeacherSettings);
-      }
-    } catch (error) {
-      console.error('설정 로딩 실패:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    })();
+
+    return () => {
+      if (unsubParent) unsubParent();
+      if (unsubTeacher) unsubTeacher();
+    };
+  }, []);
 
   const handleSave = async () => {
     try {

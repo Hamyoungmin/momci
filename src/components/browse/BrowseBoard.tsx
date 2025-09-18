@@ -80,8 +80,10 @@ export default function BrowseBoard() {
   const [selectedProfile, setSelectedProfile] = useState<Teacher | null>(null);
   const [isProfileModalClosing, setIsProfileModalClosing] = useState(false);
   
-  // 1:1 채팅 모달 상태
+  // 1:1 채팅 모달 상태 (안전 매칭 모달은 사용 중지)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [showSafetyModal, setShowSafetyModal] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isSafetyModalClosing, setIsSafetyModalClosing] = useState(false);
   
   // 채팅 시작 전 확인 모달 상태 (학부모 전용)
@@ -659,20 +661,17 @@ export default function BrowseBoard() {
     }, 300);
   };
 
-  // 안전 모달 닫기
-  const closeSafetyModal = () => {
-    setIsSafetyModalClosing(true);
-    setTimeout(() => {
-      setShowSafetyModal(false);
-      setIsSafetyModalClosing(false);
-      
-      // 학부모인 경우 채팅 확인 모달 열기
-      if (userData?.userType === 'parent') {
-        setTimeout(() => {
-          setShowChatConfirmModal(true);
-        }, 100);
-      }
-    }, 300);
+  // 안전 모달은 사용하지 않고 바로 확인 모달로 이동
+  const openChatFlow = () => {
+    if (!currentUser) {
+      alert('로그인이 필요합니다.');
+      return;
+    }
+    if (userData?.userType === 'parent') {
+      setShowChatConfirmModal(true);
+    } else {
+      alert('학부모만 채팅을 시작할 수 있습니다.');
+    }
   };
   
   // 채팅 확인 모달 닫기 (취소)
@@ -1184,7 +1183,7 @@ export default function BrowseBoard() {
                       {/* 오른쪽: 채팅 버튼 */}
                       <div className="flex flex-col items-end space-y-3 ml-6">
                         <button 
-                          onClick={() => setShowSafetyModal(true)}
+                          onClick={openChatFlow}
                           className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-2xl font-medium transition-colors shadow-sm"
                         >
                           1:1 채팅
@@ -1832,159 +1831,7 @@ export default function BrowseBoard() {
         </div>
       )}
 
-      {/* 안전 매칭 모달 */}
-      {showSafetyModal && (
-        <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50">
-          <div className={`bg-white border-4 border-blue-700 rounded-lg max-w-6xl w-[95vw] max-h-[90vh] overflow-y-auto shadow-xl ${isSafetyModalClosing ? 'animate-slideOut' : 'animate-slideIn'}`}>
-            {/* 헤더 */}
-            <div className="flex justify-end p-4">
-              <button
-                onClick={closeSafetyModal}
-                className="text-gray-400 hover:text-gray-600 text-2xl"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* 메인 내용 */}
-            <div className="px-8 pb-8">
-              <div className="text-center mb-20 mt-20">
-                <h2 className="text-5xl font-bold text-gray-900 mb-4">
-                  안전 매칭을 위한 필수 확인 사항
-                </h2>
-                <p className="text-gray-600 text-2xl">
-                  선생님과 소통을 시작하기 전, 아래 내용을 반드시 확인하고 동의해 주세요.
-                </p>
-              </div>
-
-              {/* 모든별 키즈 이용 혜택 */}
-              <div className="mb-8">
-                <div className="flex items-center mb-4">
-                  <div className="w-8 h-8 bg-white border-2 border-blue-500 rounded-full flex items-center justify-center mr-3">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="#3B82F6">
-                      <path d="M20.285 2l-11.285 11.567-5.286-5.011-3.714 3.716 9 8.728 15-15.285z"/>
-                    </svg>
-                  </div>
-                  <h3 className="text-lg font-bold text-gray-900">모든별 키즈 이용 혜택</h3>
-                </div>
-                
-                <div className="bg-blue-50 rounded-lg p-6 space-y-4">
-                  <div className="flex items-start space-x-3">
-                    <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="white">
-                        <path d="M20.285 2l-11.285 11.567-5.286-5.011-3.714 3.716 9 8.728 15-15.285z"/>
-                      </svg>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-700">
-                        <span className="font-semibold text-gray-900">안전결제 시스템:</span> 첫 수업료를 모든별 키즈가 안전하게 보관하여 사기, 수업 불이행 등의 문제를 100% 예방합니다.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start space-x-3">
-                    <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="white">
-                        <path d="M20.285 2l-11.285 11.567-5.286-5.011-3.714 3.716 9 8.728 15-15.285z"/>
-                      </svg>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-700">
-                        <span className="font-semibold text-gray-900">분쟁 중재 서비스:</span> 문제 발생 시, 플랫폼이 공식 규정에 따라 공정하게 중재해 드립니다.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start space-x-3">
-                    <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="white">
-                        <path d="M20.285 2l-11.285 11.567-5.286-5.011-3.714 3.716 9 8.728 15-15.285z"/>
-                      </svg>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-700">
-                        <span className="font-semibold text-gray-900">검증된 후기:</span> 오직 플랫폼 결제 회원만 후기를 참고하고 작성할 수 있습니다.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* 직거래 금지 안내 */}
-              <div className="mb-8">
-                <div className="flex items-center mb-4">
-                  <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center mr-3">
-                    <svg width="40" height="40" viewBox="0 0 24 24" fill="#EF4444">
-                      <path d="M12 2L1 21h22L12 2zm0 3.99L19.53 19H4.47L12 5.99zM11 16h2v2h-2v-2zm0-6h2v4h-2v-4z"/>
-                    </svg>
-                  </div>
-                  <h3 className="text-lg font-bold text-gray-900">직거래 금지 안내</h3>
-                </div>
-                
-                <div className="bg-red-50 rounded-lg p-6 space-y-4">
-                  <div className="flex items-start space-x-3">
-                    <div className="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <span className="text-white text-xs font-bold">!</span>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-700">
-                        플랫폼 외부 거래(현금, 계좌이체 등)는 <span className="font-bold">엄격히 금지</span>됩니다.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start space-x-3">
-                    <div className="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <span className="text-white text-xs font-bold">!</span>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-700">
-                        직거래 시 발생하는 모든 문제에 대해 플랫폼은 어떠한 보호나 책임도 지지 않습니다.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start space-x-3">
-                    <div className="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <span className="text-white text-xs font-bold">!</span>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-700">
-                        직거래 유도 신고 시, 확인 후 <span className="font-bold">이용권 1개월을 포상</span>으로 지급합니다.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* 동의 체크박스 */}
-              <div className="border-t border-gray-200 pt-6">
-                <div className="bg-gray-100 rounded-lg p-4">
-                  <label className="flex items-center space-x-3 cursor-pointer">
-                    <input 
-                      type="checkbox" 
-                      className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                    />
-                    <span className="text-sm text-gray-700">
-                      위 내용을 모두 확인했으며, 플랫폼의 안전 규정을 준수하는 것에 동의합니다.
-                    </span>
-                  </label>
-                </div>
-              </div>
-
-              {/* 확인 버튼 */}
-              <div className="mt-6 text-center">
-                <button
-                  onClick={closeSafetyModal}
-                  className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 rounded-lg font-medium transition-colors"
-                >
-                  확인했습니다
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 첫 번째(안전 매칭) 모달은 비활성화됨 */}
 
       {/* 채팅 시작 전 확인 모달 (학부모 전용) */}
       {showChatConfirmModal && (

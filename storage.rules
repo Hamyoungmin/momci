@@ -21,6 +21,11 @@ service firebase.storage {
       return isOwner(userId) || isAdmin();
     }
     
+    // 상담/채팅 보조 함수
+    function isSupportAccount(userId) {
+      return userId == 'support';
+    }
+    
     // 최근 활동 검증
     function hasRecentActivity() {
       return request.auth != null && request.auth.token.auth_time > timestamp.date() - duration.value(30, 'd');
@@ -122,9 +127,16 @@ service firebase.storage {
       allow create, read: if isAuthenticated() && 
                              (isValidImageType() || isValidDocumentType()) &&
                              hasRecentActivity() &&
-                             // Firestore에서 채팅방 참여자 확인
                              firestore.exists(/databases/(default)/documents/chats/$(chatId)) &&
-                             request.auth.uid in firestore.get(/databases/(default)/documents/chats/$(chatId)).data.participants;
+                             (
+                               // 일반 케이스: 업로더가 채팅 참여자
+                               request.auth.uid in firestore.get(/databases/(default)/documents/chats/$(chatId)).data.participants ||
+                               // 지원 채널(support) 케이스: 관리자가 업로드 허용
+                               (
+                                 isAdmin() &&
+                                 firestore.get(/databases/(default)/documents/chats/$(chatId)).data.therapistId == 'support'
+                               )
+                             );
       
       // 업로드한 본인과 관리자만 삭제 가능
       allow delete: if isAuthenticated() && 

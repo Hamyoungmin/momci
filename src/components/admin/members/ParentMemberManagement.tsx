@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import SearchFilters from './SearchFilters';
 import MemberTable, { TableRow } from './MemberTable';
 import MemberDetailModal from './MemberDetailModal';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 interface ParentMember {
   id: string;
@@ -26,20 +28,53 @@ export default function ParentMemberManagement() {
   // const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchMembers = async () => {
-      try {
-        // setLoading(true);
-        // TODO: Firebase에서 실제 학부모 회원 데이터 조회
-        // const membersData = await getParentMembers();
-        setMembers([]);
-      } catch (error) {
-        console.error('학부모 회원 데이터 로딩 실패:', error);
-      } finally {
-        // setLoading(false);
-      }
-    };
+    // 실시간 학부모 회원 목록 구독
+    const q = query(
+      collection(db, 'users'),
+      where('userType', '==', 'parent')
+    );
 
-    fetchMembers();
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const parentMembers: ParentMember[] = snapshot.docs.map((doc) => {
+        const data = doc.data() as Record<string, unknown>;
+
+        const toDateString = (value: unknown): string => {
+          try {
+            // Firestore Timestamp 지원
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            if (value && typeof (value as any).toDate === 'function') {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              return new Date((value as any).toDate()).toLocaleDateString('ko-KR');
+            }
+            if (typeof value === 'number' || typeof value === 'string') {
+              return new Date(value as number).toLocaleDateString('ko-KR');
+            }
+          } catch {
+            /* ignore */
+          }
+          return '정보 없음';
+        };
+
+        return {
+          id: doc.id,
+          name: (data.name as string) || '이름 없음',
+          email: (data.email as string) || '',
+          phone: (data.phone as string) || '연락처 없음',
+          joinDate: toDateString(data.createdAt),
+          region: (data.region as string) || '지역 미상',
+          status: (data.status as ParentMember['status']) || 'active',
+          subscriptionStatus: (data.subscriptionStatus as ParentMember['subscriptionStatus']) || 'none',
+          totalMatches: (data.totalMatches as number) || 0,
+          lastActivity: toDateString((data as Record<string, unknown>).lastLoginAt)
+        };
+      });
+
+      setMembers(parentMembers);
+    }, (error) => {
+      console.error('학부모 회원 실시간 로드 실패:', error);
+    });
+
+    return () => unsubscribe();
   }, []);
 
   const handleMemberSelect = (member: ParentMember) => {
