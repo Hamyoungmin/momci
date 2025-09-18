@@ -719,12 +719,12 @@ export default function RequestBoardFirebase() {
 
     if (!hasActiveSubscription) {
       // 활성 구독이 없으면 인터뷰권 보유량 확인
-      const currentTokens = await getUserInterviewTokens(currentUser.uid);
-      if (currentTokens <= 0) {
-        alert('인터뷰권이 부족합니다. 인터뷰권을 구매해주세요.');
-        setShowParentChatConfirmModal(false);
-        setCurrentTherapistId(null);
-        return;
+    const currentTokens = await getUserInterviewTokens(currentUser.uid);
+    if (currentTokens <= 0) {
+      alert('인터뷰권이 부족합니다. 인터뷰권을 구매해주세요.');
+      setShowParentChatConfirmModal(false);
+      setCurrentTherapistId(null);
+      return;
       }
     }
 

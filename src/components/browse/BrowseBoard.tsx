@@ -667,11 +667,11 @@ export default function BrowseBoard() {
       alert('로그인이 필요합니다.');
       return;
     }
-    if (userData?.userType === 'parent') {
-      setShowChatConfirmModal(true);
+      if (userData?.userType === 'parent') {
+          setShowChatConfirmModal(true);
     } else {
       alert('학부모만 채팅을 시작할 수 있습니다.');
-    }
+      }
   };
   
   // 채팅 확인 모달 닫기 (취소)
