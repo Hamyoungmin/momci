@@ -1128,11 +1128,7 @@ export default function BrowseBoard() {
                             <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
                               #{teacher.region}
                             </span>
-                            {teacher.postFrequency && (
-                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
-                                {teacher.postFrequency}
-                              </span>
-                            )}
+                            {/* 요청: 횟수 배지 숨김 */}
                           </div>
                           
                           <div className="text-xl font-bold text-blue-600 mb-4">
@@ -1616,11 +1612,7 @@ export default function BrowseBoard() {
                 <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
                   #{selectedProfile.region}
                 </span>
-                {selectedProfile.postFrequency && (
-                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
-                    #{selectedProfile.postFrequency}
-                  </span>
-                )}
+                {/* 요청: 횟수 배지 숨김 */}
                 {selectedProfile.postAge && selectedProfile.postGender && (
                   <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200">
                     #{selectedProfile.postAge}/{selectedProfile.postGender}
@@ -1948,11 +1940,11 @@ export default function BrowseBoard() {
       {/* 프로필 등록 확인 팝업 */}
       {showConfirmModal && (
         <div className="fixed inset-0 flex items-center justify-center z-50">
-          <div className={`bg-white rounded-2xl p-8 max-w-md w-[90%] text-center shadow-2xl transform confirm-modal ${isConfirmModalClosing ? 'animate-fadeOut' : 'animate-fadeIn'}`}>
+          <div className={`bg-white rounded-2xl p-10 max-w-lg w-[90%] text-center shadow-2xl transform confirm-modal ${isConfirmModalClosing ? 'animate-fadeOut' : 'animate-fadeIn'}`}>
             {/* 로켓 아이콘 */}
-            <div className="mb-6">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg width="48" height="48" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" transform="rotate(45)">
+            <div className="mb-8">
+              <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-5">
+                <svg width="56" height="56" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" transform="rotate(45)">
                   {/* 로켓 본체 */}
                   <ellipse cx="16" cy="14" rx="4" ry="8" fill="#3B82F6"/>
                   {/* 로켓 머리 (뾰족한 부분) */}
@@ -1967,26 +1959,30 @@ export default function BrowseBoard() {
             </div>
             
             {/* 제목 */}
-            <h2 className="text-xl font-bold text-gray-900 mb-4">
+            <h2 className="text-2xl font-extrabold text-gray-900 mb-3">
               프로필을 목록에 등록하시겠습니까?
             </h2>
             
             {/* 설명 */}
-            <p className="text-sm text-gray-600 mb-8 leading-relaxed">
-              [확인] 버튼을 누르시면, 회원님의 프로필이 ** &apos;내 프로필 등록하기&apos; 목록에 자동으로 노출** 되어 학부모님들이 볼 수 있게 됩니다.
-            </p>
+            <div className="text-center text-sm text-gray-600 mb-8 leading-relaxed space-y-1">
+              <div>등록된 프로필은 &apos;선생님 둘러보기&apos; 목록에 노출되어 학부모님들이 볼 수 있게 됩니다.</div>
+              <div>
+                이후 <span className="text-blue-600 font-semibold">&apos;프로필 끌어올림&apos;</span> 기능을 이용해 내 프로필을 목록 상단으로 올려 더 많은 기회를 만들어보세요!
+              </div>
+              <div className="text-xs text-blue-500">(프로필 끌어올림은 24시간에 한 번만 가능합니다.)</div>
+            </div>
             
             {/* 버튼들 */}
             <div className="flex gap-3">
               <button
                 onClick={closeConfirmModal}
-                className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-colors"
+                className="flex-1 px-6 py-4 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-colors"
               >
                 취소
               </button>
               <button
                 onClick={handleConfirmRegister}
-                className="flex-1 px-6 py-3 bg-blue-500 text-white rounded-xl font-medium hover:bg-blue-600 transition-colors"
+                className="flex-1 px-6 py-4 bg-blue-500 text-white rounded-xl font-semibold hover:bg-blue-600 transition-colors"
               >
                 네, 등록합니다
               </button>

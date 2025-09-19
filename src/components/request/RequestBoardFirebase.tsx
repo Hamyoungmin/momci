@@ -158,6 +158,10 @@ export default function RequestBoardFirebase() {
     additionalInfo: ''
   });
 
+  // 요일/시간 입력 UI 상태 (체크박스 + 텍스트)
+  const [selectedDays, setSelectedDays] = useState<string[]>([]);
+  const [timeText, setTimeText] = useState('');
+
   // 상세 프로필 모달 상태 (Firebase 실시간 연동 방식)
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [selectedProfile, setSelectedProfile] = useState<Post | null>(null);
@@ -214,7 +218,8 @@ export default function RequestBoardFirebase() {
     '미술치료', '특수체육', '특수교사', '모니터링', '임상심리'
   ];
 
-  // 요일 옵션
+  // 요일 옵션 (사용 중지)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const dayOptions = [
     '월', '화', '수', '목', '금', '토', '일',
     '월,화', '월,수', '월,목', '월,금', '월,토', '월,일',
@@ -226,7 +231,8 @@ export default function RequestBoardFirebase() {
     '월,수,금', '월,화,수', '화,수,목', '수,목,금', '목,금,토', '금,토,일'
   ];
 
-  // 시간 옵션
+  // 시간 옵션 (사용 중지)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const timeOptions = [
     '9시~10시', '10시~11시', '11시~12시', '12시~1시',
     '1시~2시', '2시~3시', '3시~4시', '4시~5시',
@@ -234,6 +240,9 @@ export default function RequestBoardFirebase() {
     '9시~12시', '1시~4시', '2시~5시', '3시~6시',
     '4시~7시', '5시~8시', '오전', '오후', '협의'
   ];
+
+  // 체크박스용 단일 요일 옵션
+  const dayCheckboxOptions = ['월', '화', '수', '목', '금', '토', '일'];
 
   // Firebase에서 가져온 게시글 데이터 상태
   const [postsData, setPostsData] = useState<Post[]>([]);
@@ -1699,6 +1708,19 @@ export default function RequestBoardFirebase() {
               e.preventDefault();
               addNewPost(newPost);
             }} className="space-y-6">
+              {/* 안내 고지문 */}
+              <div className="bg-blue-50 rounded-lg border border-blue-100 relative p-4">
+                <div className="absolute left-0 top-0 h-full w-1 bg-blue-500 rounded-l-lg" aria-hidden="true"></div>
+                <div className="pl-4 flex items-start gap-3">
+                  <span className="flex items-center justify-center w-5 h-5 rounded-full bg-blue-500 text-white text-xs mt-0.5" aria-hidden="true">i</span>
+                  <div className="text-sm leading-6 text-gray-800">
+                    <div>게시글은 한 번에 하나만 등록할 수 있어요.</div>
+                    <div>
+                      상위 노출을 위한 <span className="text-blue-600 font-semibold">&apos;게시글 끌어올림&apos;은 24시간에 한 번만 가능</span>하며, 새 글은 <span className="text-blue-600 font-semibold">매칭 완료 후</span> 작성해주세요.
+                    </div>
+                  </div>
+                </div>
+              </div>
               {/* 재활 프로그램 | 나이 */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -1766,44 +1788,26 @@ export default function RequestBoardFirebase() {
                 </div>
               </div>
 
-              {/* 요일 / 시간 | 회당 희망 금액 */}
+              {/* 지역 | 희망 금액 */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">요일 / 시간</label>
-                  <div className="relative flex items-center border border-gray-300 rounded-2xl focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent">
-                    <select
-                      value={newPost.timeDetails.split(' / ')[0] || ''}
-                      onChange={(e) => {
-                        const timePart = newPost.timeDetails.split(' / ')[1] || '';
-                        setNewPost(prev => ({ ...prev, timeDetails: `${e.target.value} / ${timePart}` }));
-                      }}
-                      className="flex-1 px-4 py-3 border-0 rounded-l-2xl focus:outline-none text-center bg-white"
-                      required
-                    >
-                      <option value="">요일 선택</option>
-                      {dayOptions.map((day) => (
-                        <option key={day} value={day}>{day}</option>
-                      ))}
-                    </select>
-                    <div className="px-2 text-gray-400 font-medium">/</div>
-                    <select
-                      value={newPost.timeDetails.split(' / ')[1] || ''}
-                      onChange={(e) => {
-                        const dayPart = newPost.timeDetails.split(' / ')[0] || '';
-                        setNewPost(prev => ({ ...prev, timeDetails: `${dayPart} / ${e.target.value}` }));
-                      }}
-                      className="flex-1 px-4 py-3 border-0 rounded-r-2xl focus:outline-none text-center bg-white"
-                      required
-                    >
-                      <option value="">시간 선택</option>
-                      {timeOptions.map((time) => (
-                        <option key={time} value={time}>{time}</option>
-                      ))}
-                    </select>
-                  </div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">지역</label>
+                  <select
+                    value={newPost.region}
+                    onChange={(e) => setNewPost(prev => ({ ...prev, region: e.target.value }))}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  >
+                    <option value="">지역을 선택하세요</option>
+                    <option value="서울">서울</option>
+                    <option value="인천/경기북부">인천/경기북부</option>
+                    <option value="경기남부">경기남부</option>
+                    <option value="충청,강원,대전">충청,강원,대전</option>
+                    <option value="전라,경상,부산">전라,경상,부산</option>
+                  </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">회당 희망 금액</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">희망 금액</label>
                   <input
                     type="text"
                     value={newPost.price}
@@ -1820,22 +1824,47 @@ export default function RequestBoardFirebase() {
                 </div>
               </div>
 
-              {/* 지역 선택 */}
+              {/* 치료 가능 요일 | 치료 가능 시간 */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">지역</label>
-                <select
-                  value={newPost.region}
-                  onChange={(e) => setNewPost(prev => ({ ...prev, region: e.target.value }))}
+                <label className="block text-sm font-medium text-gray-700 mb-2">치료 가능 요일</label>
+                <div className="flex flex-wrap gap-3 mb-4">
+                  {dayCheckboxOptions.map((day) => {
+                    const checked = selectedDays.includes(day);
+                    return (
+                      <label key={day} className="inline-flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(e) => {
+                            const next = e.target.checked
+                              ? [...selectedDays, day]
+                              : selectedDays.filter(d => d !== day);
+                            setSelectedDays(next);
+                            const dayPart = next.join(',');
+                            const timePart = timeText;
+                            setNewPost(prev => ({ ...prev, timeDetails: `${dayPart} / ${timePart}` }));
+                          }}
+                          className="w-4 h-4"
+                        />
+                        <span className="text-sm text-gray-800">{day}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">치료 가능 시간</label>
+                <input
+                  type="text"
+                  value={timeText}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setTimeText(value);
+                    const dayPart = selectedDays.join(',');
+                    setNewPost(prev => ({ ...prev, timeDetails: `${dayPart} / ${value}` }));
+                  }}
+                  placeholder="예: 평일 오후 4시 이후 / 주말 오전 전체 가능"
                   className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
-                >
-                  <option value="">지역을 선택하세요</option>
-                  <option value="서울">서울</option>
-                  <option value="인천/경기북부">인천/경기북부</option>
-                  <option value="경기남부">경기남부</option>
-                  <option value="충청,강원,대전">충청,강원,대전</option>
-                  <option value="전라,경상,부산">전라,경상,부산</option>
-                </select>
+                />
               </div>
 
               {/* 세부내용 */}
@@ -2101,7 +2130,7 @@ export default function RequestBoardFirebase() {
                   <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
                   </svg>
-                  1:1 채팅으로 문의하기
+                  홈티 지원하기
                 </button>
               </div>
             </div>

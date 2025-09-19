@@ -219,15 +219,20 @@ export default function OneOnOneChat({
       <div className="border-b">
         {/* 인터뷰 안내 (노란 배너) */}
         <div className="px-4 py-3 bg-yellow-50">
-          <p className="text-xs text-gray-800 font-semibold mb-1">인터뷰 후 수업을 결정하셨나요?</p>
-          <p className="text-[11px] text-gray-700">
-            매칭 확정을 위해 대표번호로 문자 안내를 보내주세요. 응답 전 교환된 연락처는 차단됩니다.
-          </p>
+          <div className="flex items-start gap-2">
+            <span className="w-5 h-5 rounded-full bg-yellow-400 flex items-center justify-center text-white text-xs mt-0.5" aria-hidden="true">💡</span>
+            <div className="flex-1">
+              <p className="text-xs font-semibold mb-1" style={{color:'#7a5b00'}}>인터뷰 후 수업을 결정하셨나요?</p>
+              <p className="text-[11px] text-gray-800">
+                매칭 확정을 위해 대표번호(<span className="font-medium">010-1234-5678</span>)로 문자(SNS)를 보내주세요.
+              </p>
+              <p className="text-[11px] text-gray-800">
+                <span className="font-extrabold">문자 예시:</span> 선생님 이름: 김00 / 아동 이름: 박 00(24.03.03) / 주 1회 / 25.08.04, 월 오후 1시 첫 수업
+              </p>
+            </div>
+          </div>
         </div>
-        {/* 안전 안내 (붉은 텍스트 라벨 느낌) */}
-        <div className="px-4 py-2 bg-red-50 border-t border-red-100">
-          <p className="text-[11px] text-red-600 font-semibold">안전한 소통을 위해 연락처 교환은 금지됩니다.</p>
-        </div>
+        {/* 안전 안내는 입력창 위로 이동 */}
       </div>
 
       {/* 메시지 영역 - 카카오톡 스타일 */}
@@ -320,6 +325,14 @@ export default function OneOnOneChat({
         )}
 
         <div ref={messagesEndRef} />
+      </div>
+
+      {/* 안전 안내 (입력창 바로 위, 둥근 박스) */}
+      <div className="px-3 pt-2">
+        <div className="mx-auto max-w-[340px] flex items-start gap-2 justify-center bg-red-50 border border-red-200 rounded-xl px-3 py-2 text-center">
+          <span className="w-4 h-4 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center mt-0.5" aria-hidden="true">!</span>
+          <p className="text-[11px] text-red-600 font-semibold">안전한 소통을 위해 연락처 교환은 금지됩니다.</p>
+        </div>
       </div>
 
       {/* 메시지 입력 영역 - 카카오톡 스타일 */}
