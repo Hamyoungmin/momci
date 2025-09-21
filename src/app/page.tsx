@@ -7,11 +7,11 @@ export default function Home() {
   return (
     <div className="min-h-screen">
       {/* 히어로 섹션 */}
-      <section className="relative bg-blue-50 min-h-[75vh]">
+      <section className="relative bg-blue-50 min-h-[75vh] overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center min-h-[60vh]">
+          <div className="relative items-center min-h-[60vh]">
             {/* 왼쪽 텍스트 영역 */}
-            <div className="space-y-8">
+            <div className="space-y-8 lg:pr-[360px] lg:min-h-[60vh] flex flex-col justify-center lg:ml-12">
               <div className="space-y-6">
                 <h1 className="text-4xl lg:text-5xl xl:text-6xl font-bold leading-tight">
                   <div className="text-blue-900" style={{whiteSpace: 'nowrap'}}>우리 아이의 빛나는 잠재력,</div>
@@ -49,9 +49,9 @@ export default function Home() {
               </div>
             </div>
 
-            {/* 오른쪽 이미지 영역 */}
-            <div className="flex items-center justify-center lg:justify-end lg:pr-8">
-              <div className="relative w-80 h-80 flex items-center justify-center">
+            {/* 오른쪽 이미지 영역 (lg 이상에서 절대 배치) */}
+            <div className="mt-10 flex items-center justify-center lg:mt-0 lg:absolute lg:right-8 lg:top-1/2 lg:-translate-y-1/2">
+              <div className="relative w-80 h-80 flex items-center justify-center lg:-translate-x-6">
                 <div className="absolute inset-0 bg-blue-100 rounded-full opacity-20"></div>
                 <Image
                   src="/32.png"

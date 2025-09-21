@@ -1,15 +1,21 @@
 import Link from 'next/link';
 
 export default function RegisterGuide() {
-  // 대괄호와 중괄호로 감싸진 텍스트를 파란색으로 변환하는 함수
+  // 대괄호/중괄호 텍스트를 강조 색상으로 변환
   const formatTextWithBlueHighlight = (text: string) => {
     // \\n을 실제 줄바꿈 문자로 변환
     const formattedText = text.replace(/\\n/g, '\n');
     const parts = formattedText.split(/(\[.*?\]|\{.*?\})/);
     return parts.map((part, index) => {
       if (part.startsWith('[') && part.endsWith(']')) {
+        const inner = part.slice(1, -1);
+        const colorClass = inner.includes('등록보류')
+          ? 'text-orange-500'
+          : inner.includes('자격미달')
+            ? 'text-red-600'
+            : 'text-blue-600';
         return (
-          <span key={index} className="text-blue-600 font-semibold">
+          <span key={index} className={`${colorClass} font-semibold`}>
             {part}
           </span>
         );
@@ -26,7 +32,7 @@ export default function RegisterGuide() {
   const steps = [
     {
       step: "01",
-      title: "프로필 등록 및 검증",
+      title: "가입 및 프로필 심사",
       icon: (
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" fill="#E3F2FD" stroke="#1976D2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -37,8 +43,8 @@ export default function RegisterGuide() {
         </svg>
       ),
       descriptions: [
-        "[치료사 회원]으로 가입 후 프로필(학력/경력/자격증)과 관련 서류를 제출하면,\\n관리자 검토 후 [등록완료] 처리됩니다.",
-        "( ※ 서류 누락 시 [등록보류], 임상 경력 1년 미만 시 [자격미달] 처리될 수 있으니 유의 바랍니다.)"
+        "치료사 회원으로 가입 후, 상단 메뉴의 [치료사 등록] > [치료사 신청]을 통해 관련 서류를 제출하시면 관리자 검토 후 [등록완료] 처리됩니다.",
+        "※ 서류 누락 시 [등록보류], 임상 경력 1년 미만 시 [자격미달]로 처리될 수 있으니 유의 바랍니다."
       ]
     },
     {
@@ -97,15 +103,15 @@ export default function RegisterGuide() {
           <div className="w-64 bg-white shadow-lg rounded-lg mr-8 h-fit">
             <div className="p-4">
               <div className="mb-6">
-                <button className="w-full bg-blue-500 text-white text-xl font-bold rounded-2xl h-[110px] flex items-center justify-center">
+                <button className="w-full bg-blue-500 text-white text-2xl font-bold rounded-2xl h-[110px] flex items-center justify-center">
                   치료사 등록
                 </button>
               </div>
               <div className="space-y-1">
-                <div className="w-full bg-blue-50 text-blue-600 text-left px-4 py-3 rounded-2xl text-sm font-medium">
+                <div className="w-full bg-blue-50 text-blue-600 text-left px-4 py-3 rounded-2xl text-lg font-medium">
                   치료사 등록안내
                 </div>
-                <Link href="/teacher-apply" className="block w-full text-gray-700 hover:bg-gray-50 text-left px-4 py-3 rounded-2xl text-sm font-medium transition-colors">
+                <Link href="/teacher-apply" className="block w-full text-gray-700 hover:bg-gray-50 text-left px-4 py-3 rounded-2xl text-lg font-medium transition-colors">
                   치료사 신청
                 </Link>
               </div>

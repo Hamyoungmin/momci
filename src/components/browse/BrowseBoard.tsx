@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { collection, onSnapshot, orderBy, query, where, limit, addDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore';
+import { collection, onSnapshot, orderBy, query, where, limit, addDoc, serverTimestamp, doc, getDoc, updateDoc, Timestamp } from 'firebase/firestore';
 import { db, auth } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { startChatWithTherapist } from '@/lib/chat';
@@ -79,6 +79,7 @@ export default function BrowseBoard() {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [selectedProfile, setSelectedProfile] = useState<Teacher | null>(null);
   const [isProfileModalClosing, setIsProfileModalClosing] = useState(false);
+  const [isBumpingProfile, setIsBumpingProfile] = useState(false);
   
   // 1:1 채팅 모달 상태 (안전 매칭 모달은 사용 중지)
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -651,6 +652,55 @@ export default function BrowseBoard() {
     }
   };
 
+  // 프로필 끌어올림 (24시간 1회 제한, 본인 또는 관리자만)
+  const handleBumpProfile = async () => {
+    if (!currentUser || !userData || !selectedProfile) {
+      alert('로그인이 필요합니다.');
+      return;
+    }
+    const isOwner = (selectedProfile.authorId || selectedProfile.id) === currentUser.uid;
+    const isAdmin = userData.userType === 'admin';
+    if (!isOwner && !isAdmin) {
+      alert('본인 프로필만 끌어올릴 수 있습니다.');
+      return;
+    }
+    try {
+      setIsBumpingProfile(true);
+      const profileDocId = (selectedProfile.id ?? selectedProfile.authorId) as string;
+      if (!profileDocId) {
+        throw new Error('프로필 문서 ID를 확인할 수 없습니다.');
+      }
+      const profRef = doc(db, 'teachers', profileDocId);
+      const profSnap = await getDoc(profRef);
+      const data = profSnap.exists() ? (profSnap.data() as { bumpedAt?: Timestamp | Date | string | null }) : {};
+      const bumpedAt = data.bumpedAt;
+      let last: Date | null = null;
+      if (bumpedAt instanceof Timestamp) {
+        last = bumpedAt.toDate();
+      } else if (bumpedAt instanceof Date) {
+        last = bumpedAt;
+      } else if (typeof bumpedAt === 'string') {
+        last = new Date(bumpedAt);
+      } else {
+        last = null;
+      }
+      if (last && Date.now() - last.getTime() < 24 * 60 * 60 * 1000 && !isAdmin) {
+        const remain = Math.ceil((24 * 60 * 60 * 1000 - (Date.now() - last.getTime())) / (60 * 60 * 1000));
+        alert(`프로필 끌어올림은 24시간에 한 번만 가능합니다. 약 ${remain}시간 후 다시 시도해주세요.`);
+        setIsBumpingProfile(false);
+        return;
+      }
+      // 서버 재확인 (동일 필드 업데이트) 및 상위 노출: createdAt 갱신
+      await updateDoc(profRef, { createdAt: serverTimestamp(), bumpedAt: serverTimestamp() });
+      alert('프로필을 상단으로 끌어올렸습니다.');
+    } catch (e) {
+      console.error('프로필 끌어올림 실패:', e);
+      alert('프로필 끌어올림에 실패했습니다. 잠시 후 다시 시도해주세요.');
+    } finally {
+      setIsBumpingProfile(false);
+    }
+  };
+
   // 상세 프로필 모달 닫기
   const closeProfileModal = () => {
     setIsProfileModalClosing(true);
@@ -840,15 +890,15 @@ export default function BrowseBoard() {
         <div className="w-64 bg-white shadow-lg rounded-lg mr-8 h-fit">
           <div className="p-4">
             <div className="mb-6">
-              <button className="w-full bg-blue-500 text-white text-xl font-bold rounded-2xl h-[110px] flex items-center justify-center">
+              <div className="w-full bg-blue-500 text-white text-2xl font-bold rounded-2xl h-[110px] flex items-center justify-center">
                 홈티매칭
-              </button>
+              </div>
             </div>
             <div className="space-y-1">
-              <Link href="/request" className="block w-full text-gray-700 hover:bg-gray-50 text-left px-4 py-3 rounded-2xl text-sm font-medium transition-colors">
+              <Link href="/request" className="block w-full text-gray-700 hover:bg-gray-50 text-left px-4 py-3 rounded-2xl transition-colors font-medium text-lg">
                 선생님께 요청하기
               </Link>
-              <div className="w-full bg-blue-50 text-blue-600 text-left px-4 py-3 rounded-2xl text-sm font-medium">
+              <div className="w-full bg-blue-50 text-blue-600 text-left px-4 py-3 rounded-2xl font-medium text-lg">
                 선생님 둘러보기
               </div>
             </div>
@@ -1146,19 +1196,17 @@ export default function BrowseBoard() {
                           <div className="border-t border-gray-200 pt-3 mb-3"></div>
                           
                           <div className="flex flex-wrap items-center gap-2">
-                            {/* 자격증 인증 - 실제 데이터 반영 */}
-                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${teacher.hasCertification ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200'} border`}>
-                              {teacher.hasCertification ? '✓' : '×'} 자격증
+                            {/* 자격증 - 고정 초록 체크 표기 */}
+                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 border-green-200 border`}>
+                              ✓ 자격증
                             </span>
-                            
-                            {/* 경력증명 - 실제 데이터 반영 */}
-                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${teacher.hasExperienceProof ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200'} border`}>
-                              {teacher.hasExperienceProof ? '✓' : '×'} 경력증명
+                            {/* 경력증명 - 고정 초록 체크 표기 */}
+                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 border-green-200 border`}>
+                              ✓ 경력증명
                             </span>
-                            
-                            {/* 신분증확인서 - 실제 데이터 반영 */}
-                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${teacher.hasIdVerification ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200'} border`}>
-                              {teacher.hasIdVerification ? '✓' : '×'} 신분증확인서
+                            {/* 성범죄경력증명서 - 고정 초록 체크 표기 */}
+                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 border-green-200 border`}>
+                              ✓ 성범죄경력증명서
                             </span>
                             
                             {/* 모든별 인증 - 파란색 별과 함께 맨 뒤에 표시 */}
@@ -1516,13 +1564,28 @@ export default function BrowseBoard() {
         <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50">
           <div className={`bg-white rounded-lg max-w-6xl w-[95vw] shadow-xl border-4 border-blue-500 max-h-[90vh] overflow-y-auto profile-modal ${isProfileModalClosing ? 'animate-slideOut' : 'animate-slideIn'}`}>
             {/* 모달 헤더 */}
-            <div className="flex justify-end p-6 pb-2">
-              <button
-                onClick={closeProfileModal}
-                className="text-gray-400 hover:text-gray-600 text-2xl"
-              >
-                ✕
-              </button>
+            <div className="flex justify-between items-center p-6 pb-2">
+              <div></div>
+              <div className="flex items-center gap-2">
+                {(currentUser && userData && selectedProfile && ((selectedProfile.authorId || selectedProfile.id) === currentUser.uid || userData.userType === 'admin')) && (
+                  <button
+                    onClick={handleBumpProfile}
+                    disabled={isBumpingProfile}
+                    className="inline-flex items-center bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-sm"
+                  >
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 16V4m0 0l-4 4m4-4l4 4M20 16v4H4v-4" />
+                    </svg>
+                    프로필 끌어올림
+                  </button>
+                )}
+                <button
+                  onClick={closeProfileModal}
+                  className="text-gray-400 hover:text-gray-600 text-2xl"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
             
             {/* 모달 바디 */}
@@ -1582,18 +1645,22 @@ export default function BrowseBoard() {
               {/* 인증 정보 - 회색줄 바로 밑에 */}
               <div className="flex flex-wrap items-center gap-2 mb-3">
                 {/* 자격증 인증 */}
-                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${selectedProfile.hasCertification ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200'} border`}>
-                  {selectedProfile.hasCertification ? '✓' : '×'} 자격증
+                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 border-green-200 border`}>
+                  ✓ 자격증
                 </span>
                 
                 {/* 경력증명 */}
-                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${selectedProfile.hasExperienceProof ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200'} border`}>
-                  {selectedProfile.hasExperienceProof ? '✓' : '×'} 경력증명
+                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 border-green-200 border`}>
+                  ✓ 경력증명
                 </span>
                 
-                {/* 신분증확인서 */}
-                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${selectedProfile.hasIdVerification ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200'} border`}>
-                  {selectedProfile.hasIdVerification ? '✓' : '×'} 신분증확인서
+                {/* 성범죄경력증명서 */}
+                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 border-green-200 border`}>
+                  ✓ 성범죄경력증명서
+                </span>
+                {/* 보험가입 - 성범죄경력증명서 오른쪽에 표시 (관리자 확인 여부 반영) */}
+                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${selectedProfile.isVerified ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200'} border`}>
+                  {selectedProfile.isVerified ? '✓' : '×'} 보험가입
                 </span>
                 
                 {/* 모든별 인증 - 파란색 별과 함께 */}
@@ -1604,15 +1671,14 @@ export default function BrowseBoard() {
                 )}
               </div>
 
-              {/* 태그들 - 회색줄 바로 밑에 별도 줄 */}
-              <div className="flex items-center space-x-2 mb-8">
+              {/* 태그들 - 회색줄 바로 밑에 별도 줄 (숨김 처리) */}
+              <div className="hidden">
                 <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-50 text-blue-700 border border-blue-200">
                   #{selectedProfile.specialty}
                 </span>
                 <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
                   #{selectedProfile.region}
                 </span>
-                {/* 요청: 횟수 배지 숨김 */}
                 {selectedProfile.postAge && selectedProfile.postGender && (
                   <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200">
                     #{selectedProfile.postAge}/{selectedProfile.postGender}

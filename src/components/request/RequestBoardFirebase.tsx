@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { collection, addDoc, onSnapshot, orderBy, query, where, serverTimestamp, doc, getDoc, setDoc, Timestamp, FirestoreError, FieldValue } from 'firebase/firestore';
+import { collection, addDoc, onSnapshot, orderBy, query, where, serverTimestamp, doc, getDoc, setDoc, Timestamp, FirestoreError, FieldValue, updateDoc, limit } from 'firebase/firestore';
 import { db, auth } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import TherapistApplicationCard from './TherapistApplicationCard';
@@ -252,6 +252,9 @@ export default function RequestBoardFirebase() {
   const [currentPage, setCurrentPage] = useState(1);
   const postsPerPage = 10; // 페이지당 게시글 수
 
+  // 활성 게시글(매칭중/인터뷰중) 존재 여부
+  const [hasActivePost, setHasActivePost] = useState(false);
+
   // 알림 시스템 초기화
   useEffect(() => {
     const initNotifications = async () => {
@@ -286,6 +289,22 @@ export default function RequestBoardFirebase() {
     // 컴포넌트 언마운트 시 리스너 정리
     return cleanup;
   }, []);
+
+  // 로그인 사용자의 활성 게시글이 있는지 모니터링
+  useEffect(() => {
+    if (!currentUser) return;
+    const q = query(
+      collection(db, 'posts'),
+      where('authorId', '==', currentUser.uid),
+      where('status', 'in', ['matching', 'meeting']),
+      orderBy('createdAt', 'desc'),
+      limit(1)
+    );
+    const unsub = onSnapshot(q, (snap) => {
+      setHasActivePost(!snap.empty);
+    });
+    return () => unsub();
+  }, [currentUser]);
 
 
   // Firebase에서 게시글 데이터 실시간으로 가져오기 (최신순으로 정렬)
@@ -820,6 +839,60 @@ export default function RequestBoardFirebase() {
     }
   };
 
+  // 게시글 끌어올림: createdAt을 현재 시간으로 업데이트하여 리스트 상단 노출
+  const handleBumpPost = async (postId: string) => {
+    try {
+      const postRef = doc(db, 'posts', postId);
+      await updateDoc(postRef, {
+        createdAt: serverTimestamp(),
+        bumpedAt: serverTimestamp(),
+      });
+      console.log('📌 게시글 끌어올림 완료:', postId);
+    } catch (error) {
+      console.error('❌ 게시글 끌어올림 실패:', error);
+      alert('게시글 끌어올림에 실패했습니다. 잠시 후 다시 시도해주세요.');
+    }
+  };
+
+  // 게시글 수정: 본문/세부내용/가격/시간 등만 수정 가능. createdAt은 유지하여 순서 불변
+  const handleEditPost = async (postId: string, edits: Partial<Post>) => {
+    try {
+      const { title, additionalInfo, price, timeDetails, region, category, frequency, age, gender, treatment } = edits as Partial<Post>;
+      const postRef = doc(db, 'posts', postId);
+      await updateDoc(postRef, {
+        ...(title !== undefined ? { title } : {}),
+        ...(additionalInfo !== undefined ? { additionalInfo } : {}),
+        ...(price !== undefined ? { price } : {}),
+        ...(timeDetails !== undefined ? { timeDetails } : {}),
+        ...(region !== undefined ? { region } : {}),
+        ...(category !== undefined ? { category } : {}),
+        ...(frequency !== undefined ? { frequency } : {}),
+        ...(age !== undefined ? { age } : {}),
+        ...(gender !== undefined ? { gender } : {}),
+        ...(treatment !== undefined ? { treatment } : {}),
+        updatedAt: serverTimestamp(),
+      });
+      console.log('✏️ 게시글 수정 완료:', postId);
+    } catch (error) {
+      console.error('❌ 게시글 수정 실패:', error);
+      alert('게시글 수정에 실패했습니다. 잠시 후 다시 시도해주세요.');
+    }
+  };
+
+  // 수정 모달 상태 및 임시 값
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editDraft, setEditDraft] = useState<Partial<Post>>({});
+
+  const openEditModal = () => {
+    if (!selectedProfile) return;
+    setEditDraft({
+      additionalInfo: selectedProfile.additionalInfo,
+      price: selectedProfile.price,
+      timeDetails: selectedProfile.timeDetails,
+    });
+    setShowEditModal(true);
+  };
+
   // 상세 프로필 모달 닫기 (Firebase 실시간 연동 방식)
   const closeProfileModal = () => {
     setIsProfileModalClosing(true);
@@ -1261,15 +1334,15 @@ export default function RequestBoardFirebase() {
         <div className="w-64 bg-white shadow-lg rounded-lg mr-8 h-fit">
           <div className="p-4">
             <div className="mb-6">
-              <button className="w-full bg-blue-500 text-white text-xl font-bold rounded-2xl h-[110px] flex items-center justify-center">
+              <div className="w-full bg-blue-500 text-white text-2xl font-bold rounded-2xl h-[110px] flex items-center justify-center">
                 홈티매칭
-              </button>
+              </div>
             </div>
             <div className="space-y-1">
-              <div className="w-full bg-blue-50 text-blue-600 text-left px-4 py-3 rounded-2xl text-sm font-medium">
+              <div className="w-full bg-blue-50 text-blue-600 text-left px-4 py-3 rounded-2xl font-medium text-lg">
                 선생님께 요청하기
               </div>
-              <Link href="/browse" className="block w-full text-gray-700 hover:bg-gray-50 text-left px-4 py-3 rounded-2xl text-sm font-medium transition-colors">
+              <Link href="/browse" className="block w-full text-gray-700 hover:bg-gray-50 text-left px-4 py-3 rounded-2xl transition-colors font-medium text-lg">
                 선생님 둘러보기
               </Link>
             </div>
@@ -1468,6 +1541,21 @@ export default function RequestBoardFirebase() {
           {/* 새 게시글 작성 버튼 - 게시글 목록 위에 배치 */}
           <div className="mt-8 mb-6 flex justify-end">
               {canCreatePost ? (
+                hasActivePost ? (
+                  <div className="flex flex-col items-end">
+                    <button
+                      disabled
+                      title="활성 게시글(매칭중/인터뷰중)이 있어 새 글 작성이 제한됩니다. 기존 글을 '매칭완료'로 종료하면 새 글을 등록할 수 있어요."
+                      className="bg-gray-300 cursor-not-allowed text-white px-6 py-3 rounded-2xl font-medium flex items-center gap-2"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                      선생님께 요청하기
+                    </button>
+                    <span className="text-xs text-gray-500 mt-1">활성 게시글 1개 규칙으로 인해 비활성화</span>
+                  </div>
+                ) : (
                 <button
                   onClick={() => setShowCreatePostModal(true)}
                   data-create-post-button
@@ -1478,6 +1566,7 @@ export default function RequestBoardFirebase() {
                   </svg>
                   선생님께 요청하기
                 </button>
+                )
               ) : (
                 <div className="flex flex-col items-center">
                   <button
@@ -1792,19 +1881,19 @@ export default function RequestBoardFirebase() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">지역</label>
-                  <select
+                    <select
                     value={newPost.region}
                     onChange={(e) => setNewPost(prev => ({ ...prev, region: e.target.value }))}
                     className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  >
+                      required
+                    >
                     <option value="">지역을 선택하세요</option>
                     <option value="서울">서울</option>
                     <option value="인천/경기북부">인천/경기북부</option>
                     <option value="경기남부">경기남부</option>
                     <option value="충청,강원,대전">충청,강원,대전</option>
                     <option value="전라,경상,부산">전라,경상,부산</option>
-                  </select>
+                    </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">희망 금액</label>
@@ -1967,12 +2056,38 @@ export default function RequestBoardFirebase() {
             {/* 모달 헤더 */}
             <div className="flex justify-between items-center p-6 pb-4 border-b border-gray-200">
               <h2 className="text-2xl font-bold text-gray-900">요청 상세 정보</h2>
-              <button
-                onClick={closeProfileModal}
-                className="text-gray-400 hover:text-gray-600 text-2xl"
-              >
-                ✕
-              </button>
+              <div className="flex items-center gap-2">
+                {/* 게시글 끌어올림 */}
+                {selectedProfile && selectedProfile.authorId === currentUser?.uid && (
+                  <button
+                    onClick={() => handleBumpPost(selectedProfile.id)}
+                    className="inline-flex items-center bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-sm"
+                  >
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 16V4m0 0l-4 4m4-4l4 4M20 16v4H4v-4" />
+                    </svg>
+                    게시글 끌어올림
+                  </button>
+                )}
+                {/* 게시글 수정 (모달 트리거 - 간단 구현: 세부내용만 수정) */}
+                {selectedProfile && selectedProfile.authorId === currentUser?.uid && (
+                  <button
+                    onClick={openEditModal}
+                    className="inline-flex items-center bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-sm"
+                  >
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M4 20h4l10.5-10.5-4-4L4 16v4z" />
+                    </svg>
+                    수정
+                  </button>
+                )}
+                <button
+                  onClick={closeProfileModal}
+                  className="text-gray-400 hover:text-gray-600 text-2xl"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
             
             {/* 모달 바디 */}
@@ -2573,6 +2688,61 @@ export default function RequestBoardFirebase() {
                   </svg>
                   1:1채팅으로 인터뷰시작하기
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 게시글 수정 모달 */}
+      {showEditModal && selectedProfile && (
+        <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50">
+          <div className="bg-white rounded-lg p-6 max-w-2xl w-[90vw] shadow-xl border-4 border-blue-500">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold text-gray-900">게시글 수정</h3>
+              <button onClick={() => setShowEditModal(false)} className="text-gray-400 hover:text-gray-600 text-2xl">✕</button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">세부 내용</label>
+                <textarea
+                  rows={6}
+                  value={(editDraft.additionalInfo as string) || ''}
+                  onChange={(e) => setEditDraft(prev => ({ ...prev, additionalInfo: e.target.value }))}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">회기당 금액</label>
+                  <input
+                    type="text"
+                    value={(editDraft.price as string) || ''}
+                    onChange={(e) => setEditDraft(prev => ({ ...prev, price: e.target.value }))}
+                    placeholder="예: 65,000원"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">요일/시간</label>
+                  <input
+                    type="text"
+                    value={(editDraft.timeDetails as string) || ''}
+                    onChange={(e) => setEditDraft(prev => ({ ...prev, timeDetails: e.target.value }))}
+                    placeholder="예: 월/수 4-6시, 토 오전"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-3 pt-2">
+                <button onClick={() => setShowEditModal(false)} className="px-4 py-2 bg-gray-500 text-white rounded-2xl hover:bg-gray-600">취소</button>
+                <button
+                  onClick={async () => {
+                    await handleEditPost(selectedProfile.id, editDraft);
+                    setShowEditModal(false);
+                  }}
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl"
+                >저장</button>
               </div>
             </div>
           </div>

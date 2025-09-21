@@ -1,6 +1,7 @@
 'use client';
 
 import Link from "next/link";
+import GuideSidebar from '@/components/common/GuideSidebar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -72,29 +73,7 @@ export default function PricingPage() {
       <section className="py-12">
         <div className="flex max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* 사이드바 */}
-          <div className="w-64 bg-white shadow-lg rounded-lg mr-8 h-fit">
-            <div className="p-4">
-              <div className="mb-6">
-                <button className="w-full bg-blue-500 text-white text-xl font-bold rounded-2xl h-[110px] flex items-center justify-center">
-                  이용안내
-                </button>
-              </div>
-              <div className="space-y-1">
-                <Link href="/parent-guide" className="block w-full text-gray-700 hover:bg-gray-50 text-left px-4 py-3 rounded-2xl text-sm font-medium transition-colors">
-                  학부모 이용안내
-                </Link>
-                <Link href="/teacher-guide" className="block w-full text-gray-700 hover:bg-gray-50 text-left px-4 py-3 rounded-2xl text-sm font-medium transition-colors">
-                  선생님 이용안내
-                </Link>
-                <Link href="/program-guide" className="block w-full text-gray-700 hover:bg-gray-50 text-left px-4 py-3 rounded-2xl text-sm font-medium transition-colors">
-                  프로그램 안내
-                </Link>
-                <div className="w-full bg-blue-50 text-blue-600 text-left px-4 py-3 rounded-2xl text-sm font-medium">
-                  이용권 구매
-                </div>
-              </div>
-            </div>
-          </div>
+          <GuideSidebar active="pricing" />
 
           {/* 메인 콘텐츠 */}
           <div className="flex-1">

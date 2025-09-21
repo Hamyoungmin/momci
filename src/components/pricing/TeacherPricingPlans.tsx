@@ -1,72 +1,18 @@
 'use client';
 
 import Link from 'next/link';
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import React from 'react';
 import { useRouter } from 'next/navigation';
 
-interface UserData {
-  userType: 'parent' | 'therapist';
-  name: string;
-}
-
 export default function TeacherPricingPlans() {
-  const { currentUser } = useAuth();
-  const [userData, setUserData] = useState<UserData | null>(null);
   const router = useRouter();
-
-  useEffect(() => {
-    const fetchUserData = async () => {
-      if (!currentUser) return;
-
-      try {
-        const userDocRef = doc(db, 'users', currentUser.uid);
-        const userDoc = await getDoc(userDocRef);
-        
-        if (userDoc.exists()) {
-          const data = userDoc.data() as UserData;
-          setUserData(data);
-        }
-      } catch (error) {
-        console.error('사용자 데이터 불러오기 오류:', error);
-      }
-    };
-
-    fetchUserData();
-  }, [currentUser]);
 
   // 결제 페이지로 이동하는 함수
   const handleStartSubscription = () => {
     router.push('/teacher-payment');
   };
 
-  // 이용권 구매 메뉴 렌더링 함수
-  const renderPricingMenu = () => {
-    if (!currentUser || !userData) {
-      return (
-        <Link href="/pricing" className="block w-full text-gray-700 hover:bg-gray-50 text-left px-4 py-3 rounded-2xl text-sm font-medium transition-colors">
-          이용권 구매
-        </Link>
-      );
-    }
-
-    // 로그인한 사용자는 해당 유형의 이용권으로 직접 링크 (현재 페이지이면 강조 표시)
-    if (userData.userType === 'parent') {
-      return (
-        <Link href="/parent-pricing" className="block w-full text-gray-700 hover:bg-gray-50 text-left px-4 py-3 rounded-2xl text-sm font-medium transition-colors">
-          이용권 구매
-        </Link>
-      );
-    } else if (userData.userType === 'therapist') {
-      return (
-        <div className="w-full bg-blue-50 text-blue-600 text-left px-4 py-3 rounded-2xl text-sm font-medium">
-          이용권 구매
-        </div>
-      );
-    }
-  };
+  // (사이드 메뉴 전용 표시용) 현재 페이지 강조만 사용
   return (
     <div className="min-h-screen bg-gray-50">
       <section className="py-12">
@@ -75,21 +21,23 @@ export default function TeacherPricingPlans() {
           <div className="w-64 bg-white shadow-lg rounded-lg mr-8 h-fit">
             <div className="p-4">
               <div className="mb-6">
-                <button className="w-full bg-blue-500 text-white text-xl font-bold rounded-2xl h-[110px] flex items-center justify-center">
+                <div className="w-full bg-blue-500 text-white text-2xl font-bold rounded-2xl h-[110px] flex items-center justify-center">
                   이용안내
-                </button>
+                </div>
               </div>
               <div className="space-y-1">
-                <Link href="/parent-guide" className="block w-full text-gray-700 hover:bg-gray-50 text-left px-4 py-3 rounded-2xl text-sm font-medium transition-colors">
+                <Link href="/parent-guide" className="block w-full text-gray-700 hover:bg-gray-50 text-left px-4 py-3 rounded-2xl transition-colors font-medium text-lg">
                   학부모 이용안내
                 </Link>
-                <Link href="/teacher-guide" className="block w-full text-gray-700 hover:bg-gray-50 text-left px-4 py-3 rounded-2xl text-sm font-medium transition-colors">
+                <Link href="/teacher-guide" className="block w-full text-gray-700 hover:bg-gray-50 text-left px-4 py-3 rounded-2xl transition-colors font-medium text-lg">
                   선생님 이용안내
                 </Link>
-                <Link href="/program-guide" className="block w-full text-gray-700 hover:bg-gray-50 text-left px-4 py-3 rounded-2xl text-sm font-medium transition-colors">
+                <Link href="/program-guide" className="block w-full text-gray-700 hover:bg-gray-50 text-left px-4 py-3 rounded-2xl transition-colors font-medium text-lg">
                   프로그램 안내
                 </Link>
-                {renderPricingMenu()}
+                <div className="w-full bg-blue-50 text-blue-600 text-left px-4 py-3 rounded-2xl font-medium text-lg">
+                  이용권 구매
+                </div>
               </div>
             </div>
           </div>

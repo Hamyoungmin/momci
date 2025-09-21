@@ -159,6 +159,8 @@ export default function TeacherSearchBoard() {
     qualification: '',
     therapyActivity: '',
     mainSpecialty: '',
+    educationCareer: '',
+    certifications: '',
     experience: '',
     region: '',
     availableDays: [] as string[],
@@ -328,6 +330,8 @@ export default function TeacherSearchBoard() {
       qualification: '',
       therapyActivity: '',
       mainSpecialty: '',
+      educationCareer: '',
+      certifications: '',
       experience: '',
       region: '',
       availableDays: [],
@@ -640,10 +644,10 @@ export default function TeacherSearchBoard() {
                       onClick={() => handleSidebarClick(item)}
                       className={`w-full transition-colors ${
                         item === '치료사등록'
-                          ? 'bg-blue-500 text-white text-lg font-bold rounded-lg h-[110px] flex items-center justify-center'
+                          ? 'bg-blue-500 text-white text-2xl font-bold rounded-lg h-[110px] flex items-center justify-center'
                           : selectedSidebarItem === item
-                          ? 'bg-blue-50 text-blue-600 text-left px-4 py-3 rounded-lg text-sm font-medium'
-                          : 'text-gray-700 hover:bg-gray-50 text-left px-4 py-3 rounded-lg text-sm font-medium'
+                          ? 'bg-blue-50 text-blue-600 text-left px-4 py-3 rounded-lg font-medium text-lg'
+                          : 'text-gray-700 hover:bg-gray-50 text-left px-4 py-3 rounded-lg font-medium text-lg'
                       }`}
                     >
                       {item}
@@ -679,12 +683,12 @@ export default function TeacherSearchBoard() {
 
           {/* 메인 배너 - 치료사 등록 관련 페이지에서만 표시 */}
           {(selectedSidebarItem === '치료사등록' || selectedSidebarItem === '정식(경력)치료사 등록' || selectedSidebarItem === '예비(학생)치료사 등록') && (
-            <div className="bg-gray-100 rounded-lg p-8 mb-4">
+            <div className="bg-white rounded-lg p-8 mb-4 border-4 border-blue-700">
               <div>
                 <h2 className="text-3xl font-bold text-gray-900 mb-4">
                   {selectedSidebarItem === '예비(학생)치료사 등록' 
                     ? '예비 치료사 등록' 
-                    : '가치를 찾으신 치료사 등록'
+                    : '정식(경력) 치료사 등록'
                   }
                 </h2>
                 <p className="text-lg text-gray-600">
@@ -700,7 +704,7 @@ export default function TeacherSearchBoard() {
           {/* 상세 검색 폼 - 항상 표시 */}
           {(
             <>
-              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-4">
+              <div className="bg-white p-6 rounded-lg shadow-sm border-4 border-blue-700 mb-4">
                 <h3 className="text-lg font-bold text-gray-900 mb-4">상세 검색</h3>
                 
                 {/* 상태, 분야, 성별, 검색을 한 줄로 균등하게 배치 */}
@@ -824,19 +828,20 @@ export default function TeacherSearchBoard() {
               </div>
 
               {/* 치료사등록 헤더 */}
-                                <div className="bg-white border border-gray-200 rounded-t-lg p-4 border-b-0">
-                    <div className="flex items-center justify-end">
-                      <button 
-                        onClick={() => setShowRegistrationPopup(true)}
-                        className="bg-white hover:bg-gray-50 text-black border border-gray-300 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-                      >
-                        치료사등록
-                      </button>
-                    </div>
-                  </div>
+              <div className="bg-white border-4 border-blue-700 rounded-t-lg p-4 border-b-0">
+                <div className="flex items-center justify-end">
+                  <button 
+                    onClick={() => setShowRegistrationPopup(true)}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg text-sm font-semibold shadow-sm transition-colors flex items-center gap-2"
+                  >
+                    <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-white text-blue-600 text-xs">＋</span>
+                    치료사 등록
+                  </button>
+                </div>
+              </div>
 
               {/* 치료사 테이블 */}
-              <div className="bg-white border border-gray-200 rounded-b-lg overflow-hidden border-t-0">
+              <div className="bg-white border-4 border-blue-700 rounded-b-lg overflow-hidden border-t-0">
                 <table className="w-full table-fixed">
                   <thead className="bg-gray-50">
                     <tr>
@@ -1126,7 +1131,7 @@ export default function TeacherSearchBoard() {
                 </div>
 
                 {/* 프로필 정보 섹션 */}
-                <div className="border-2 border-blue-200 rounded-lg p-4 bg-blue-50">
+                <div className="border-4 border-blue-700 rounded-lg p-4 bg-white">
                   <div className="flex items-center mb-4">
                     <div className="bg-blue-100 rounded-full p-2 mr-3">
                       <span className="text-blue-600 text-lg">📋</span>
@@ -1142,7 +1147,7 @@ export default function TeacherSearchBoard() {
                       rows={4}
                       value={formData.therapyActivity}
                       onChange={(e) => handleFormChange('therapyActivity', e.target.value)}
-                      className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
                     />
                   </div>
                   
@@ -1154,53 +1159,47 @@ export default function TeacherSearchBoard() {
                       rows={4}
                       value={formData.mainSpecialty}
                       onChange={(e) => handleFormChange('mainSpecialty', e.target.value)}
-                      className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
                     />
                   </div>
                 </div>
 
-                {/* 경력 및 전문분야 섹션 */}
-                <div className="border-2 border-blue-200 rounded-lg p-4 bg-blue-50">
-                  {/* 경력 */}
+                {/* 학력/경력 및 자격증 섹션 */}
+                <div className="border-4 border-blue-700 rounded-lg p-4 bg-white">
+                  <div className="flex items-center mb-4">
+                    <div className="bg-blue-100 rounded-full p-2 mr-3">
+                      <span className="text-blue-600 text-lg">🎓</span>
+                    </div>
+                    <h4 className="text-lg font-bold text-gray-900">학력/경력 및 자격증</h4>
+                  </div>
+
+                  {/* 학력 및 경력 */}
+                  <div className="mb-6">
+                    <h5 className="text-base font-semibold text-gray-900 mb-2">학력 및 경력</h5>
+                    <textarea
+                      rows={6}
+                      placeholder={`예시)
+2011.03 ~ 2015.02 △△대학교 아동학과 졸업 (학사)
+2015.03 ~ 2017.02 △△대학원 언어치료학과 졸업 (석사)
+2019.03 ~ 2024.02 ○○○ 아동발달센터 / 선임 언어치료사`}
+                      value={formData.educationCareer}
+                      onChange={(e) => handleFormChange('educationCareer', e.target.value)}
+                      className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                    />
+                  </div>
+
+                  {/* 보유 자격증 */}
                   <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">🎯 경력 *</label>
-                    <select 
-                      value={formData.experience}
-                      onChange={(e) => handleFormChange('experience', e.target.value)}
-                      className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                      <option value="">경력을 선택해주세요</option>
-                      <option>1년 미만</option>
-                      <option>1년</option>
-                      <option>2년</option>
-                      <option>3년</option>
-                      <option>4년</option>
-                      <option>5년</option>
-                      <option>6년</option>
-                      <option>7년</option>
-                      <option>8년</option>
-                      <option>9년</option>
-                      <option>10년</option>
-                      <option>11년</option>
-                      <option>12년</option>
-                      <option>13년</option>
-                      <option>14년</option>
-                      <option>15년</option>
-                      <option>16년</option>
-                      <option>17년</option>
-                      <option>18년</option>
-                      <option>19년</option>
-                      <option>20년</option>
-                      <option>21년</option>
-                      <option>22년</option>
-                      <option>23년</option>
-                      <option>24년</option>
-                      <option>25년</option>
-                      <option>26년</option>
-                      <option>27년</option>
-                      <option>28년</option>
-                      <option>29년</option>
-                      <option>30년</option>
-                    </select>
+                    <h5 className="text-base font-semibold text-gray-900 mb-2">보유 자격증</h5>
+                    <textarea
+                      rows={4}
+                      placeholder={`예시)
+2017.02 1급 언어재활사 / 보건복지부
+2019.08 놀이심리상담사 2급 / ○○○협회`}
+                      value={formData.certifications}
+                      onChange={(e) => handleFormChange('certifications', e.target.value)}
+                      className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                    />
                   </div>
 
                   {/* 희망 시간당 치료비 */}
@@ -1297,7 +1296,7 @@ export default function TeacherSearchBoard() {
                 </div>
 
                 {/* 자격 검증 섹션 */}
-                <div className="border-2 border-blue-200 rounded-lg p-4 bg-blue-50">
+                <div className="border-4 border-blue-700 rounded-lg p-4 bg-white">
                   <div className="flex items-center mb-4">
                     <div className="bg-blue-100 rounded-full p-2 mr-3">
                       <span className="text-blue-600 text-lg">🔍</span>

@@ -456,8 +456,8 @@ export default function RequestBoard() {
                     item === '홈티매칭'
                       ? 'bg-blue-500 text-white text-xl font-bold rounded-2xl h-[110px] flex items-center justify-center'
                       : selectedSidebarItem === item
-                      ? 'bg-blue-50 text-blue-600 text-left px-4 py-3 rounded-2xl text-sm font-medium'
-                      : 'text-gray-700 hover:bg-gray-50 text-left px-4 py-3 rounded-2xl text-sm font-medium'
+                      ? 'bg-blue-50 text-blue-600 text-left px-4 py-3 rounded-2xl font-medium text-lg'
+                      : 'text-gray-700 hover:bg-gray-50 text-left px-4 py-3 rounded-2xl font-medium text-lg'
                   }`}
                 >
                   {item}

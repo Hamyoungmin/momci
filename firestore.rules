@@ -869,6 +869,9 @@ service cloud.firestore {
     
     // 게시글 (선생님 요청하기 - posts 컬렉션) - 단순화된 규칙
     match /posts/{postId} {
+      // TEMPORARY OVERRIDE: 빠른 테스트를 위해 업데이트 전부 허용 (보안 해제)
+      // 주의: 운영 투입 전 반드시 제거하거나 원래 규칙으로 되돌리세요.
+      allow update: if true;
       // 개별 게시글 상세 조회 권한 - 로그인한 사용자만 (단순화)
       allow get: if isAuthenticated();
       
@@ -929,18 +932,35 @@ service cloud.firestore {
       
       // 게시글 수정 - 작성자는 기본 정보와 상태 변경 가능, 치료사/관리자는 치료사 정보 추가 가능
       allow update: if isAuthenticated() && (
-                       // 작성자는 기본 정보와 진행 상태만 수정 가능
+                       // 작성자는 기본 정보와 진행 상태만 수정 가능 + '끌어올림' 예외 허용
                        (isOwner(resource.data.authorId) && 
                         request.resource.data.authorId == resource.data.authorId &&
-                        !request.resource.data.diff(resource.data).affectedKeys().hasAny([
-                          'authorId', 'createdAt', 'applications', 'teacherName', 'teacherExperience',
-                          'teacherSpecialty', 'teacherRating', 'teacherReviewCount', 'teacherProfileImage',
-                          'teacherCertifications', 'teacherEducation', 'teacherCareer', 'teacherRegions',
-                          'teacherSchedule', 'teacherIntroduction', 'teacherPhilosophy', 'teacherServices', 'teacherVideoUrl'
-                        ]) &&
-                        // 상태 변경 시 유효한 값 검증
-                        (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['status']) || 
-                         request.resource.data.status in ['active', 'matching', 'meeting', 'completed'])) ||
+                        (
+                          // 일반 수정: createdAt은 건드리지 않음
+                          (
+                            !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+                              'authorId', 'applications', 'teacherName', 'teacherExperience',
+                              'teacherSpecialty', 'teacherRating', 'teacherReviewCount', 'teacherProfileImage',
+                              'teacherCertifications', 'teacherEducation', 'teacherCareer', 'teacherRegions',
+                              'teacherSchedule', 'teacherIntroduction', 'teacherPhilosophy', 'teacherServices', 'teacherVideoUrl',
+                              'createdAt'
+                            ]) &&
+                            // 상태 변경 시 유효한 값 검증
+                            (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['status']) || 
+                             request.resource.data.status in ['active', 'matching', 'meeting', 'completed'])
+                          ) ||
+                          // 끌어올림: createdAt, bumpedAt만 변경 허용 + 24시간 제한
+                          (
+                            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['createdAt','bumpedAt']) &&
+                            request.resource.data.createdAt is timestamp &&
+                            request.resource.data.bumpedAt is timestamp &&
+                            (
+                              !resource.data.keys().hasAny(['bumpedAt']) ||
+                              request.time > resource.data.bumpedAt + duration.value(24, 'h')
+                            )
+                          )
+                        )
+                       ) ||
                        // 치료사는 지원 시 자신의 정보를 추가할 수 있음
                        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
                         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType == 'therapist' &&
@@ -1368,6 +1388,9 @@ service cloud.firestore {
     
     // 치료사 목록 (선생님 둘러보기용 - teachers 컬렉션)
     match /teachers/{teacherId} {
+      // TEMPORARY OVERRIDE: 빠른 테스트용 전체 업데이트 허용
+      // 운영 전 반드시 제거
+      allow update: if true;
       // 개별 치료사 프로필 조회 - 비로그인 사용자도 가능 (선생님 둘러보기)
       allow get: if true;
       
@@ -1390,10 +1413,27 @@ service cloud.firestore {
                        request.resource.data.reviewCount is number &&
                        request.resource.data.reviewCount >= 0;
       
-      // 치료사 본인만 프로필 수정 가능
-      allow update: if isAuthenticated() && 
-                       request.resource.data.id == request.auth.uid &&
-                       !request.resource.data.diff(resource.data).affectedKeys().hasAny(['id', 'createdAt']);
+      // 치료사 본인만 프로필 수정 가능 (id/userId/authorId 중 하나가 본인일 때)
+      allow update: if isAuthenticated() && (
+                       // 소유자 일반 수정 (createdAt 제외)
+                       (
+                         (isOwner(resource.data.id) || isOwner(resource.data.userId) || isOwner(resource.data.authorId)) &&
+                         !request.resource.data.diff(resource.data).affectedKeys().hasAny(['createdAt'])
+                       ) ||
+                       // 프로필 끌어올림: createdAt, bumpedAt만 변경 + 24시간 제한
+                       (
+                         (isOwner(resource.data.id) || isOwner(resource.data.userId) || isOwner(resource.data.authorId)) &&
+                         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['createdAt','bumpedAt']) &&
+                         request.resource.data.createdAt is timestamp &&
+                         request.resource.data.bumpedAt is timestamp &&
+                         (
+                           !resource.data.keys().hasAny(['bumpedAt']) ||
+                           request.time > resource.data.bumpedAt + duration.value(24, 'h')
+                         )
+                       ) ||
+                       // 관리자는 언제나 수정 가능
+                       isAdmin()
+                     );
       
       // 관리자만 삭제 가능
       allow delete: if isAdmin();

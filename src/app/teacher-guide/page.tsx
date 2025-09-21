@@ -1,92 +1,17 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { useAuth } from '@/contexts/AuthContext';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-
-interface UserData {
-  userType: 'parent' | 'therapist';
-  name: string;
-}
+import React from 'react';
+import GuideSidebar from '@/components/common/GuideSidebar';
 
 export default function TeacherGuidePage() {
-  const { currentUser } = useAuth();
-  const [userData, setUserData] = useState<UserData | null>(null);
-
-  useEffect(() => {
-    const fetchUserData = async () => {
-      if (!currentUser) return;
-
-      try {
-        const userDocRef = doc(db, 'users', currentUser.uid);
-        const userDoc = await getDoc(userDocRef);
-        
-        if (userDoc.exists()) {
-          const data = userDoc.data() as UserData;
-          setUserData(data);
-        }
-      } catch (error) {
-        console.error('사용자 데이터 불러오기 오류:', error);
-      }
-    };
-
-    fetchUserData();
-  }, [currentUser]);
-
-  // 이용권 구매 메뉴 렌더링 함수
-  const renderPricingMenu = () => {
-    if (!currentUser || !userData) {
-      return (
-        <Link href="/pricing" className="block w-full text-gray-700 hover:bg-gray-50 text-left px-4 py-3 rounded-2xl text-sm font-medium transition-colors">
-          이용권 구매
-        </Link>
-      );
-    }
-
-    // 로그인한 사용자는 해당 유형의 이용권으로 직접 링크
-    if (userData.userType === 'parent') {
-      return (
-        <Link href="/parent-pricing" className="block w-full text-gray-700 hover:bg-gray-50 text-left px-4 py-3 rounded-2xl text-sm font-medium transition-colors">
-          이용권 구매
-        </Link>
-      );
-    } else if (userData.userType === 'therapist') {
-      return (
-        <Link href="/teacher-pricing" className="block w-full text-gray-700 hover:bg-gray-50 text-left px-4 py-3 rounded-2xl text-sm font-medium transition-colors">
-          이용권 구매
-        </Link>
-      );
-    }
-  };
+  // 가이드 페이지는 로그인/유저 데이터에 의존하지 않습니다.
   return (
     <div className="min-h-screen bg-gray-50">
       {/* 메인 가이드 섹션 */}
       <section className="py-12">
         <div className="flex max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* 사이드바 */}
-          <div className="w-64 bg-white shadow-lg rounded-lg mr-8 h-fit">
-            <div className="p-4">
-              <div className="mb-6">
-                <button className="w-full bg-blue-500 text-white text-xl font-bold rounded-2xl h-[110px] flex items-center justify-center">
-                  이용안내
-                </button>
-              </div>
-              <div className="space-y-1">
-                <Link href="/parent-guide" className="block w-full text-gray-700 hover:bg-gray-50 text-left px-4 py-3 rounded-2xl text-sm font-medium transition-colors">
-                  학부모 이용안내
-                </Link>
-                <div className="w-full bg-blue-50 text-blue-600 text-left px-4 py-3 rounded-2xl text-sm font-medium">
-                  선생님 이용안내
-                </div>
-                <Link href="/program-guide" className="block w-full text-gray-700 hover:bg-gray-50 text-left px-4 py-3 rounded-2xl text-sm font-medium transition-colors">
-                  프로그램 안내
-                </Link>
-                {renderPricingMenu()}
-              </div>
-            </div>
-          </div>
+          <GuideSidebar active="teacher" />
           
           {/* 메인 콘텐츠 */}
           <div className="flex-1">
