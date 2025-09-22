@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import Statistics from '@/components/sections/Statistics';
@@ -11,13 +11,23 @@ export default function HeroSlider() {
   const goPrev = () => setCurrent((c) => (c + 2) % 3);
   const goNext = () => setCurrent((c) => (c + 1) % 3);
 
+  // 5초마다 자동으로 다음 슬라이드로 전환
+  useEffect(() => {
+    const id = setInterval(() => {
+      setCurrent((c) => (c + 1) % 3);
+    }, 5000);
+    return () => clearInterval(id);
+  }, []);
+
   return (
     <section className="relative bg-blue-50 min-h-[75vh] overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-8">
         <div className="relative items-center min-h-[60vh] px-2 sm:px-4 md:px-6">
-          {/* 슬라이드 컨텐츠 */}
-          {current === 0 && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+          {/* 슬라이드 컨테이너 (부드러운 전환) */}
+          <div className="relative min-h-[60vh]">
+            {/* Slide 1 */}
+            <div className={`absolute inset-0 transition-opacity duration-700 ease-out ${current === 0 ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
               {/* 왼쪽 텍스트 영역 */}
               <div className="space-y-8 lg:min-h-[60vh] flex flex-col justify-center lg:ml-8 xl:ml-12">
                 <div className="space-y-6">
@@ -67,11 +77,11 @@ export default function HeroSlider() {
                   />
                 </div>
               </div>
+              </div>
             </div>
-          )}
-
-          {current === 1 && (
-            <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
+            {/* Slide 2 */}
+            <div className={`absolute inset-0 transition-opacity duration-700 ease-out ${current === 1 ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+              <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
               <div className="space-y-4 mb-8">
                 <h2 className="text-5xl lg:text-6xl font-bold leading-tight text-blue-900">
                   신뢰할 수 있는 전문가 찾기,
@@ -121,10 +131,11 @@ export default function HeroSlider() {
                 </div>
               </div>
             </div>
-          )}
+            </div>
 
-          {current === 2 && (
-            <div className="flex flex-col items-center justify-center min-h-[60vh] text-center md:text-left">
+            {/* Slide 3 */}
+            <div className={`absolute inset-0 transition-opacity duration-700 ease-out ${current === 2 ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+              <div className="flex flex-col items-center justify-center min-h-[60vh] text-center md:text-left">
               <div className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-3 gap-10 items-center">
                 {/* 왼쪽 아이콘 */}
                 <div className="flex flex-col items-center md:items-start justify-center">
@@ -153,7 +164,8 @@ export default function HeroSlider() {
                 </div>
               </div>
             </div>
-          )}
+            </div>
+          </div>
 
           {/* 내비게이션 */}
           <button onClick={goPrev} aria-label="이전 슬라이드" className="hidden md:flex absolute md:left-[-120px] lg:left-[-200px] xl:left-[-260px] top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white shadow rounded-full w-14 h-14 items-center justify-center z-10">

@@ -2,6 +2,7 @@
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminHeader from "@/components/admin/AdminHeader";
 import { useUserSession } from "@/hooks/useUserSession";
@@ -22,6 +23,7 @@ export default function AdminLayout({
 }>) {
   const { currentUser, loading } = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);
+  const router = useRouter();
   
   // 사용자 세션 추적 활성화
   useUserSession();
@@ -32,6 +34,17 @@ export default function AdminLayout({
       setIsAdmin(adminStatus);
     }
   }, [currentUser]);
+
+  // 비관리자/비로그인 접근 차단
+  useEffect(() => {
+    if (!loading) {
+      if (!currentUser) {
+        router.replace("/");
+      } else if (!isAdmin) {
+        router.replace("/");
+      }
+    }
+  }, [loading, currentUser, isAdmin, router]);
 
   // 로딩 중일 때
   if (loading) {
@@ -45,7 +58,11 @@ export default function AdminLayout({
     );
   }
 
-  // 현재는 아무나 접근 가능하되, 관리자 권한에 따라 UI를 다르게 표시
+  // 비관리자이거나 비로그인 상태에서는 렌더 차단
+  if (!loading && (!currentUser || !isAdmin)) {
+    return null;
+  }
+
   return (
     <div className="bg-gray-100 min-h-screen flex">
       {/* 사이드바 */}
@@ -59,23 +76,6 @@ export default function AdminLayout({
         {/* 메인 콘텐츠 영역 */}
         <main className="flex-1 p-6 pb-20 bg-gray-100">
           <div className="max-w-7xl mx-auto">
-            {/* 관리자가 아닌 경우 알림 표시 */}
-            {!isAdmin && currentUser && (
-              <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <div className="flex">
-                  <div className="flex-shrink-0">
-                    <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                  <div className="ml-3">
-                    <p className="text-sm text-yellow-700">
-                      <strong>읽기 전용 모드:</strong> 관리자 권한이 없어 일부 기능이 제한됩니다.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
             {children}
           </div>
         </main>

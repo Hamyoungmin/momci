@@ -472,6 +472,24 @@ export default function MyPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path>
               </svg>
             </div>
+
+          {/* 후기 관리 (학부모 전용) */}
+          {userData?.userType === 'parent' && (
+            <div 
+              onClick={() => handleMenuClick('/mypage/reviews')}
+              className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 rounded-lg transition-colors"
+            >
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
+                  <span className="text-lg">⭐</span>
+                </div>
+                <span className="text-base font-medium text-gray-900">후기 관리</span>
+              </div>
+              <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path>
+              </svg>
+            </div>
+          )}
           </div>
         </div>
 

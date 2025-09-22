@@ -323,6 +323,21 @@ function SubscriptionManagementContent() {
           )}
         </div>
 
+        {/* 안내 문구 - 이용권 만료/인터뷰권 정책 */}
+        {userData?.userType === 'parent' && (
+          <div className="mb-4">
+            <div className="bg-white rounded-xl border border-gray-200 p-4 text-sm text-gray-700">
+              <div className="flex items-start gap-2">
+                <div className="text-yellow-500 pt-0.5">💡</div>
+                <div>
+                  <p className="mb-1">이용권 기간이 만료되어도 남은 인터뷰권은 사라지지 않습니다.</p>
+                  <p><span className="text-blue-600 font-medium">단, 인터뷰권을 사용하시려면 이용권이 활성화된 상태여야 합니다.</span></p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* 이용권 사용 내역 - 학부모용만 표시 */}
         {userData?.userType === 'parent' && (
           <div className="mb-4">

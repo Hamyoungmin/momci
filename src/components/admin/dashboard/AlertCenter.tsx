@@ -2,6 +2,8 @@
 
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
+import { db } from '@/lib/firebase';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 
 interface Alert {
   type: 'urgent' | 'warning' | 'info';
@@ -16,51 +18,29 @@ export default function AlertCenter() {
   // const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchAlerts = async () => {
-      try {
-        // setLoading(true);
-        // TODO: Firebase에서 실제 알림 데이터 조회
-        // const alertsData = await getAdminAlerts();
-        
-        // 실제 데이터 (Firebase에서 가져올 예정)
-        setAlerts([
-          {
-            type: 'urgent',
-            title: '미승인 프로필',
-            count: 0,
-            href: '/admin/profile-verification',
-            icon: 'P'
-          },
-          {
-            type: 'urgent',
-            title: '직거래 신고',
-            count: 0,
-            href: '/admin/reports',
-            icon: 'R'
-          },
-          {
-            type: 'warning',
-            title: '미확인 입금',
-            count: 0,
-            href: '/admin/payments/subscriptions',
-            icon: '$'
-          },
-          {
-            type: 'info',
-            title: '답변 대기 문의',
-            count: 0,
-            href: '/admin/support/inquiries',
-            icon: 'Q'
-          }
-        ]);
-      } catch (error) {
-        console.error('알림 데이터 로딩 실패:', error);
-      } finally {
-        // setLoading(false);
-      }
-    };
+    const unsubs: (() => void)[] = [];
+    try {
+      const qProfile = query(collection(db, 'profileSubmissions'), where('status', '==', 'pending'));
+      const qReports = query(collection(db, 'reports'), where('status', '==', 'pending'));
+      const qPayments = query(collection(db, 'payment-confirmations'), where('status', '==', 'pending'));
+      const qInquiries = query(collection(db, 'inquiries'), where('status', '==', 'pending'));
 
-    fetchAlerts();
+      const counts = { profile: 0, reports: 0, payments: 0, inquiries: 0 };
+      const emit = () => setAlerts([
+        { type: 'urgent', title: '미승인 프로필', count: counts.profile, href: '/admin/profile-verification', icon: 'P' },
+        { type: 'urgent', title: '직거래 신고', count: counts.reports, href: '/admin/reports', icon: 'R' },
+        { type: 'warning', title: '미확인 입금', count: counts.payments, href: '/admin/payments/subscriptions', icon: '$' },
+        { type: 'info', title: '답변 대기 문의', count: counts.inquiries, href: '/admin/support/inquiries', icon: 'Q' }
+      ]);
+
+      unsubs.push(onSnapshot(qProfile, (snap) => { counts.profile = snap.size; emit(); }));
+      unsubs.push(onSnapshot(qReports, (snap) => { counts.reports = snap.size; emit(); }));
+      unsubs.push(onSnapshot(qPayments, (snap) => { counts.payments = snap.size; emit(); }));
+      unsubs.push(onSnapshot(qInquiries, (snap) => { counts.inquiries = snap.size; emit(); }));
+    } catch (e) {
+      console.error('긴급 알림 실시간 초기화 실패:', e);
+    }
+    return () => unsubs.forEach(u => u());
   }, []);
 
   const getAlertColor = (type: Alert['type']) => {

@@ -119,7 +119,7 @@ interface TherapistApplication {
 
 export default function RequestBoardFirebase() {
   const { currentUser, userData } = useAuth();
-  const [selectedSidebarItem, setSelectedSidebarItem] = useState('서울');
+  const [selectedSidebarItem, setSelectedSidebarItem] = useState('전체');
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [showSafetyModal, setShowSafetyModal] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -129,7 +129,7 @@ export default function RequestBoardFirebase() {
   const [showResponseConfirmModal, setShowResponseConfirmModal] = useState(false);
   const [isResponseConfirmModalClosing, setIsResponseConfirmModalClosing] = useState(false);
   const [isApplying, setIsApplying] = useState(false);
-  const [selectedTab, setSelectedTab] = useState('서울');
+  const [selectedTab, setSelectedTab] = useState('전체');
   const [selectedLocation, setSelectedLocation] = useState('희망지역을 선택하세요');
   const [selectedTime, setSelectedTime] = useState('희망시간을 입력하세요');
   const [selectedTreatment, setSelectedTreatment] = useState('희망치료를 선택하세요');
@@ -185,7 +185,7 @@ export default function RequestBoardFirebase() {
   const [currentTherapistId, setCurrentTherapistId] = useState<string | null>(null);
   
 
-  const tabs = ['서울', '인천/경기북부', '경기남부', '충청,강원,대전', '전라,경상,부산'];
+  const tabs = ['전체', '서울', '인천/경기북부', '경기남부', '충청,강원,대전', '전라,경상,부산'];
 
   
   // 지역별 상세 구역들
@@ -1257,7 +1257,7 @@ export default function RequestBoardFirebase() {
         allPostsRegions: postsData?.map(p => p.region) || []
     });
     
-    if (selectedSidebarItem === '홈티매칭') {
+    if (selectedSidebarItem === '홈티매칭' || selectedSidebarItem === '전체') {
       // 모든 지역의 게시글을 보여줌
       console.log('🌍 전국 모드: 모든 게시글 표시');
       return postsData;
@@ -1306,7 +1306,7 @@ export default function RequestBoardFirebase() {
 
   // 선택된 지역에 따른 제목과 탭 변경
   const getRegionTitle = () => {
-    if (selectedSidebarItem === '홈티매칭') return '전국 홈티매칭';
+    if (selectedSidebarItem === '홈티매칭' || selectedSidebarItem === '전체') return '전국 홈티매칭';
     return `${selectedSidebarItem} 홈티매칭`;
   };
 
@@ -1407,7 +1407,7 @@ export default function RequestBoardFirebase() {
                   key={tab}
                   onClick={() => {
                     setSelectedTab(tab);
-                    setSelectedSidebarItem(tab);
+                    setSelectedSidebarItem(tab === '전체' ? '전체' : tab);
                     setCurrentPage(1); // 탭 변경 시 1페이지로 리셋
                   }}
                   className={`flex-1 py-3 text-sm font-medium rounded-2xl transition-colors text-center ${

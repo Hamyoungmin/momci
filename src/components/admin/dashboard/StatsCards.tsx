@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useMemo } from 'react';
+import { useAdminStats } from '@/hooks/useAdminStats';
 
 interface StatCard {
   title: string;
@@ -12,77 +13,34 @@ interface StatCard {
 }
 
 export default function StatsCards() {
-  const [stats, setStats] = useState<StatCard[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    // 실제 통계 데이터 불러오기
-    const fetchStats = async () => {
-      try {
-        setLoading(true);
-        // TODO: Firebase에서 실제 통계 데이터 조회
-        // const statsData = await getAdminStats();
-        
-        // 실제 데이터 (Firebase에서 가져올 예정)
-        setStats([
-          {
-            title: '누적 이용자 수',
-            value: '0',
-            change: '0%',
-            changeType: 'neutral',
-            icon: 'U',
-            color: 'bg-blue-500'
-          },
-          {
-            title: '누적 매칭 수',
-            value: '0',
-            change: '0%',
-            changeType: 'neutral',
-            icon: 'M',
-            color: 'bg-green-500'
-          },
-          {
-            title: '활성 사용자',
-            value: '0',
-            change: '0%',
-            changeType: 'neutral',
-            icon: 'A',
-            color: 'bg-purple-500'
-          },
-          {
-            title: '오늘 신규 가입',
-            value: '0',
-            change: '0',
-            changeType: 'neutral',
-            icon: 'N',
-            color: 'bg-orange-500'
-          },
-          {
-            title: '진행 중인 매칭',
-            value: '0',
-            change: '0',
-            changeType: 'neutral',
-            icon: 'P',
-            color: 'bg-cyan-500'
-          },
-          {
-            title: '오늘 매출',
-            value: '0원',
-            change: '0%',
-            changeType: 'neutral',
-            icon: 'S',
-            color: 'bg-emerald-500'
-          }
-        ]);
-      } catch (error) {
-        console.error('통계 데이터 로딩 실패:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchStats();
-  }, []);
+  const realtime = useAdminStats();
+  const loading = realtime.loading;
+  const cards = useMemo<StatCard[]>(() => ([
+    {
+      title: '활성 사용자',
+      value: realtime.activeUsers,
+      change: '실시간',
+      changeType: 'neutral',
+      icon: 'A',
+      color: 'bg-purple-500'
+    },
+    {
+      title: '대기 작업',
+      value: realtime.pendingTasks,
+      change: '실시간',
+      changeType: 'neutral',
+      icon: 'P',
+      color: 'bg-cyan-500'
+    },
+    {
+      title: '긴급 신고',
+      value: realtime.urgentReports,
+      change: '실시간',
+      changeType: 'neutral',
+      icon: 'U',
+      color: 'bg-red-500'
+    }
+  ]), [realtime.activeUsers, realtime.pendingTasks, realtime.urgentReports]);
 
   if (loading) {
     return (
@@ -105,7 +63,7 @@ export default function StatsCards() {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {stats.map((stat, index) => (
+      {cards.map((stat, index) => (
         <div
           key={index}
           className="bg-white rounded-xl border-2 border-gray-100 p-6 hover:border-blue-200 hover:shadow-lg transition-all duration-300 group"

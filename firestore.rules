@@ -10,8 +10,11 @@ service cloud.firestore {
     
     function isAdmin() {
       return request.auth != null && 
-             (request.auth.token.email == 'dudals7334@naver.com' ||
-              request.auth.token.email == 'everystars@naver.com');
+              (
+                request.auth.token.email == 'dudals7334@naver.com' ||
+                request.auth.token.email == 'everystars@naver.com' ||
+                exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+              );
     }
     
     function isFAQAdmin() {
@@ -490,6 +493,27 @@ service cloud.firestore {
       allow read: if (docId == 'site-stats') || isAdmin();
       // 쓰기: 관리자만
       allow create, update, delete: if isAdmin();
+    }
+
+    // 관리자 대시보드: 실시간 세션 정보 (활성 사용자 집계 용도)
+    match /userSessions/{sessionId} {
+      // 관리자만 조회 가능 (리스트/쿼리 포함)
+      allow read: if isAdmin();
+        // 본인 세션만 생성/갱신 허용
+        allow create, update: if isAuthenticated() &&
+                                request.resource.data.userId == request.auth.uid &&
+                                request.resource.data.keys().hasAll(['userId','lastActivity','isActive']);
+        // 본인 또는 관리자만 삭제 허용
+        allow delete: if isAuthenticated() &&
+                        (isAdmin() || resource.data.userId == request.auth.uid);
+    }
+
+    // 관리자 대시보드: 프로필 심사 대기 집계 (선택적 컬렉션)
+    match /profileSubmissions/{submissionId} {
+      // 관리자만 조회 가능
+      allow read: if isAdmin();
+      // 나머지 쓰기는 별도 백엔드에서만
+      allow create, update, delete: if false;
     }
     
     // 시스템 로그 (관리자만 접근 가능)
@@ -1318,19 +1342,24 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
     
-    // 치료사 프로필 평점/리뷰 (선생님 둘러보기)
+      // 치료사 프로필 평점/리뷰 (선생님 둘러보기 + 마이페이지 지원자 후기)
     match /therapist-reviews/{reviewId} {
       // 모든 사용자(비로그인 포함)가 읽기 가능 (공개 리뷰)
       allow read: if true;
       
-      // 수업을 받은 학부모만 리뷰 작성 가능
+        // 수업을 받은 학부모만 리뷰 작성 가능 (또는 자신의 게시글에 승인된 지원자에게 후기 작성)
       allow create: if isAuthenticated() && 
                        request.resource.data.parentId == request.auth.uid &&
-                       exists(/databases/$(database)/documents/therapistProfiles/$(request.resource.data.therapistId)) &&
                        request.resource.data.keys().hasAll(['parentId', 'therapistId', 'rating', 'content', 'createdAt']) &&
                        request.resource.data.rating is number &&
                        request.resource.data.rating >= 1 &&
-                       request.resource.data.rating <= 5;
+                        request.resource.data.rating <= 5 &&
+                        (
+                          // 이미 승인된 치료사 프로필이 있는 경우
+                          exists(/databases/$(database)/documents/therapistProfiles/$(request.resource.data.therapistId)) ||
+                          // 또는 내 게시글의 승인된 지원자에게 후기 작성
+                          exists(/databases/$(database)/documents/applications/$(request.auth.uid + '_' + request.resource.data.therapistId))
+                        );
       
       // 작성자만 수정 가능 (작성 후 24시간 내)
       allow update: if isOwner(resource.data.parentId) && 
