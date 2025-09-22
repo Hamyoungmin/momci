@@ -38,6 +38,30 @@ service cloud.firestore {
              (get(/databases/$(database)/documents/users/$(userId)).data.userType in ['therapist', 'teacher']);
     }
     
+    // 치료사 구독 활성 여부 확인 (이용권이 있고 만료일이 현재 이후)
+    function hasActiveTherapistSubscription(userId) {
+      return exists(/databases/$(database)/documents/user-subscription-status/$(userId)) &&
+             get(/databases/$(database)/documents/user-subscription-status/$(userId)).data.hasActiveSubscription == true &&
+             (
+               // Timestamp 타입일 때만 비교 가능, 보수적으로 true/false 처리
+               (get(/databases/$(database)/documents/user-subscription-status/$(userId)).data.expiryDate is timestamp &&
+                get(/databases/$(database)/documents/user-subscription-status/$(userId)).data.expiryDate > request.time)
+             ) &&
+             (
+               !get(/databases/$(database)/documents/user-subscription-status/$(userId)).data.keys().hasAny(['subscriptionType']) ||
+               get(/databases/$(database)/documents/user-subscription-status/$(userId)).data.subscriptionType in ['therapist', 'teacher'] ||
+               // 일부 데이터는 therapist로 저장되므로 포괄 허용
+               get(/databases/$(database)/documents/user-subscription-status/$(userId)).data.subscriptionType == 'therapist'
+             );
+    }
+
+    // 만료 후 유예 기간 허용 (days 일 이내)
+    function isWithinTherapistGrace(userId, days) {
+      return exists(/databases/$(database)/documents/user-subscription-status/$(userId)) &&
+             (get(/databases/$(database)/documents/user-subscription-status/$(userId)).data.expiryDate is timestamp) &&
+             (get(/databases/$(database)/documents/user-subscription-status/$(userId)).data.expiryDate + duration.value(days, 'd') > request.time);
+    }
+    
     // 추가 보안 헬퍼 함수들
     function isValidEmail(email) {
       return email.matches('^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$');
@@ -173,6 +197,11 @@ service cloud.firestore {
                          request.resource.data.content.size() <= 1000 &&
                          exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
                          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType == 'therapist' &&
+                         (
+                           hasActiveTherapistSubscription(request.auth.uid) ||
+                           isWithinTherapistGrace(request.auth.uid, 3) ||
+                           isAdmin()
+                         ) &&
                          rateLimitCheck(10);  // 분당 10개 제한
         
         // 댓글 수정 - 작성자만
@@ -457,13 +486,9 @@ service cloud.firestore {
     
     // 시스템 통계 (사이트 통계는 모든 사용자 읽기 가능, 관리자만 수정 가능)
     match /statistics/{docId} {
-      // 사이트 전체 통계는 인증 여부와 관계없이 모든 사용자가 읽기 가능 (메인페이지용)
-      allow read: if docId == 'site-stats';
-      
-      // 관리자는 모든 통계 문서 읽기 가능
-      allow read: if isAdmin();
-      
-      // 통계 생성/수정/삭제는 관리자만 가능
+      // 읽기: 메인페이지 공개 통계 or 관리자
+      allow read: if (docId == 'site-stats') || isAdmin();
+      // 쓰기: 관리자만
       allow create, update, delete: if isAdmin();
     }
     
@@ -869,20 +894,8 @@ service cloud.firestore {
     
     // 게시글 (선생님 요청하기 - posts 컬렉션) - 단순화된 규칙
     match /posts/{postId} {
-      // TEMPORARY OVERRIDE: 빠른 테스트를 위해 업데이트 전부 허용 (보안 해제)
-      // 주의: 운영 투입 전 반드시 제거하거나 원래 규칙으로 되돌리세요.
-      allow update: if true;
-      // 개별 게시글 상세 조회 권한 - 로그인한 사용자만 (단순화)
-      allow get: if isAuthenticated();
-      
-      // 본인이 작성한 게시글은 언제나 조회 가능 (마이페이지용)
-      allow get: if isAuthenticated() && resource.data.authorId == request.auth.uid;
-      
-      // 게시글 목록 조회 권한 - 비로그인 사용자도 활성 게시글 목록 조회 가능
-      allow list: if true;
-      
-      // 본인이 작성한 게시글 목록은 언제나 조회 가능 (마이페이지 > 이용권 관리용)
-      allow list: if isAuthenticated() && resource.data.authorId == request.auth.uid;
+      // 게시글 조회(상세/목록) 모두 허용 - 운영 단계에서 필터는 쿼리로 제어
+      allow read: if true;
       
       // 게시글 생성 - 타입별로 권한 구분
       allow create: if isAuthenticated() && 
@@ -999,7 +1012,7 @@ service cloud.firestore {
                       // 게시글 작성자는 자신의 게시글에 대한 지원자 목록을 조회할 수 있음
                       (request.auth != null && hasRecentActivity()));
       
-      // 치료사만 지원 가능 - 최대 2명 제한 포함
+      // 치료사만 지원 가능 - 최대 2명 제한 + 활성 구독 필요
       allow create: if isAuthenticated() && 
                        request.resource.data.applicantId == request.auth.uid &&
                        request.resource.data.keys().hasAll(['postId', 'applicantId', 'postAuthorId', 'message', 'status', 'createdAt']) &&
@@ -1016,7 +1029,12 @@ service cloud.firestore {
                        ) &&
                        // 치료사 권한 확인
                        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-                       get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType == 'therapist';
+                       get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType == 'therapist' &&
+                       (
+                         hasActiveTherapistSubscription(request.auth.uid) ||
+                         isWithinTherapistGrace(request.auth.uid, 3) ||
+                         isAdmin()
+                       );
                        // 중복 지원 방지는 클라이언트 트랜잭션에서 처리 (복잡한 쿼리 방지)
       
       // 상태 변경은 게시글 작성자와 지원자만 (승인/거절/철회)
@@ -1388,14 +1406,8 @@ service cloud.firestore {
     
     // 치료사 목록 (선생님 둘러보기용 - teachers 컬렉션)
     match /teachers/{teacherId} {
-      // TEMPORARY OVERRIDE: 빠른 테스트용 전체 업데이트 허용
-      // 운영 전 반드시 제거
-      allow update: if true;
-      // 개별 치료사 프로필 조회 - 비로그인 사용자도 가능 (선생님 둘러보기)
-      allow get: if true;
-      
-      // 치료사 목록 조회 - 비로그인 사용자도 가능
-      allow list: if true;
+      // 개별 치료사 프로필/목록 조회 - 모두 허용 (공개 목록)
+      allow get, list: if true;
       
       // 치료사 프로필 생성은 해당 치료사만 가능
       allow create: if isAuthenticated() && 

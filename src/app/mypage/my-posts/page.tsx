@@ -88,7 +88,7 @@ export default function MyPostsPage() {
     }
   };
 
-  // 게시글 상세보기
+  // 게시글 상세보기: 요청 페이지로 이동하면서 팝업 자동 오픈
   const handleViewDetails = (postId: string) => {
     router.push(`/request?postId=${postId}`);
   };

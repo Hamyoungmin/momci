@@ -543,7 +543,14 @@ export default function MyPage() {
             ) : (
               <div className="divide-y divide-gray-200">
                 {posts.map((post) => (
-                  <div key={post.id} className="p-4">
+                  <div 
+                    key={post.id} 
+                    className="p-4 cursor-pointer hover:bg-gray-50 transition-colors rounded-lg"
+                    onClick={() => router.push(`/request?postId=${post.id}`)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') router.push(`/request?postId=${post.id}`); }}
+                  >
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex-1">
                         <h3 className="text-base font-medium text-gray-900 mb-1">

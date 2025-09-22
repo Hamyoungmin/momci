@@ -1,78 +1,13 @@
 ﻿import Link from 'next/link';
 import Image from 'next/image';
-import Statistics from '@/components/sections/Statistics';
+import HeroSlider from '@/components/sections/HeroSlider';
 import MainReviews from '@/components/sections/MainReviews';
 
 export default function Home() {
   return (
     <div className="min-h-screen">
-      {/* 히어로 섹션 */}
-      <section className="relative bg-blue-50 min-h-[75vh] overflow-hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-8">
-          <div className="relative items-center min-h-[60vh]">
-            {/* 왼쪽 텍스트 영역 */}
-            <div className="space-y-8 lg:pr-[360px] lg:min-h-[60vh] flex flex-col justify-center lg:ml-12">
-              <div className="space-y-6">
-                <h1 className="text-4xl lg:text-5xl xl:text-6xl font-bold leading-tight">
-                  <div className="text-blue-900" style={{whiteSpace: 'nowrap'}}>우리 아이의 빛나는 잠재력,</div>
-                  <div style={{whiteSpace: 'nowrap'}}>
-                    <span className="text-blue-400">최고의 전문가가 </span>
-                    <span className="text-blue-900">함께 찾아요.</span>
-                  </div>
-                </h1>
-                
-                <p className="text-xl lg:text-2xl text-gray-600 leading-relaxed max-w-2xl">
-                  <span className="text-gray-600 font-bold">대한민국 No.1 아동 발달 전문가 매칭 플랫폼</span>
-                </p>
-              </div>
-
-
-              {/* CTA 버튼들 */}
-              <div className="space-y-4">
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <Link
-                    href="/browse"
-                    className="bg-blue-400 hover:bg-blue-500 text-white px-8 py-5 rounded-2xl font-bold text-xl transition-all transform hover:scale-105 shadow-xl flex items-center justify-center"
-                  >
-                    <svg className="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                    우리 아이 맞춤 전문가 찾기
-                  </Link>
-                  <Link
-                    href="/register-teacher"
-                    className="border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-900 px-8 py-5 rounded-2xl font-bold text-xl transition-all"
-                  >
-                    전문가로 활동하기
-                  </Link>
-                </div>
-              </div>
-            </div>
-
-            {/* 오른쪽 이미지 영역 (lg 이상에서 절대 배치) */}
-            <div className="mt-10 flex items-center justify-center lg:mt-0 lg:absolute lg:right-8 lg:top-1/2 lg:-translate-y-1/2">
-              <div className="relative w-80 h-80 flex items-center justify-center lg:-translate-x-6">
-                <div className="absolute inset-0 bg-blue-100 rounded-full opacity-20"></div>
-                <Image
-                  src="/32.png"
-                  alt="모든별 키즈 마스코트 여우"
-                  width={300}
-                  height={300}
-                  className="relative z-10 object-contain"
-                  priority
-                  unoptimized
-                />
-              </div>
-            </div>
-
-          </div>
-          
-          {/* 히어로섹션 내 통계 */}
-          <div>
-            <Statistics />
-          </div>
-        </div>
-      </section>
+      {/* 히어로 섹션 - 슬라이더 버전 (자동 전환 없음) */}
+      <HeroSlider />
 
 
       {/* 핵심 역량 섹션 */}

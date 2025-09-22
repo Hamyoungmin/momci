@@ -829,16 +829,16 @@ export default function TeacherSearchBoard() {
 
               {/* 치료사등록 헤더 */}
               <div className="bg-white border-4 border-blue-700 rounded-t-lg p-4 border-b-0">
-                <div className="flex items-center justify-end">
-                  <button 
-                    onClick={() => setShowRegistrationPopup(true)}
+                    <div className="flex items-center justify-end">
+                      <button 
+                        onClick={() => setShowRegistrationPopup(true)}
                     className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg text-sm font-semibold shadow-sm transition-colors flex items-center gap-2"
-                  >
+                      >
                     <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-white text-blue-600 text-xs">＋</span>
                     치료사 등록
-                  </button>
-                </div>
-              </div>
+                      </button>
+                    </div>
+                  </div>
 
               {/* 치료사 테이블 */}
               <div className="bg-white border-4 border-blue-700 rounded-b-lg overflow-hidden border-t-0">

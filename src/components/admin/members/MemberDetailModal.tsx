@@ -125,7 +125,7 @@ export default function MemberDetailModal({ isOpen, onClose, member, memberType 
       const payload = {
         userId: member.id,
         hasActiveSubscription: true,
-        subscriptionType: 'parent',
+        subscriptionType: (memberType === 'parent' ? 'parent' : 'therapist'),
         expiryDate: newExpiry,
         lastUpdated: serverTimestamp(),
       } as Record<string, unknown>;
@@ -137,13 +137,16 @@ export default function MemberDetailModal({ isOpen, onClose, member, memberType 
       }
 
       // 결제 기록 생성 (관리자 수기 부여)
-      const amount = months === 1 ? 9900 : months === 3 ? 29700 : 0;
+      // 금액 기록: 학부모/치료사 기본 정책 반영
+      const amount = (memberType === 'parent')
+        ? (months === 1 ? 9900 : months === 3 ? 24900 : 0)
+        : (months === 1 ? 19900 : months === 3 ? 49900 : 0);
       await addDoc(collection(db, 'payments'), {
         userId: member.id,
         amount,
         type: 'subscription',
         createdAt: serverTimestamp(),
-        note: `관리자 부여 ${months}개월`,
+        note: `관리자 부여 ${months}개월 (${memberType === 'parent' ? '학부모' : '치료사'})`,
       });
 
       alert(`${months}개월 이용권을 부여했습니다.`);
@@ -334,36 +337,34 @@ export default function MemberDetailModal({ isOpen, onClose, member, memberType 
             {activeTab === 'payment' && (
               <div className="space-y-4">
                 <h4 className="text-base font-medium text-gray-900">결제 내역</h4>
-                {memberType === 'parent' && (
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => grantSubscription(1)}
-                      disabled={granting}
-                      className="px-3 py-2 text-sm font-semibold rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
-                    >
-                      1개월 이용권 부여
-                    </button>
-                    <button
-                      onClick={() => grantSubscription(3)}
-                      disabled={granting}
-                      className="px-3 py-2 text-sm font-semibold rounded-md bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
-                    >
-                      3개월 이용권 부여
-                    </button>
-                    <div className="text-sm text-gray-600 ml-2">
-                      {subscription?.hasActiveSubscription === true ? '현재 활성화됨' : '비활성'}
-                      {(() => {
-                        const v = subscription?.expiryDate as unknown;
-                        try {
-                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                          if (v && typeof (v as any).toDate === 'function') return ` · 만료 ${new Date((v as any).toDate()).toLocaleDateString('ko-KR')}`;
-                          if (typeof v === 'number' || typeof v === 'string') return ` · 만료 ${new Date(v as number).toLocaleDateString('ko-KR')}`;
-                        } catch {}
-                        return '';
-                      })()}
-                    </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => grantSubscription(1)}
+                    disabled={granting}
+                    className="px-3 py-2 text-sm font-semibold rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    1개월 이용권 부여
+                  </button>
+                  <button
+                    onClick={() => grantSubscription(3)}
+                    disabled={granting}
+                    className="px-3 py-2 text-sm font-semibold rounded-md bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
+                  >
+                    3개월 이용권 부여
+                  </button>
+                  <div className="text-sm text-gray-600 ml-2">
+                    {subscription?.hasActiveSubscription === true ? '현재 활성화됨' : '비활성'}
+                    {(() => {
+                      const v = subscription?.expiryDate as unknown;
+                      try {
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        if (v && typeof (v as any).toDate === 'function') return ` · 만료 ${new Date((v as any).toDate()).toLocaleDateString('ko-KR')}`;
+                        if (typeof v === 'number' || typeof v === 'string') return ` · 만료 ${new Date(v as number).toLocaleDateString('ko-KR')}`;
+                      } catch {}
+                      return '';
+                    })()}
                   </div>
-                )}
+                </div>
                 <div className="space-y-3">
                   {payments.length === 0 && (
                     <div className="p-3 bg-gray-50 rounded-md text-sm text-gray-500">결제 내역이 없습니다.</div>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { collection, onSnapshot, query, orderBy, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, addDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore';
 import { db, auth } from '@/lib/firebase';
 
 // 치료사 타입 정의
@@ -69,16 +69,35 @@ export default function TeacherProfiles() {
       orderBy('createdAt', 'desc')
     );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
       console.log('📥 치료사 프로필 스냅샷 받음:', snapshot.size, '개의 문서');
       
       const teacherProfiles: Teacher[] = [];
-      snapshot.forEach((doc) => {
-        const data = doc.data();
-        console.log('📄 치료사 데이터:', { id: doc.id, ...data });
-        
+      for (const d of snapshot.docs) {
+        const data = d.data();
+        console.log('📄 치료사 데이터:', { id: d.id, ...data });
+
+        // 🔒 구독 활성 여부 확인: user-subscription-status에서 활성/만료일 확인
+        let showProfile = true;
+        try {
+          const subSnap = await getDoc(doc(db, 'user-subscription-status', d.id));
+          if (subSnap.exists()) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const subData: any = subSnap.data();
+            const expiryMs = subData?.expiryDate && typeof subData.expiryDate.toDate === 'function' ? subData.expiryDate.toDate().getTime() : 0;
+            const active = !!subData?.hasActiveSubscription && expiryMs > Date.now();
+            showProfile = active;
+          } else {
+            showProfile = false;
+          }
+        } catch {
+          showProfile = false;
+        }
+
+        if (!showProfile) continue; // 미활성 치료사는 노출 제외
+
         teacherProfiles.push({
-          id: doc.id,
+          id: d.id,
           name: data.name || '치료사',
           title: `${data.experience || '0'}년차 ${data.specialty || '치료사'}`,
           rating: data.rating || 4.8,
@@ -96,7 +115,7 @@ export default function TeacherProfiles() {
           availability: data.availability || '평일/주말 상담 가능',
           createdAt: data.createdAt
         });
-      });
+      }
       
       console.log('✅ 최종 치료사 프로필 배열:', teacherProfiles);
       

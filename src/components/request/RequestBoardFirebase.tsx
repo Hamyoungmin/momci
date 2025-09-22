@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { collection, addDoc, onSnapshot, orderBy, query, where, serverTimestamp, doc, getDoc, setDoc, Timestamp, FirestoreError, FieldValue, updateDoc, limit } from 'firebase/firestore';
@@ -247,6 +248,21 @@ export default function RequestBoardFirebase() {
   // Firebase에서 가져온 게시글 데이터 상태
   const [postsData, setPostsData] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // URL 쿼리로 들어온 postId 감지 (예: /request?postId=abc)
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    const targetPostId = searchParams?.get('postId');
+    if (!targetPostId || !postsData.length) return;
+
+    const found = postsData.find((p) => p.id === targetPostId);
+    if (found) {
+      // 이미 데이터가 로드된 상태면 해당 게시글 팝업 오픈
+      if (openProfileModalRef.current) {
+        openProfileModalRef.current(found);
+      }
+    }
+  }, [searchParams, postsData]);
 
   // 페이지네이션 상태
   const [currentPage, setCurrentPage] = useState(1);
@@ -632,7 +648,8 @@ export default function RequestBoardFirebase() {
   };
 
   // 상세 요청 모달 열기 - Firebase 실시간 연동 방식 (게시글 작성 내용 표시)
-  const openProfileModal = async (post: Post) => {
+  const openProfileModalRef = useRef<((post: Post) => Promise<void>) | null>(null);
+  openProfileModalRef.current = async (post: Post) => {
     // 비로그인 사용자는 상세 보기 불가
     if (!currentUser) {
       alert('게시글 상세 내용을 보려면 로그인이 필요합니다.');
@@ -1059,6 +1076,22 @@ export default function RequestBoardFirebase() {
       alert('치료사만 지원할 수 있습니다.');
       return;
     }
+
+    // 🔒 치료사 구독 활성 여부 확인 (없으면 지원 불가)
+    try {
+      const subSnap = await getDoc(doc(db, 'user-subscription-status', currentUser.uid));
+      let therapistSubActive = false;
+      if (subSnap.exists()) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const subData: any = subSnap.data();
+        const expiryMs = subData?.expiryDate && typeof subData.expiryDate.toDate === 'function' ? subData.expiryDate.toDate().getTime() : 0;
+        therapistSubActive = !!subData?.hasActiveSubscription && expiryMs > Date.now();
+      }
+      if (!therapistSubActive) {
+        alert('이용권이 활성화되어 있지 않습니다. 치료사용 이용권을 구매하거나 관리자 부여를 통해 활성화해 주세요.');
+        return;
+      }
+    } catch {/* 무시하고 서버 규칙에서 한 번 더 차단 */}
 
     // ✅ 지원자 수 사전 확인 (클라이언트 사이드에서 빠른 피드백) - 더 안전한 확인
     let applicationsCount = 0;
@@ -1620,7 +1653,7 @@ export default function RequestBoardFirebase() {
                   <div>
                     {currentPosts.map((post) => (
                         <div key={post.id} className="grid grid-cols-12 gap-4 px-6 py-4 border-b border-gray-200 hover:bg-blue-50 transition-colors cursor-pointer"
-                             onClick={() => openProfileModal(post)}>
+                             onClick={() => openProfileModalRef.current && openProfileModalRef.current(post)}>
                           {/* 번호 */}
                           <div className="col-span-1 text-center text-blue-600 font-medium">
                             {(() => {
@@ -2081,12 +2114,12 @@ export default function RequestBoardFirebase() {
                     수정
                   </button>
                 )}
-                <button
-                  onClick={closeProfileModal}
-                  className="text-gray-400 hover:text-gray-600 text-2xl"
-                >
-                  ✕
-                </button>
+              <button
+                onClick={closeProfileModal}
+                className="text-gray-400 hover:text-gray-600 text-2xl"
+              >
+                ✕
+              </button>
               </div>
             </div>
             

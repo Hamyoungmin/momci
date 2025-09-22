@@ -1579,12 +1579,12 @@ export default function BrowseBoard() {
                     프로필 끌어올림
                   </button>
                 )}
-                <button
-                  onClick={closeProfileModal}
-                  className="text-gray-400 hover:text-gray-600 text-2xl"
-                >
-                  ✕
-                </button>
+              <button
+                onClick={closeProfileModal}
+                className="text-gray-400 hover:text-gray-600 text-2xl"
+              >
+                ✕
+              </button>
               </div>
             </div>
             
