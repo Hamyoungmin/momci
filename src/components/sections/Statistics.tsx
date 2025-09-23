@@ -118,7 +118,6 @@ export default function Statistics() {
   
   useEffect(() => {
     setIsVisible(true);
-    // 컴포넌트 마운트 후 0.5초 뒤에 애니메이션 시작
     const timer = setTimeout(() => {
       if (!hasStartedAnimation && !loading) {
         count1.startCountUp();
@@ -127,9 +126,10 @@ export default function Statistics() {
         setHasStartedAnimation(true);
       }
     }, 500);
-
     return () => clearTimeout(timer);
-  }, [loading, hasStartedAnimation, count1, count2, count3]);
+  // 의존성을 최소화해 불필요한 재실행 방지
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, hasStartedAnimation]);
 
   const stats = [
     {

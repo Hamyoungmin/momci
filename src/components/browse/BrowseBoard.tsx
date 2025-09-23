@@ -80,6 +80,12 @@ export default function BrowseBoard() {
   const [selectedProfile, setSelectedProfile] = useState<Teacher | null>(null);
   const [isProfileModalClosing, setIsProfileModalClosing] = useState(false);
   const [isBumpingProfile, setIsBumpingProfile] = useState(false);
+
+	// 프로필 끌어올림 확인/성공 모달 상태
+	const [showBumpConfirmModal, setShowBumpConfirmModal] = useState(false);
+	const [isBumpConfirmClosing, setIsBumpConfirmClosing] = useState(false);
+	const [showBumpSuccessModal, setShowBumpSuccessModal] = useState(false);
+	const [isBumpSuccessClosing, setIsBumpSuccessClosing] = useState(false);
   
   // 1:1 채팅 모달 상태 (안전 매칭 모달은 사용 중지)
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -307,8 +313,8 @@ export default function BrowseBoard() {
                 teacher.schedule = profileData?.schedule || teacher.schedule;
                 teacher.videoUrl = profileData?.videoUrl || ''; // 자기소개 영상 URL
                 
-                // 인증 상태 업데이트 - 실제 프로필 데이터 기반 + 관리자 승인 상태
-                teacher.isVerified = profileData?.isVerified || false; // 모든별 인증
+                // 인증 상태 업데이트 - 실제 프로필 데이터 기반 + 자동 인증(isVerified)
+                teacher.isVerified = !!profileData?.isVerified; // 모든별 인증
                 teacher.hasCertification = profileData?.hasCertification || (profileData?.certifications && profileData.certifications.length > 0) || false;
                 teacher.hasExperienceProof = profileData?.hasExperienceProof || !!profileData?.career;
                 teacher.hasIdVerification = profileData?.hasIdVerification || !!profileData?.status;
@@ -478,6 +484,27 @@ export default function BrowseBoard() {
       setIsSuccessModalClosing(false);
     }, 300);
   };
+
+	// 프로필 끌어올림 확인 모달 열기/닫기
+	const openBumpConfirmModal = () => {
+		setShowBumpConfirmModal(true);
+	};
+	const closeBumpConfirmModal = () => {
+		setIsBumpConfirmClosing(true);
+		setTimeout(() => {
+			setShowBumpConfirmModal(false);
+			setIsBumpConfirmClosing(false);
+		}, 300);
+	};
+
+	// 프로필 끌어올림 성공 모달 닫기
+	const closeBumpSuccessModal = () => {
+		setIsBumpSuccessClosing(true);
+		setTimeout(() => {
+			setShowBumpSuccessModal(false);
+			setIsBumpSuccessClosing(false);
+		}, 300);
+	};
 
   // 프로필 등록 확인 팝업 열기
   const openConfirmModal = () => {
@@ -653,7 +680,7 @@ export default function BrowseBoard() {
   };
 
   // 프로필 끌어올림 (24시간 1회 제한, 본인 또는 관리자만)
-  const handleBumpProfile = async () => {
+	const handleBumpProfile = async () => {
     if (!currentUser || !userData || !selectedProfile) {
       alert('로그인이 필요합니다.');
       return;
@@ -690,9 +717,9 @@ export default function BrowseBoard() {
         setIsBumpingProfile(false);
         return;
       }
-      // 서버 재확인 (동일 필드 업데이트) 및 상위 노출: createdAt 갱신
-      await updateDoc(profRef, { createdAt: serverTimestamp(), bumpedAt: serverTimestamp() });
-      alert('프로필을 상단으로 끌어올렸습니다.');
+			// 서버 재확인 (동일 필드 업데이트) 및 상위 노출: createdAt 갱신
+			await updateDoc(profRef, { createdAt: serverTimestamp(), bumpedAt: serverTimestamp() });
+			setShowBumpSuccessModal(true);
     } catch (e) {
       console.error('프로필 끌어올림 실패:', e);
       alert('프로필 끌어올림에 실패했습니다. 잠시 후 다시 시도해주세요.');
@@ -700,6 +727,14 @@ export default function BrowseBoard() {
       setIsBumpingProfile(false);
     }
   };
+
+	// 확인 모달에서 "네, 끌어올립니다" 클릭 시 실행
+	const confirmBumpProfile = async () => {
+		closeBumpConfirmModal();
+		setTimeout(() => {
+			void handleBumpProfile();
+		}, 300);
+	};
 
   // 상세 프로필 모달 닫기
   const closeProfileModal = () => {
@@ -1125,8 +1160,12 @@ export default function BrowseBoard() {
                   등록된 선생님이 없습니다.
                 </div>
               ) : (
-                currentTeachers.map((teacher) => (
-                  <div key={teacher.id} className="bg-white rounded-2xl border-2 border-blue-100 p-6 hover:shadow-lg transition-all duration-200 hover:border-blue-200">
+					currentTeachers.map((teacher) => (
+					  <div
+						key={teacher.id}
+						className="bg-white rounded-2xl border-2 border-blue-100 p-6 hover:shadow-lg transition-all duration-200 hover:border-blue-200 cursor-pointer"
+						onClick={() => openProfileModal(teacher)}
+					  >
                     <div className="flex items-start justify-between">
                       {/* 왼쪽: 프로필 정보 */}
                       <div className="flex items-start space-x-4 flex-1">
@@ -1226,16 +1265,16 @@ export default function BrowseBoard() {
                       
                       {/* 오른쪽: 채팅 버튼 */}
                       <div className="flex flex-col items-end space-y-3 ml-6">
-                        <button 
-                          onClick={openChatFlow}
+						<button 
+						  onClick={(e) => { e.stopPropagation(); openChatFlow(); }}
                           className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-2xl font-medium transition-colors shadow-sm"
                         >
                           1:1 채팅
                         </button>
                         
                         <div className="text-right">
-                          <button 
-                            onClick={() => openProfileModal(teacher)}
+						<button 
+						  onClick={(e) => { e.stopPropagation(); openProfileModal(teacher); }}
                             className="text-xs text-gray-500 hover:text-blue-600 mb-1 cursor-pointer transition-colors"
                           >
                             상세 프로필 보기 &gt;
@@ -1559,6 +1598,50 @@ export default function BrowseBoard() {
         </div>
       )}
 
+		{/* 프로필 끌어올림 확인 모달 */}
+		{showBumpConfirmModal && (
+			<div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[60]">
+				<div className={`bg-white rounded-2xl p-8 max-w-sm w-[90vw] shadow-xl bump-confirm-modal ${isBumpConfirmClosing ? 'animate-fadeOut' : 'animate-fadeIn'}`}>
+					<div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4">
+						<svg className="w-10 h-10 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+							<path strokeLinecap="round" strokeLinejoin="round" d="M12 16V7" />
+							<path strokeLinecap="round" strokeLinejoin="round" d="M8.5 10.5L12 7l3.5 3.5" />
+						</svg>
+					</div>
+					<h2 className="text-lg sm:text-xl font-bold text-gray-900 text-center mb-2">
+						프로필을<br/>맨 위로 올리시겠습니까?
+					</h2>
+					<div className="text-center mb-6">
+						<p className="text-xs text-gray-500">목록의 최상단으로 노출되며,</p>
+						<p className="text-xs text-gray-500"><span className="text-blue-600 font-semibold">24시간에 한 번</span>만 사용할 수 있습니다.</p>
+					</div>
+					<div className="flex gap-3">
+						<button onClick={closeBumpConfirmModal} className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-colors">취소</button>
+						<button onClick={confirmBumpProfile} className="flex-1 px-4 py-3 bg-blue-500 text-white rounded-xl font-semibold hover:bg-blue-600 transition-colors">네, 끌어올립니다</button>
+					</div>
+				</div>
+			</div>
+		)}
+
+		{/* 프로필 끌어올림 성공 모달 */}
+		{showBumpSuccessModal && (
+			<div className="fixed inset-0 flex items-center justify-center z-[60]">
+				<div className={`bg-white rounded-3xl p-8 max-w-md w-[90%] text-center shadow-2xl transform ${isBumpSuccessClosing ? 'animate-fadeOut' : 'animate-fadeIn'}`}>
+					<div className="mb-6">
+						<div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto">
+							<svg className="w-12 h-12 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+								<path strokeLinecap="round" strokeLinejoin="round" d="M12 16V7" />
+								<path strokeLinecap="round" strokeLinejoin="round" d="M8.5 10.5L12 7l3.5 3.5" />
+							</svg>
+						</div>
+					</div>
+					<h2 className="text-2xl font-bold text-gray-900 mb-3">끌어올림에 성공했습니다.</h2>
+					<p className="text-gray-600 mb-8">프로필이 목록 상단에 노출됩니다.</p>
+					<button onClick={closeBumpSuccessModal} className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 rounded-2xl font-medium transition-colors w-full">확인</button>
+				</div>
+			</div>
+		)}
+
       {/* 상세 프로필 모달 */}
       {showProfileModal && selectedProfile && (
         <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50">
@@ -1567,9 +1650,9 @@ export default function BrowseBoard() {
             <div className="flex justify-between items-center p-6 pb-2">
               <div></div>
               <div className="flex items-center gap-2">
-                {(currentUser && userData && selectedProfile && ((selectedProfile.authorId || selectedProfile.id) === currentUser.uid || userData.userType === 'admin')) && (
+				{(currentUser && userData && selectedProfile && ((selectedProfile.authorId || selectedProfile.id) === currentUser.uid || userData.userType === 'admin')) && (
                   <button
-                    onClick={handleBumpProfile}
+						onClick={openBumpConfirmModal}
                     disabled={isBumpingProfile}
                     className="inline-flex items-center bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-sm"
                   >

@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { collection, addDoc, serverTimestamp, onSnapshot, orderBy, query, updateDoc, doc } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, onSnapshot, orderBy, query, updateDoc, doc, where, getDocs, setDoc, getDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, auth, storage } from '@/lib/firebase';
+import { addReviewBonusTokens } from '@/lib/interviewTokens';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { Timestamp } from 'firebase/firestore';
 
@@ -276,6 +277,15 @@ export default function ReviewsList() {
         console.log('📝 이미지 없이 후기만 등록');
       }
       
+      // 3. 보상 지급 조건 확인 및 인터뷰권 지급 (2건 작성당 +1, 최대 3회)
+      try {
+        if (currentUser) {
+          await giveReviewBonusIfEligible(currentUser.uid);
+        }
+      } catch (bonusError) {
+        console.error('보상 지급 로직 수행 중 오류:', bonusError);
+      }
+
       alert('후기가 성공적으로 작성되었습니다!');
       closeWriteModal();
       
@@ -304,6 +314,42 @@ export default function ReviewsList() {
       }
       
       alert(errorMessage + '\n\n개발자도구 콘솔에서 상세 에러를 확인해주세요.');
+    }
+  };
+
+  // 보상 지급 로직: 2건 작성 시 +1, 회원당 최대 3회
+  const giveReviewBonusIfEligible = async (userId: string) => {
+    // 총 작성한 일반 후기 개수 조회
+    const q = query(collection(db, 'reviews'), where('userId', '==', userId));
+    const snap = await getDocs(q);
+    const totalReviews = snap.size;
+
+    // 현재까지 보상 지급 횟수 조회/초기화
+    const bonusRef = doc(db, 'review-bonus', userId);
+    const bonusSnap = await getDoc(bonusRef);
+    const awardedCount = bonusSnap.exists() ? (bonusSnap.data().awardedCount || 0) : 0;
+
+    const eligibleAwards = Math.min(3, Math.floor(totalReviews / 2)) - awardedCount;
+    if (eligibleAwards > 0) {
+      // 규칙상 +1 단위로 안전 지급
+      let success = 0;
+      for (let i = 0; i < eligibleAwards; i++) {
+        const ok = await addReviewBonusTokens(userId, 1);
+        if (ok) success++;
+      }
+      if (success > 0) {
+        // 지급 횟수 갱신
+        if (bonusSnap.exists()) {
+          await updateDoc(bonusRef, { awardedCount: awardedCount + success, updatedAt: serverTimestamp() });
+        } else {
+          await setDoc(bonusRef, { awardedCount: success, updatedAt: serverTimestamp() });
+        }
+        if (success === 1) {
+          alert('인터뷰권 1회가 지급되었습니다!');
+        } else {
+          alert(`인터뷰권 ${success}회가 지급되었습니다!`);
+        }
+      }
     }
   };
 
@@ -634,6 +680,10 @@ function ReviewWriteModal({ isOpen, isClosing, onClose, onSubmit, currentUser }:
       alert('필수 항목을 모두 입력해주세요.\n* 별점 평가\n* 어떤 점이 좋았는지 선택\n* 상세한 후기 내용\n\n※ 사진 첨부는 선택사항입니다.');
       return;
     }
+    if (formData.content.trim().length < 30) {
+      alert('후기는 최소 30자 이상 작성해 주세요.');
+      return;
+    }
     
     // 사진은 선택사항임을 명시
     console.log('📝 후기 제출:', {
@@ -739,6 +789,14 @@ function ReviewWriteModal({ isOpen, isClosing, onClose, onSubmit, currentUser }:
             </div>
           </div>
 
+          {/* 보상 안내 문구 (연한 파란색 박스 + 중앙 정렬) */}
+          <div className="bg-gray-50 rounded-lg border border-gray-200 p-4 text-center">
+            <p className="text-sm text-black">
+              후기 2건 작성 시 <span className="text-blue-600 font-semibold">인터뷰권 1회</span>가 증정됩니다! <span className="font-extrabold">(회원당 최대 3회)</span>
+            </p>
+            <p className="text-xs text-black mt-1">단, 후기는 최소 30자 이상 작성해주셔야 해요.</p>
+          </div>
+
           {/* 상세 후기 */}
           <div>
             <label className="block text-base font-medium text-gray-900 mb-3">상세한 후기를 남겨주세요</label>
@@ -750,6 +808,9 @@ function ReviewWriteModal({ isOpen, isClosing, onClose, onSubmit, currentUser }:
               className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none text-sm transition-all duration-200"
               required
             />
+            <div className={`mt-1 text-xs ${formData.content.trim().length < 30 ? 'text-red-500' : 'text-gray-500'}`}>
+              최소 30자 이상 (현재 {formData.content.trim().length}자)
+            </div>
           </div>
 
           {/* 사진 첨부 */}
@@ -804,7 +865,12 @@ function ReviewWriteModal({ isOpen, isClosing, onClose, onSubmit, currentUser }:
           <div className="pt-6">
             <button
               type="submit"
-              className="w-full py-4 bg-cyan-500 hover:bg-cyan-600 text-white text-lg font-medium rounded-lg transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+              disabled={formData.rating === 0 || formData.selectedTags.length === 0 || formData.content.trim().length < 30}
+              className={`w-full py-4 text-white text-lg font-medium rounded-lg transition-all duration-200 ${
+                formData.rating === 0 || formData.selectedTags.length === 0 || formData.content.trim().length < 30
+                  ? 'bg-cyan-300 cursor-not-allowed'
+                  : 'bg-cyan-500 hover:bg-cyan-600 hover:scale-[1.02] active:scale-[0.98]'
+              }`}
             >
               후기 등록하기
             </button>

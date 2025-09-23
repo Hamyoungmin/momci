@@ -1202,6 +1202,26 @@ export default function TeacherSearchBoard() {
                     />
                   </div>
 
+                  {/* 경력 (추가) - 자격증과 치료비 사이 */}
+                  <div className="mb-4">
+                    <h5 className="text-base font-semibold text-gray-900 mb-2">경력</h5>
+                    <select
+                      value={formData.experience}
+                      onChange={(e) => handleFormChange('experience', e.target.value)}
+                      className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      {(() => {
+                        const options: string[] = ['1년 미만'];
+                        for (let year = 1; year <= 30; year += 1) {
+                          options.push(`${year}년차`);
+                        }
+                        return options.map((label) => (
+                          <option key={label} value={label}>{label}</option>
+                        ));
+                      })()}
+                    </select>
+                  </div>
+
                   {/* 희망 시간당 치료비 */}
                   <div className="mb-4">
                     <label className="block text-sm font-medium text-gray-700 mb-2">희망 시간당 치료비 *</label>

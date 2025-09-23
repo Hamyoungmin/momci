@@ -24,6 +24,12 @@ export interface UserData {
   agreeTerms: boolean;
   agreePrivacy: boolean;
   agreeMarketing: boolean;
+  // 선택 필드: 인증/통계 관련 (Firestore 문서에 존재할 수 있음)
+  isVerified?: boolean;
+  certificationBadge?: 'certified' | 'regular' | string;
+  totalMatches?: number;
+  reviewCount?: number;
+  rating?: number;
 }
 
 // 회원가입

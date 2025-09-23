@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { collection, query, where, onSnapshot, doc, getDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { useTherapistVerificationMetrics, tryAutoVerifyTherapist } from '@/hooks/useTherapistVerificationMetrics';
 import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 
@@ -66,6 +67,80 @@ export default function MyPage() {
   // 새로운 채팅 요청들
   const [chatRequests, setChatRequests] = useState<ChatRequest[]>([]);
   const [chatRequestsLoading, setChatRequestsLoading] = useState(true);
+
+  // 치료사 인증 메트릭 계산 (치료사 계정에서만 의미)
+  const metrics = useTherapistVerificationMetrics(userData?.userType === 'therapist' ? currentUser?.uid : undefined);
+  const matchesOK = metrics.totalMatches >= 3;
+  const reviewsOK = metrics.reviewCount >= 2 && metrics.averageRating >= 4.5;
+  const matchesWidth = Math.min(100, (metrics.totalMatches / 3) * 100);
+  const ratingWidth = Math.min(100, (metrics.averageRating / 5) * 100);
+
+  const renderVerificationCard = () => (
+    <div className="mb-6">
+      <div className="bg-white rounded-xl border border-gray-200 p-4">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-base font-bold text-gray-900 flex items-center">
+            <span className="text-yellow-400 mr-2">⭐</span>
+            모든별 인증 전문가가 되기
+          </h3>
+          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-200 text-gray-600 text-xs" title="조건 충족 시 자동 등록">i</span>
+        </div>
+
+        <div className="space-y-3">
+          <div>
+            <div className="flex items-center justify-between">
+              <div className={`text-sm ${matchesOK ? 'text-gray-900' : 'text-gray-700'}`}>
+                <span className={`${matchesOK ? 'text-blue-600' : 'text-gray-400'}`}>✓</span> 매칭 성공 3회 이상
+              </div>
+              <div className="text-sm font-medium text-gray-900">{metrics.totalMatches}회 / 3회</div>
+            </div>
+            <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden mt-1">
+              <div className="h-2 bg-blue-500 rounded-full" style={{ width: `${matchesWidth}%` }} />
+            </div>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between">
+              <div className={`text-sm ${reviewsOK ? 'text-gray-900' : 'text-gray-700'}`}>
+                <span className={`${reviewsOK ? 'text-blue-600' : 'text-gray-400'}`}>✓</span> 후기 평균 4.5점 이상 (최소 2개)
+              </div>
+              <div className="text-sm font-medium text-gray-900">{metrics.averageRating.toFixed(1)}점 / {metrics.reviewCount}개</div>
+            </div>
+            <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden mt-1">
+              <div className="h-2 bg-blue-500 rounded-full" style={{ width: `${ratingWidth}%` }} />
+            </div>
+          </div>
+
+          <div className="text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded-lg p-2 text-center">
+            모든 조건을 달성하시면 &apos;모든별 인증 전문가&apos;로 즉시 자동 등록됩니다.
+          </div>
+        </div>
+
+        {metrics.meetsCriteria && !(userData as { isVerified?: boolean } | null)?.isVerified && (
+          <button
+            onClick={() => currentUser && tryAutoVerifyTherapist(currentUser.uid)}
+            className="w-full bg-blue-500 hover:bg-blue-600 text-white text-sm font-semibold py-2 rounded-lg"
+          >
+            조건 달성! 인증 등록하기
+          </button>
+        )}
+        {(userData as { isVerified?: boolean } | null)?.isVerified && (
+          <div className="text-sm text-blue-700 bg-blue-50 border border-blue-100 rounded-lg p-2 text-center">
+            ⭐ 이미 모든별 인증 전문가입니다
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  // 조건 충족 시 자동 인증 반영 (한 번만 시도)
+  useEffect(() => {
+    if (!currentUser || userData?.userType !== 'therapist') return;
+    const isVerified = (userData as { isVerified?: boolean } | null)?.isVerified;
+    if (metrics.meetsCriteria && !isVerified) {
+      tryAutoVerifyTherapist(currentUser.uid);
+    }
+  }, [metrics.meetsCriteria, currentUser, userData]);
 
   useEffect(() => {
     if (!loading && !currentUser) {
@@ -437,7 +512,10 @@ export default function MyPage() {
             </button>
           </div>
 
-          {/* 메뉴 섹션 */}
+          {/* 모든별 인증 전문가가 되기 (치료사 전용) */}
+          {/* 인증 카드(치료사 전용)는 프로필 카드 아래로 분리 렌더링합니다 */}
+
+          
           <div className="space-y-4">
             {/* 이용권 관리 - 인증된 사용자만 표시 */}
             {userData && ['parent', 'therapist'].includes(userData.userType) && (
@@ -493,7 +571,8 @@ export default function MyPage() {
           </div>
         </div>
 
-        {/* 사용자 타입에 따른 섹션 제목 */}
+        {userData?.userType === 'therapist' && renderVerificationCard()}
+
         <div className="mb-4">
           <h2 className="text-lg font-semibold text-gray-900">
             {userData?.userType === 'therapist' ? '내가 지원한 곳' : '나의 요청글 관리'}
@@ -727,7 +806,7 @@ export default function MyPage() {
             )
           )}
         </div>
-        </div> {/* 컨텐츠 영역 - 연한 파란색 배경 끝 */}
+        </div>
       </div>
     </div>
   );

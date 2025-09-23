@@ -58,6 +58,19 @@ service cloud.firestore {
              );
     }
 
+    // 학부모 구독 활성 여부 확인
+    function hasActiveParentSubscription(userId) {
+      return exists(/databases/$(database)/documents/user-subscription-status/$(userId)) &&
+             get(/databases/$(database)/documents/user-subscription-status/$(userId)).data.hasActiveSubscription == true &&
+             (
+               (get(/databases/$(database)/documents/user-subscription-status/$(userId)).data.expiryDate is timestamp &&
+                get(/databases/$(database)/documents/user-subscription-status/$(userId)).data.expiryDate > request.time)
+             ) &&
+             (
+               get(/databases/$(database)/documents/user-subscription-status/$(userId)).data.subscriptionType in ['parent']
+             );
+    }
+
     // 만료 후 유예 기간 허용 (days 일 이내)
     function isWithinTherapistGrace(userId, days) {
       return exists(/databases/$(database)/documents/user-subscription-status/$(userId)) &&
@@ -74,6 +87,16 @@ service cloud.firestore {
       // 더 유연한 전화번호 패턴 (하이픈 있거나 없거나 모두 허용)
       return phone.matches('^01[0-9]-?[0-9]{3,4}-?[0-9]{4}$') ||
              phone.matches('^01[0-9][0-9]{7,8}$');
+    }
+    
+    // 드롭다운 경력 라벨 유효성 검사 ("1년 미만" ~ "30년차")
+    function isValidExperienceLabel(label) {
+      return label in [
+        '1년 미만', '1년차', '2년차', '3년차', '4년차', '5년차', '6년차', '7년차', '8년차', '9년차',
+        '10년차', '11년차', '12년차', '13년차', '14년차', '15년차', '16년차', '17년차', '18년차', '19년차',
+        '20년차', '21년차', '22년차', '23년차', '24년차', '25년차', '26년차', '27년차', '28년차', '29년차',
+        '30년차'
+      ];
     }
     
     function hasRecentActivity() {
@@ -124,7 +147,21 @@ service cloud.firestore {
                          'hasCertification', 'hasExperienceProof', 'hasIdVerification',
                          'profileStatus', 'certificationBadge', 'totalMatches', 'status',
                          'interviewTokens', 'lastTokenUsed', 'lastTokenRefunded', 'lastTokenAdded'
-                       ]) || isAdmin()) &&
+                       ]) || isAdmin() || (
+                         // 자동 인증 예외: 시스템이 통계 필드를 갱신하며 인증 플래그를 true로 설정하려는 경우 허용
+                         request.resource.data.isVerified == true &&
+                         request.resource.data.certificationBadge == 'certified' &&
+                         // 통계 조건을 만족해야 함 (최소값 기준)
+                         request.resource.data.totalMatches >= 3 &&
+                         request.resource.data.reviewCount >= 2 &&
+                         request.resource.data.rating >= 4.5
+                       ) || (
+                         // 통계 요약 필드(진행바용)만 소유자가 갱신하는 경우 허용
+                         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['totalMatches','reviewCount','rating','updatedAt']) &&
+                         request.resource.data.totalMatches is number && request.resource.data.totalMatches >= 0 &&
+                         request.resource.data.reviewCount is number && request.resource.data.reviewCount >= 0 &&
+                         request.resource.data.rating is number && request.resource.data.rating >= 0 && request.resource.data.rating <= 5
+                       )) &&
                        // 전화번호 검증 (수정 시에만)
                        (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['phone']) || 
                         (request.resource.data.phone is string &&
@@ -242,9 +279,20 @@ service cloud.firestore {
       
       // 프로필 수정 - 본인은 일부 필드만, 관리자는 상태 변경 가능
       allow update: if (isOwner(resource.data.userId) && 
-                        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['userId', 'createdAt', 'status', 'verificationDate'])) ||
-                       (isAdmin() && 
-                        request.resource.data.status in ['pending', 'approved', 'rejected']);
+                       !request.resource.data.diff(resource.data).affectedKeys().hasAny(['userId', 'createdAt', 'status', 'verificationDate'])) ||
+                      (isAdmin() && 
+                       request.resource.data.status in ['pending', 'approved', 'rejected']) ||
+                      (
+                        // 자동 인증 예외 (users와 동일 기준)
+                        request.resource.data.isVerified == true &&
+                        request.resource.data.rating >= 4.5 &&
+                        request.resource.data.reviewCount >= 2
+                      ) || (
+                        // 진행바 동기화용 통계 필드만 갱신 허용
+                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reviewCount','rating','updatedAt']) &&
+                        request.resource.data.reviewCount is number && request.resource.data.reviewCount >= 0 &&
+                        request.resource.data.rating is number && request.resource.data.rating >= 0 && request.resource.data.rating <= 5
+                      );
       
       // 프로필 삭제 - 관리자만
       allow delete: if isAdmin();
@@ -958,11 +1006,13 @@ service cloud.firestore {
                          // 학부모 요청 게시글 (type: 'request')
                          (request.resource.data.type == 'request' && 
                           exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-                          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType == 'parent') ||
+                          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType == 'parent' &&
+                          hasActiveParentSubscription(request.auth.uid)) ||
                          // 치료사 홍보 게시글 (type: 'teacher-offer') 
                          (request.resource.data.type == 'teacher-offer' && 
                           exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-                          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType == 'therapist')
+                          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType == 'therapist' &&
+                          hasActiveTherapistSubscription(request.auth.uid))
                        ) &&
                        (isFAQAdmin() || hasRecentActivity()) &&
                        rateLimitCheck(5); // 분당 5개 제한
@@ -1394,9 +1444,9 @@ service cloud.firestore {
                        request.resource.data.category is string &&
                        request.resource.data.author is string &&
                        request.resource.data.helpfulCount == 0 &&
-                       // 최소 길이 검증 (관대하게)
+                       // 최소 길이 검증 강화
                        request.resource.data.title.size() >= 1 &&
-                       request.resource.data.content.size() >= 5 &&
+                       request.resource.data.content.size() >= 30 &&
                        request.resource.data.author.size() >= 1 &&
                        request.resource.data.category.size() >= 1 &&
                        // 선택적 필드 검증 (빈 배열도 허용)
@@ -1500,13 +1550,18 @@ service cloud.firestore {
                        ]) &&
                        request.resource.data.status == 'pending' &&
                        request.resource.data.agreeTerms == true &&
+                       // 경력 드롭다운 라벨 검증 허용 (문자열)
+                       (request.resource.data.experience is string && isValidExperienceLabel(request.resource.data.experience)) &&
                        hasRecentActivity();
       
       // 치료사 본인은 pending 상태일 때만 수정 가능, 관리자는 상태 변경 가능
       allow update: if isAuthenticated() && 
                        ((resource.data.userId == request.auth.uid && 
                          resource.data.status == 'pending' &&
-                         !request.resource.data.diff(resource.data).affectedKeys().hasAny(['userId', 'createdAt', 'status'])) ||
+                         !request.resource.data.diff(resource.data).affectedKeys().hasAny(['userId', 'createdAt', 'status']) &&
+                         // 경력 라벨 업데이트 시에도 허용
+                         (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['experience']) ||
+                          (request.resource.data.experience is string && isValidExperienceLabel(request.resource.data.experience)))) ||
                         (isAdmin() && 
                          request.resource.data.status in ['pending', 'approved', 'rejected', 'hold']));
       
@@ -1556,15 +1611,16 @@ service cloud.firestore {
       // 본인과 관리자만 읽기 가능
       allow read: if isOwnerOrAdmin(userId);
       
-      // 본인만 이용권 구매 기록 생성 가능
-      allow create: if isOwner(userId) && 
-                       request.resource.data.keys().hasAll(['userId', 'subscriptionType', 'purchaseDate', 'expiryDate', 'status', 'amount']) &&
-                       request.resource.data.userId == userId &&
-                       request.resource.data.subscriptionType in ['parent', 'therapist'] &&
-                       request.resource.data.status == 'active' &&
-                       request.resource.data.amount is number &&
-                       request.resource.data.amount > 0 &&
-                       hasRecentActivity();
+      // 본인 또는 관리자 생성 가능 (관리자는 0원 이벤트/지급 가능)
+      allow create: if (
+                        (isOwner(userId) && request.resource.data.amount is number && request.resource.data.amount > 0) ||
+                        (isAdmin() && request.resource.data.amount is number && request.resource.data.amount >= 0)
+                      ) &&
+                      request.resource.data.keys().hasAll(['userId', 'subscriptionType', 'purchaseDate', 'expiryDate', 'status', 'amount']) &&
+                      request.resource.data.userId == userId &&
+                      request.resource.data.subscriptionType in ['parent', 'therapist'] &&
+                      request.resource.data.status in ['active', 'expired', 'cancelled'] &&
+                      hasRecentActivity();
       
       // 관리자만 상태 변경 가능 (만료, 환불 등)
       allow update: if isAdmin() &&

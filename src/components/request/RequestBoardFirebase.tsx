@@ -146,6 +146,12 @@ export default function RequestBoardFirebase() {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [isSuccessModalClosing, setIsSuccessModalClosing] = useState(false);
 
+  // 게시글 끌어올림 확인/성공 모달 상태
+  const [showBumpConfirmModal, setShowBumpConfirmModal] = useState(false);
+  const [isBumpConfirmClosing, setIsBumpConfirmClosing] = useState(false);
+  const [showBumpSuccessModal, setShowBumpSuccessModal] = useState(false);
+  const [isBumpSuccessClosing, setIsBumpSuccessClosing] = useState(false);
+
   // 새 게시글 작성용 상태
   const [newPost, setNewPost] = useState({
     treatment: '',
@@ -251,16 +257,16 @@ export default function RequestBoardFirebase() {
 
   // URL 쿼리로 들어온 postId 감지 (예: /request?postId=abc)
   const searchParams = useSearchParams();
+  const openedPostIdRef = useRef<string | null>(null);
   useEffect(() => {
     const targetPostId = searchParams?.get('postId');
     if (!targetPostId || !postsData.length) return;
+    if (openedPostIdRef.current === targetPostId) return;
 
     const found = postsData.find((p) => p.id === targetPostId);
-    if (found) {
-      // 이미 데이터가 로드된 상태면 해당 게시글 팝업 오픈
-      if (openProfileModalRef.current) {
-        openProfileModalRef.current(found);
-      }
+    if (found && openProfileModalRef.current) {
+      openedPostIdRef.current = targetPostId;
+      openProfileModalRef.current(found);
     }
   }, [searchParams, postsData]);
 
@@ -860,11 +866,33 @@ export default function RequestBoardFirebase() {
   const handleBumpPost = async (postId: string) => {
     try {
       const postRef = doc(db, 'posts', postId);
+
+      // 24시간 제한 확인 (bumpedAt 기준)
+      const snap = await getDoc(postRef);
+      if (snap.exists()) {
+        const data = snap.data() as { bumpedAt?: Timestamp | Date | string | null };
+        const bumpedAt = data.bumpedAt;
+        let last: Date | null = null;
+        if (bumpedAt instanceof Timestamp) {
+          last = bumpedAt.toDate();
+        } else if (bumpedAt instanceof Date) {
+          last = bumpedAt;
+        } else if (typeof bumpedAt === 'string') {
+          last = new Date(bumpedAt);
+        }
+        if (last && Date.now() - last.getTime() < 24 * 60 * 60 * 1000) {
+          const remainMs = 24 * 60 * 60 * 1000 - (Date.now() - last.getTime());
+          const remainHours = Math.ceil(remainMs / (60 * 60 * 1000));
+          alert(`게시글 끌어올림은 24시간에 한 번만 가능합니다. 약 ${remainHours}시간 후 다시 시도해주세요.`);
+          return;
+        }
+      }
       await updateDoc(postRef, {
         createdAt: serverTimestamp(),
         bumpedAt: serverTimestamp(),
       });
       console.log('📌 게시글 끌어올림 완료:', postId);
+      setShowBumpSuccessModal(true);
     } catch (error) {
       console.error('❌ 게시글 끌어올림 실패:', error);
       alert('게시글 끌어올림에 실패했습니다. 잠시 후 다시 시도해주세요.');
@@ -1340,6 +1368,14 @@ export default function RequestBoardFirebase() {
       // 응답 확인 모달 외부 클릭 시 모달 닫기
       if (showResponseConfirmModal && !target.closest('.response-confirm-modal')) {
         closeResponseConfirmModal();
+      }
+      // 게시글 끌어올림 확인 모달 외부 클릭 시 닫기
+      if (showBumpConfirmModal && !target.closest('.post-bump-confirm-modal')) {
+        setIsBumpConfirmClosing(true);
+        setTimeout(() => {
+          setShowBumpConfirmModal(false);
+          setIsBumpConfirmClosing(false);
+        }, 300);
       }
     };
 
@@ -2082,6 +2118,49 @@ export default function RequestBoardFirebase() {
         </div>
       )}
 
+      {/* 게시글 끌어올림 확인 모달 */}
+      {showBumpConfirmModal && selectedProfile && (
+        <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[60]">
+          <div className={`bg-white rounded-2xl p-8 max-w-sm w-[90vw] shadow-xl post-bump-confirm-modal ${isBumpConfirmClosing ? 'animate-fadeOut' : 'animate-fadeIn'}`}>
+            <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-10 h-10 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 16V7" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8.5 10.5L12 7l3.5 3.5" />
+              </svg>
+            </div>
+            <h2 className="text-lg sm:text-xl font-bold text-gray-900 text-center mb-2">
+              게시글을<br/>맨 위로 올리시겠습니까?
+            </h2>
+            <div className="text-center mb-6">
+              <p className="text-xs text-gray-500">목록의 최상단으로 노출되며,</p>
+              <p className="text-xs text-gray-500"><span className="text-blue-600 font-semibold">24시간에 한 번</span>만 사용할 수 있습니다.</p>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => { setIsBumpConfirmClosing(true); setTimeout(() => { setShowBumpConfirmModal(false); setIsBumpConfirmClosing(false); }, 300); }} className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-colors">취소</button>
+              <button onClick={() => { setIsBumpConfirmClosing(true); setTimeout(() => { setShowBumpConfirmModal(false); setIsBumpConfirmClosing(false); if (selectedProfile?.id) { void handleBumpPost(selectedProfile.id); } }, 300); }} className="flex-1 px-4 py-3 bg-blue-500 text-white rounded-xl font-semibold hover:bg-blue-600 transition-colors">네, 끌어올립니다</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 게시글 끌어올림 성공 모달 */}
+      {showBumpSuccessModal && (
+        <div className="fixed inset-0 flex items-center justify-center z-[60]">
+          <div className={`bg-white rounded-3xl p-8 max-w-md w-[90%] text-center shadow-2xl transform ${isBumpSuccessClosing ? 'animate-fadeOut' : 'animate-fadeIn'}`}>
+            <div className="mb-6">
+              <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto">
+                <svg className="w-12 h-12 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 16V7" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.5 10.5L12 7l3.5 3.5" />
+                </svg>
+              </div>
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-3">끌어올림에 성공했습니다.</h2>
+            <p className="text-gray-600 mb-8">게시글이 목록 상단에 노출됩니다.</p>
+            <button onClick={() => { setIsBumpSuccessClosing(true); setTimeout(() => { setShowBumpSuccessModal(false); setIsBumpSuccessClosing(false); }, 300); }} className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 rounded-2xl font-medium transition-colors w-full">확인</button>
+          </div>
+        </div>
+      )}
     {/* 상세 요청 모달 - 가장 낮은 z-index (다른 모달들이 이 위에 표시됨) */}
     {showProfileModal && selectedProfile && (
         <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-40">
@@ -2093,7 +2172,7 @@ export default function RequestBoardFirebase() {
                 {/* 게시글 끌어올림 */}
                 {selectedProfile && selectedProfile.authorId === currentUser?.uid && (
                   <button
-                    onClick={() => handleBumpPost(selectedProfile.id)}
+                    onClick={() => setShowBumpConfirmModal(true)}
                     className="inline-flex items-center bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-sm"
                   >
                     <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -2270,8 +2349,12 @@ export default function RequestBoardFirebase() {
               <div className="text-center mt-8 pt-6 border-t border-gray-200">
                 <button 
                   onClick={() => {
-                    // 첫 번째(큰) 안전 팝업은 생략하고 바로 확인 팝업으로 이동
-                    setShowParentChatConfirmModal(true);
+                    // 사용자 유형에 따라 알맞은 확인 모달 오픈
+                    if (userData?.userType === 'therapist') {
+                      setShowResponseConfirmModal(true);
+                    } else {
+                      setShowParentChatConfirmModal(true);
+                    }
                   }}
                   className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-4 rounded-lg font-medium transition-colors text-lg w-full max-w-md inline-flex items-center justify-center"
                 >

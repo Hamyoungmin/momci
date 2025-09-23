@@ -186,6 +186,31 @@ export async function addInterviewTokens(
 }
 
 /**
+ * 후기 보상용 인터뷰권 추가 (+reviewBonusAwarded 동시 증가)
+ * - 보안 규칙에서 소유자가 +1씩, 최대 3회까지만 허용하도록 제한합니다.
+ */
+export async function addReviewBonusTokens(
+  userId: string,
+  amount: number = 1
+): Promise<boolean> {
+  try {
+    if (amount !== 1) {
+      // 보안 규칙이 +1만 허용하므로 방어적으로 1만 처리
+      amount = 1;
+    }
+    await updateDoc(doc(db, 'users', userId), {
+      interviewTokens: increment(1),
+      reviewBonusAwarded: increment(1),
+      lastTokenAdded: new Date()
+    });
+    return true;
+  } catch (error) {
+    console.error('❌ 후기 보상 토큰 추가 실패:', error);
+    return false;
+  }
+}
+
+/**
  * 첫 응답 여부 확인
  */
 export async function checkFirstResponse(
