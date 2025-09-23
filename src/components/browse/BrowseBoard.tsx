@@ -680,7 +680,7 @@ export default function BrowseBoard() {
   };
 
   // 프로필 끌어올림 (24시간 1회 제한, 본인 또는 관리자만)
-	const handleBumpProfile = async () => {
+  const handleBumpProfile = async () => {
     if (!currentUser || !userData || !selectedProfile) {
       alert('로그인이 필요합니다.');
       return;
@@ -693,13 +693,14 @@ export default function BrowseBoard() {
     }
     try {
       setIsBumpingProfile(true);
-      const profileDocId = (selectedProfile.id ?? selectedProfile.authorId) as string;
-      if (!profileDocId) {
+      // 게시글 기반 노출이므로 posts 컬렉션의 문서를 끌어올립니다
+      const postId = selectedProfile.id as string;
+      if (!postId) {
         throw new Error('프로필 문서 ID를 확인할 수 없습니다.');
       }
-      const profRef = doc(db, 'teachers', profileDocId);
-      const profSnap = await getDoc(profRef);
-      const data = profSnap.exists() ? (profSnap.data() as { bumpedAt?: Timestamp | Date | string | null }) : {};
+      const postRef = doc(db, 'posts', postId);
+      const postSnap = await getDoc(postRef);
+      const data = postSnap.exists() ? (postSnap.data() as { bumpedAt?: Timestamp | Date | string | null }) : {};
       const bumpedAt = data.bumpedAt;
       let last: Date | null = null;
       if (bumpedAt instanceof Timestamp) {
@@ -718,7 +719,7 @@ export default function BrowseBoard() {
         return;
       }
 			// 서버 재확인 (동일 필드 업데이트) 및 상위 노출: createdAt 갱신
-			await updateDoc(profRef, { createdAt: serverTimestamp(), bumpedAt: serverTimestamp() });
+			await updateDoc(postRef, { createdAt: serverTimestamp(), bumpedAt: serverTimestamp() });
 			setShowBumpSuccessModal(true);
     } catch (e) {
       console.error('프로필 끌어올림 실패:', e);
@@ -1248,17 +1249,17 @@ export default function BrowseBoard() {
                               ✓ 성범죄경력증명서
                             </span>
                             
-                            {/* 모든별 인증 - 파란색 별과 함께 맨 뒤에 표시 */}
-                            {teacher.isVerified && (
-                              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 border border-blue-200">
-                                <span className="text-blue-500 mr-1">⭐</span> 모든별 인증
-                              </span>
-                            )}
-                            
-                            {/* 보험가입 - 추후 구현 */}
+                            {/* 보험가입 */}
                             <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600 border border-gray-200">
                               보험가입
                             </span>
+
+                            {/* 모든별 인증 - 항상 보험가입 오른쪽에 표시, 파란색 별 문자 */}
+                            {teacher.isVerified && (
+                              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 border border-blue-200">
+                                <span className="text-blue-600 mr-1">★</span> 모든별 인증
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>

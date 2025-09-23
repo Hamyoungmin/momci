@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import Image from 'next/image';
 
@@ -20,9 +21,15 @@ interface Teacher {
   treatmentRegion?: string; // 치료 지역
   experience?: string; // 경력
   specialty?: string; // 전문 분야
+  ownerUid?: string; // 소유자 UID
+  isModified?: boolean; // 수정됨 표시 (검토 필요)
+  lastEditedAt?: string; // 마지막 수정일시
 }
 
 export default function TeacherSearchBoard() {
+  const { currentUser } = useAuth();
+  const ADMIN_EMAILS = ['dudals7334@naver.com', 'everystars@naver.com'];
+  const isAdmin = !!currentUser?.email && ADMIN_EMAILS.includes(currentUser.email);
   const [selectedSidebarItem, setSelectedSidebarItem] = useState('치료사등록');
   // const [selectedTab, setSelectedTab] = useState('서울');
   const [searchKeyword, setSearchKeyword] = useState('');
@@ -33,6 +40,9 @@ export default function TeacherSearchBoard() {
   // const [showFilterPopup, setShowFilterPopup] = useState(false);
   const [showRegistrationPopup, setShowRegistrationPopup] = useState(false);
   const [isPopupClosing, setIsPopupClosing] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [activeTeacher, setActiveTeacher] = useState<Teacher | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
 
   // 등록된 치료사 목록 상태
   const [registeredTeachers, setRegisteredTeachers] = useState<Teacher[]>([]);
@@ -309,7 +319,9 @@ export default function TeacherSearchBoard() {
       residence: formData.address?.split(' ')[0] || '지역미정',
       treatmentRegion: formData.region,
       experience: formData.experience,
-      specialty: formData.specialties[0]
+      specialty: formData.specialties[0],
+      ownerUid: currentUser?.uid || undefined,
+      isModified: false
     };
 
     // 치료사 목록에 추가
@@ -893,16 +905,14 @@ export default function TeacherSearchBoard() {
                           </td>
                           <td className="px-4 py-4 w-24">
                             <button 
-                              onClick={() => {
-                                // 향후 상세보기 모달 구현
-                                if (process.env.NODE_ENV === 'development') {
-                                  console.log('상세보기:', teacher);
-                                }
-                              }}
+                              onClick={() => { setActiveTeacher(teacher); setShowDetailModal(true); setIsEditing(false); }}
                               className="text-blue-600 hover:text-blue-800 text-sm font-medium"
                             >
                               상세보기
                             </button>
+                            {teacher.isModified && (
+                              <span className="ml-2 inline-flex px-2 py-0.5 text-[10px] rounded-full bg-yellow-100 text-yellow-800 border border-yellow-200">수정됨</span>
+                            )}
                           </td>
                         </tr>
                       ))
@@ -1655,6 +1665,56 @@ export default function TeacherSearchBoard() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 상세/수정 모달 */}
+      {showDetailModal && activeTeacher && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowDetailModal(false)}>
+          <div className="bg-white rounded-xl w-full max-w-3xl shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b">
+              <h3 className="text-lg font-semibold">치료사 프로필 {isEditing ? '수정' : '상세'}</h3>
+              <div className="flex items-center gap-2">
+                {((currentUser?.uid && activeTeacher.ownerUid === currentUser.uid) || isAdmin) && (
+                  <button onClick={() => setIsEditing((v) => !v)} className="px-3 py-1 text-sm rounded bg-blue-600 text-white">{isEditing ? '보기' : '수정'}</button>
+                )}
+                <button onClick={() => setShowDetailModal(false)} className="text-gray-500 text-xl">×</button>
+              </div>
+            </div>
+
+            {!isEditing ? (
+              <div className="p-4 space-y-2 text-sm">
+                <div><span className="text-gray-500">이름:</span> {activeTeacher.fullName}</div>
+                <div><span className="text-gray-500">분야:</span> {activeTeacher.specialty}</div>
+                <div><span className="text-gray-500">지역:</span> {activeTeacher.treatmentRegion || activeTeacher.residence}</div>
+                <div><span className="text-gray-500">경력:</span> {activeTeacher.experience}</div>
+                <div><span className="text-gray-500">치료비:</span> {activeTeacher.hourlyRate}</div>
+                <div><span className="text-gray-500">상태:</span> {activeTeacher.status}</div>
+                {activeTeacher.isModified && <div className="text-xs text-yellow-700">관리자 검토 대기: 수정된 프로필</div>}
+              </div>
+            ) : (
+              <div className="p-4 space-y-3 text-sm">
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="space-y-1"><span className="text-gray-500">이름</span><input defaultValue={activeTeacher.fullName} className="w-full border rounded px-2 py-1" onChange={(e)=> setActiveTeacher({ ...activeTeacher, fullName: e.target.value })}/></label>
+                  <label className="space-y-1"><span className="text-gray-500">치료비</span><input defaultValue={activeTeacher.hourlyRate} className="w-full border rounded px-2 py-1" onChange={(e)=> setActiveTeacher({ ...activeTeacher, hourlyRate: e.target.value })}/></label>
+                  <label className="space-y-1"><span className="text-gray-500">분야</span><input defaultValue={activeTeacher.specialty} className="w-full border rounded px-2 py-1" onChange={(e)=> setActiveTeacher({ ...activeTeacher, specialty: e.target.value })}/></label>
+                  <label className="space-y-1"><span className="text-gray-500">지역</span><input defaultValue={activeTeacher.treatmentRegion || activeTeacher.residence} className="w-full border rounded px-2 py-1" onChange={(e)=> setActiveTeacher({ ...activeTeacher, treatmentRegion: e.target.value })}/></label>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <button onClick={() => setIsEditing(false)} className="px-3 py-2 rounded bg-gray-100">취소</button>
+                  <button onClick={() => {
+                    // 저장: localStorage 업데이트 + 수정 플래그/상태 변경(검토중)
+                    const updated = registeredTeachers.map(t => t.id === activeTeacher.id ? { ...activeTeacher, isModified: true, status: '검토중', lastEditedAt: new Date().toISOString() } : t);
+                    setRegisteredTeachers(updated);
+                    saveToLocalStorage(updated);
+                    setIsEditing(false);
+                    alert('수정이 저장되었습니다. 관리자 검토 후 반영됩니다.');
+                  }} className="px-3 py-2 rounded bg-blue-600 text-white">저장</button>
+                </div>
+              </div>
+            )}
+
           </div>
         </div>
       )}

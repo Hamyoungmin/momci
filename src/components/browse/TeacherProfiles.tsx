@@ -23,6 +23,8 @@ interface Teacher {
   responseTime: string;
   availability: string;
   createdAt: Date | string | number;
+  certified?: boolean;
+  insured?: boolean;
 }
 
 export default function TeacherProfiles() {
@@ -113,7 +115,9 @@ export default function TeacherProfiles() {
           isOnline: data.isOnline || true,
           responseTime: data.responseTime || '평균 2시간 이내',
           availability: data.availability || '평일/주말 상담 가능',
-          createdAt: data.createdAt
+          createdAt: data.createdAt,
+          certified: data.isVerified === true || data.certificationBadge === 'certified',
+          insured: data.insured === true || data.hasInsurance === true
         });
       }
       
@@ -331,6 +335,18 @@ export default function TeacherProfiles() {
                         <span className="text-gray-500">후기 없음</span>
                       )}
                     </span>
+                    {/* 보험가입 / 인증 배지 영역: 보험가입 오른쪽에 파란 별 */}
+                    {teacher.insured && (
+                      <span className="flex items-center">
+                        <span className="px-2 py-0.5 rounded-full border text-xs bg-white text-gray-700 border-gray-300">보험가입</span>
+                        {teacher.certified && (
+                          <span className="ml-2 inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-500 text-white text-[11px]">★</span>
+                        )}
+                      </span>
+                    )}
+                    {!teacher.insured && teacher.certified && (
+                      <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-500 text-white text-[11px]">★</span>
+                    )}
                   </div>
                   
                   {/* 내용 */}

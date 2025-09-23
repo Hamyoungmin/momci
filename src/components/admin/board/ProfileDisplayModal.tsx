@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 interface TeacherProfile {
@@ -114,7 +114,7 @@ export default function ProfileDisplayModal({ isOpen, onClose, profile, onProfil
         price: editData.hourlyRate,
         title: editData.title,
         rating: editData.rating,
-        updatedAt: new Date()
+        updatedAt: serverTimestamp()
       };
 
       await updateDoc(profileRef, updateData);

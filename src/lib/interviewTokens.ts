@@ -1,7 +1,7 @@
 // 인터뷰권 관리 시스템
 // 학부모의 인터뷰권 차감/복구를 관리합니다
 
-import { doc, getDoc, updateDoc, increment, runTransaction, Timestamp, FieldValue } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, increment, runTransaction, Timestamp, FieldValue, serverTimestamp } from 'firebase/firestore';
 import { db } from './firebase';
 
 // 인터뷰권 관련 타입
@@ -80,7 +80,7 @@ export async function deductInterviewToken(
       // 인터뷰권 1개 차감
       transaction.update(userRef, {
         interviewTokens: currentTokens - 1,
-        lastTokenUsed: new Date()
+        lastTokenUsed: serverTimestamp()
       });
       
       // 사용 내역 기록 (선택사항 - 필요시 구현)
@@ -136,7 +136,7 @@ export async function refundInterviewToken(
       // 인터뷰권 1개 복구
       transaction.update(userRef, {
         interviewTokens: currentTokens + 1,
-        lastTokenRefunded: new Date()
+        lastTokenRefunded: serverTimestamp()
       });
       
       // 복구 내역 기록 (선택사항)
@@ -174,7 +174,7 @@ export async function addInterviewTokens(
 
     await updateDoc(doc(db, 'users', userId), {
       interviewTokens: increment(amount),
-      lastTokenAdded: new Date()
+      lastTokenAdded: serverTimestamp()
     });
 
     console.log('✅ 인터뷰권 추가 완료');
@@ -201,7 +201,7 @@ export async function addReviewBonusTokens(
     await updateDoc(doc(db, 'users', userId), {
       interviewTokens: increment(1),
       reviewBonusAwarded: increment(1),
-      lastTokenAdded: new Date()
+      lastTokenAdded: serverTimestamp()
     });
     return true;
   } catch (error) {
@@ -274,7 +274,7 @@ export async function handleFirstResponse(
       transaction.update(chatRoomRef, {
         firstResponseReceived: true,
         interviewTokenUsed: true,
-        firstResponseAt: new Date()
+        firstResponseAt: serverTimestamp()
       });
       
       return { success: true, tokenDeducted: true };
@@ -347,7 +347,7 @@ export async function handleChatCancellation(
       await updateDoc(doc(db, 'chats', chatRoomId), {
         status: 'closed',
         interviewTokenRefunded: true,
-        cancelledAt: new Date()
+        cancelledAt: serverTimestamp()
       });
     }
     

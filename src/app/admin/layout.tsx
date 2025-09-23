@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminHeader from "@/components/admin/AdminHeader";
+import AdminChatDock from "@/components/admin/chat/AdminChatDock";
 import { useUserSession } from "@/hooks/useUserSession";
 
 // 관리자 이메일 목록 (환경변수로 관리 권장)
@@ -80,6 +81,8 @@ export default function AdminLayout({
           </div>
         </main>
       </div>
+      {/* 우측 고정 채팅 뷰어 */}
+      <AdminChatDock />
     </div>
   );
 }

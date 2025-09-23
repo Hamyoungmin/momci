@@ -5,7 +5,7 @@ import {
   sendPasswordResetEmail,
   updateProfile
 } from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from './firebase';
 
 // 사용자 유형
@@ -62,8 +62,8 @@ export const signUp = async (
       name: userData.name,
       phone: userData.phone,
       userType: userData.userType,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt: serverTimestamp() as unknown as Date,
+      updatedAt: serverTimestamp() as unknown as Date,
       emailVerified: user.emailVerified,
       agreeTerms: userData.agreeTerms,
       agreePrivacy: userData.agreePrivacy,
@@ -109,6 +109,16 @@ export const signIn = async (email: string, password: string) => {
       if (userDoc.exists()) {
         userData = userDoc.data() as UserData;
         console.log('사용자 데이터 Firestore에서 조회 완료');
+      }
+
+      // 최근 로그인 및 활동 시간 업데이트 (관리자 활동 내역 실시간 반영용)
+      try {
+        await updateDoc(doc(db, 'users', user.uid), {
+          lastLoginAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
+      } catch (e) {
+        console.warn('lastLoginAt 업데이트 실패(권한 또는 네트워크):', e);
       }
     } catch (firestoreError) {
       console.warn('Firestore 조회 실패:', firestoreError);

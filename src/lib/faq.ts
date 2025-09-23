@@ -12,7 +12,7 @@ import {
   where,
   getDoc,
   onSnapshot,
-  Timestamp
+  serverTimestamp
 } from 'firebase/firestore';
 import { db, auth } from './firebase';
 
@@ -150,8 +150,8 @@ export async function addFAQ(faqData: Omit<FAQ, 'id' | 'createdAt' | 'updatedAt'
     const docData = {
       ...faqData,
       views: 0,
-      createdAt: Timestamp.fromDate(new Date()),
-      updatedAt: Timestamp.fromDate(new Date()),
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
     };
     
     console.log('Firestore에 저장할 데이터:', docData);
@@ -178,7 +178,7 @@ export async function updateFAQ(faqId: string, faqData: Partial<FAQ>): Promise<v
     const docRef = doc(db, FAQ_COLLECTION, faqId);
     await updateDoc(docRef, {
       ...faqData,
-      updatedAt: Timestamp.fromDate(new Date()),
+      updatedAt: serverTimestamp(),
     });
   } catch (error) {
     console.error('FAQ 수정 오류:', error);
@@ -207,7 +207,7 @@ export async function incrementFAQViews(faqId: string): Promise<void> {
       const currentViews = docSnap.data().views || 0;
       await updateDoc(docRef, {
         views: currentViews + 1,
-        updatedAt: Timestamp.fromDate(new Date()),
+        updatedAt: serverTimestamp(),
       });
     }
   } catch (error) {

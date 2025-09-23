@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
 import { db } from '@/lib/firebase';
 import Link from 'next/link';
@@ -128,7 +128,7 @@ export default function EditProfilePage() {
       await updateDoc(userDocRef, {
         name: formData.name.trim(),
         phone: formData.phone.trim(),
-        updatedAt: new Date()
+        updatedAt: serverTimestamp()
       });
 
       // 비밀번호 변경 (입력된 경우에만)

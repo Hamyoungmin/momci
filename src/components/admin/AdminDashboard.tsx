@@ -12,6 +12,7 @@ export default function AdminDashboard() {
 
       {/* 긴급 알림 센터 */}
       <AlertCenter />
+
     </div>
   );
 }

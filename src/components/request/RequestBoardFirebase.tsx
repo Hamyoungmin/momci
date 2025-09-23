@@ -1080,7 +1080,7 @@ export default function RequestBoardFirebase() {
           authorId: 'fallback-author',
           status: 'matching',
           applications: 0,
-          createdAt: new Date(),
+          createdAt: serverTimestamp(),
           title: '임시 게시글',
           category: '서울',
           details: '임시 생성된 게시글',

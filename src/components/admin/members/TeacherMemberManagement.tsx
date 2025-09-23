@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import SearchFilters from './SearchFilters';
 import MemberTable, { TableRow } from './MemberTable';
 import MemberDetailModal from './MemberDetailModal';
-import { collection, onSnapshot, query, where, doc, updateDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 interface TeacherMember {
@@ -38,7 +38,7 @@ export default function TeacherMemberManagement() {
       const userRef = doc(db, 'users', memberId);
       await updateDoc(userRef, {
         isVerified: !currentStatus,
-        verifiedAt: !currentStatus ? new Date() : null,
+        verifiedAt: !currentStatus ? serverTimestamp() : null,
       });
       
       // 로컬 상태 업데이트
