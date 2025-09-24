@@ -3,6 +3,9 @@
 import { useState, useEffect } from 'react';
 import { collection, onSnapshot, query, orderBy, addDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore';
 import { db, auth } from '@/lib/firebase';
+import SubscriptionGuardButton from '@/components/common/SubscriptionGuardButton';
+import { useAuth } from '@/contexts/AuthContext';
+import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
 
 // 치료사 타입 정의
 interface Teacher {
@@ -28,6 +31,8 @@ interface Teacher {
 }
 
 export default function TeacherProfiles() {
+  const { currentUser } = useAuth();
+  const sub = useSubscriptionStatus(currentUser?.uid);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -281,16 +286,23 @@ export default function TeacherProfiles() {
           </div>
           
           <div className="flex items-center space-x-4">
-            {/* 새 게시글 작성 버튼 */}
-            <button
+            {/* 새 게시글 작성 버튼 (학부모 전용, 구독 가드) */}
+            <SubscriptionGuardButton
+              requiredType="parent"
               onClick={openConfirmModal}
               className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-2xl font-medium transition-colors flex items-center gap-2 shadow-sm"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              새 게시글 작성
-            </button>
+              <span className="inline-flex items-center gap-2">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                새 게시글 작성
+              </span>
+            </SubscriptionGuardButton>
+            {/* 안내 문구: 가드 버튼이 비활성 상태일 때 버튼 바로 아래에 표시 */}
+            {(!sub.hasActiveSubscription || sub.subscriptionType !== 'parent') && (
+              <p className="text-xs text-gray-500 mt-2 text-right">이용권이 없을 때는 이용권을 구매후 사용해주세요.</p>
+            )}
         </div>
         </div>
 
@@ -383,12 +395,14 @@ export default function TeacherProfiles() {
                   
                 {/* 오른쪽: 버튼들 */}
                   <div className="flex flex-col items-end space-y-3 ml-6">
-                    <button 
+                    <SubscriptionGuardButton
+                      requiredType="parent"
                       onClick={() => openRequestModal(teacher)}
                       className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-2xl font-medium transition-colors shadow-sm"
+                      inactiveHint="이용권 구매 시 이용 가능합니다."
                     >
                       선생님께 요청하기
-                        </button>
+                    </SubscriptionGuardButton>
                     
                   <button className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-2xl font-medium transition-colors shadow-sm">
                     1:1 채팅

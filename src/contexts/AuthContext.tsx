@@ -2,8 +2,9 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import { getUserData, UserData } from '@/lib/auth';
+import { doc, onSnapshot } from 'firebase/firestore';
 
 interface AuthContextType {
   currentUser: User | null;
@@ -37,26 +38,49 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let userDocUnsub: (() => void) | null = null;
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
       
       if (user) {
-        // 사용자가 로그인된 경우 Firestore에서 추가 정보 가져오기 (에러 처리 추가)
+        // 실시간 구독으로 역할/프로필 변경을 즉시 반영
+        if (userDocUnsub) {
+          userDocUnsub();
+          userDocUnsub = null;
+        }
         try {
-          const data = await getUserData(user.uid);
-          setUserData(data);
+          userDocUnsub = onSnapshot(doc(db, 'users', user.uid), (snap) => {
+            if (snap.exists()) {
+              setUserData(snap.data() as UserData);
+            } else {
+              // 문서가 없을 경우 1회성 조회로 보조
+              void getUserData(user.uid).then((data) => setUserData(data));
+            }
+            setLoading(false);
+          }, (err) => {
+            console.warn('사용자 문서 실시간 구독 실패:', err);
+            setLoading(false);
+          });
         } catch (error) {
-          console.warn('사용자 데이터 조회 실패, 기본 정보만 사용:', error);
-          setUserData(null);
+          console.warn('사용자 데이터 구독 설정 실패, 단건 조회로 대체:', error);
+          try {
+            const data = await getUserData(user.uid);
+            setUserData(data);
+          } catch {
+            setUserData(null);
+          }
+          setLoading(false);
         }
       } else {
         setUserData(null);
+        setLoading(false);
       }
-      
-      setLoading(false);
     });
 
-    return unsubscribe;
+    return () => {
+      if (userDocUnsub) userDocUnsub();
+      unsubscribe();
+    };
   }, []);
 
   const logout = async () => {

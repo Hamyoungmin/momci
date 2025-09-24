@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 export default function BrowsePage() {
   return (
     <div>
-      {/* 선생님 둘러보기 보드 */}
+      {/* 선생님 둘러보기 보드 - 페이지는 항상 노출, 버튼 단위 가드만 적용 */}
       <BrowseBoard />
     </div>
   );

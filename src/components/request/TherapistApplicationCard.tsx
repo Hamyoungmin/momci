@@ -29,12 +29,14 @@ interface TherapistApplication {
 
 interface TherapistApplicationCardProps {
   application: TherapistApplication;
+  disableChat?: boolean;
   onChatStart: (therapistId: string) => void;
   onViewProfile: (therapistId: string) => void;
 }
 
 export default function TherapistApplicationCard({ 
   application, 
+  disableChat = false,
   onChatStart,
   onViewProfile
 }: TherapistApplicationCardProps) {
@@ -155,8 +157,15 @@ export default function TherapistApplicationCard({
         {/* 오른쪽: 버튼들과 지원일 */}
         <div className="text-right">
           <button
-            onClick={() => onChatStart(application.applicantId)}
-            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors mb-2 block w-full"
+            onClick={() => {
+              if (disableChat) {
+                alert('치료사는 1:1 채팅을 시작할 수 없습니다. 학부모의 채팅 요청을 기다려 주세요.');
+                return;
+              }
+              onChatStart(application.applicantId);
+            }}
+            className={`${disableChat ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-600 text-white'} px-4 py-2 rounded-lg text-sm font-medium transition-colors mb-2 block w-full`}
+            disabled={disableChat}
           >
             💬 1:1 채팅
           </button>

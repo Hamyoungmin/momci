@@ -7,6 +7,7 @@ import Image from 'next/image';
 import { collection, addDoc, onSnapshot, orderBy, query, where, serverTimestamp, doc, getDoc, setDoc, Timestamp, FirestoreError, FieldValue, updateDoc, limit } from 'firebase/firestore';
 import { db, auth } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
 import TherapistApplicationCard from './TherapistApplicationCard';
 import { createApplication } from '@/lib/applications';
 import { AppConfig, getFeatureFlags } from '@/config/app';
@@ -119,6 +120,7 @@ interface TherapistApplication {
 
 export default function RequestBoardFirebase() {
   const { currentUser, userData } = useAuth();
+  const sub = useSubscriptionStatus(currentUser?.uid);
   const [selectedSidebarItem, setSelectedSidebarItem] = useState('전체');
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [showSafetyModal, setShowSafetyModal] = useState(false);
@@ -134,10 +136,14 @@ export default function RequestBoardFirebase() {
   const [selectedTime, setSelectedTime] = useState('희망시간을 입력하세요');
   const [selectedTreatment, setSelectedTreatment] = useState('희망치료를 선택하세요');
 
-  // 사용자 권한 체크 (학부모 또는 관리자, 또는 특정 관리자 이메일만 게시글 작성 가능)
-  const canCreatePost = currentUser?.email === 'dudals7334@naver.com' || 
-    currentUser?.email === 'everystars@naver.com' ||
-    (userData && (userData.userType === 'parent' || userData.userType === 'admin'));
+  // 권한/역할 분리: 버튼은 역할 기준 노출, 구독 없으면 비활성 + 안내문구
+  const isWhitelistedAdminEmail =
+    currentUser?.email === 'dudals7334@naver.com' ||
+    currentUser?.email === 'everystars@naver.com';
+  const isAdmin = !!userData && userData.userType === 'admin';
+  const isParent = !!userData && userData.userType === 'parent';
+  const canCreatePost = isWhitelistedAdminEmail || isAdmin || isParent;
+  const isParentWithoutSubscription = isParent && (!sub.hasActiveSubscription || sub.subscriptionType !== 'parent');
 
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [showTreatmentModal, setShowTreatmentModal] = useState(false);
@@ -145,6 +151,9 @@ export default function RequestBoardFirebase() {
   const [isModalClosing, setIsModalClosing] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [isSuccessModalClosing, setIsSuccessModalClosing] = useState(false);
+  // 수정 모드 재사용을 위한 상태 (작성 모달 UI 재활용)
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editingPostId, setEditingPostId] = useState<string | null>(null);
 
   // 게시글 끌어올림 확인/성공 모달 상태
   const [showBumpConfirmModal, setShowBumpConfirmModal] = useState(false);
@@ -176,12 +185,14 @@ export default function RequestBoardFirebase() {
   
   // Firebase 실시간 연동용 상태
   const [currentSelectedPostId, setCurrentSelectedPostId] = useState<string | null>(null);
-  const [isLoadingSelectedPost, setIsLoadingSelectedPost] = useState(false);
+  const [isLoadingSelectedPost] = useState(false);
 
   // 치료사 지원자 정보 상태
   const [applications, setApplications] = useState<TherapistApplication[]>([]);
   const [loadingApplications, setLoadingApplications] = useState(false);
   const [applicationsUnsubscribe, setApplicationsUnsubscribe] = useState<(() => void) | null>(null);
+  // 현재 응답/지원 대상 게시글 ID를 명시적으로 고정 (선택 레이스 방지)
+  const [applyPostId, setApplyPostId] = useState<string | null>(null);
 
   // 학부모용 모달들 상태
   const [showTherapistProfileModal, setShowTherapistProfileModal] = useState(false);
@@ -430,47 +441,8 @@ export default function RequestBoardFirebase() {
     };
   }, []);
 
-  // Firebase 실시간 연동: 현재 선택된 게시글 추적
-  useEffect(() => {
-    if (!currentUser) return;
-
-    console.log('🔥 Firebase 실시간 연동 시작 - 현재 선택된 게시글 추적');
-    
-    const currentSelectionRef = doc(db, 'user-current-selection', currentUser.uid);
-    
-    const unsubscribe = onSnapshot(currentSelectionRef, (doc) => {
-      if (doc.exists()) {
-        const data = doc.data();
-        const selectedPostId = data.selectedPostId;
-        
-        console.log('🔄 Firebase에서 현재 선택된 게시글:', selectedPostId);
-        
-        if (selectedPostId && selectedPostId !== currentSelectedPostId) {
-          setCurrentSelectedPostId(selectedPostId);
-          
-          // 게시글 데이터가 로드되었고, 모달이 열려야 하는 상황이면 자동으로 열기
-          if (postsData.length > 0 && !showProfileModal) {
-            const targetPost = postsData.find(post => post.id === selectedPostId);
-            if (targetPost) {
-              console.log('✅ Firebase에서 선택된 게시글 자동 열기');
-              setSelectedProfile(targetPost);
-              setShowProfileModal(true);
-            }
-          }
-        }
-      } else {
-        console.log('📭 Firebase에 선택된 게시글 없음');
-        setCurrentSelectedPostId(null);
-      }
-    }, (error) => {
-      console.error('❌ Firebase 실시간 연동 오류:', error);
-    });
-
-    return () => {
-      console.log('🔥 Firebase 실시간 연동 해제');
-      unsubscribe();
-    };
-  }, [currentUser, postsData, showProfileModal, currentSelectedPostId]);
+  // Firebase 실시간 연동 (user-current-selection) 비활성화: 탭/창 간 간섭 방지
+  // 기존 코드는 기능 플래그로 제어했으나, 현재는 안정성을 위해 구독을 끕니다.
 
   // 모달 닫기 함수 (애니메이션 포함)
   const closeCreatePostModal = () => {
@@ -478,6 +450,8 @@ export default function RequestBoardFirebase() {
     setTimeout(() => {
       setShowCreatePostModal(false);
       setIsModalClosing(false);
+      setIsEditMode(false);
+      setEditingPostId(null);
       // 폼 초기화
       setNewPost({
         treatment: '',
@@ -687,6 +661,7 @@ export default function RequestBoardFirebase() {
       console.log('📋 요청 게시글 정보:', requestProfile);
       
       setSelectedProfile(requestProfile);
+      setApplyPostId(post.id);
       setShowProfileModal(true);
       
       // 기존 리스너 정리
@@ -753,6 +728,14 @@ export default function RequestBoardFirebase() {
   const handleParentChatConfirm = async () => {
     if (!currentTherapistId || !currentUser || !userData) {
       alert('필요한 정보가 없습니다.');
+      return;
+    }
+
+    // 학부모가 자신의 게시글에서 치료사에게 문의/지원 시도 차단
+    if (userData.userType === 'parent' && selectedProfile && selectedProfile.authorId === currentUser.uid) {
+      alert('본인이 작성한 게시글에서는 치료사에게 지원/문의가 불가합니다. 치료사 지원을 기다려 주세요.');
+      setShowParentChatConfirmModal(false);
+      setCurrentTherapistId(null);
       return;
     }
 
@@ -882,8 +865,9 @@ export default function RequestBoardFirebase() {
         }
         if (last && Date.now() - last.getTime() < 24 * 60 * 60 * 1000) {
           const remainMs = 24 * 60 * 60 * 1000 - (Date.now() - last.getTime());
-          const remainHours = Math.ceil(remainMs / (60 * 60 * 1000));
-          alert(`게시글 끌어올림은 24시간에 한 번만 가능합니다. 약 ${remainHours}시간 후 다시 시도해주세요.`);
+          const hours = Math.floor(remainMs / (60 * 60 * 1000));
+          const minutes = Math.floor((remainMs % (60 * 60 * 1000)) / (60 * 1000));
+          alert(`게시글 끌어올림은 24시간에 한 번만 가능합니다. 약 ${hours}시간 ${minutes}분 후 다시 시도해주세요.`);
           return;
         }
       }
@@ -930,12 +914,24 @@ export default function RequestBoardFirebase() {
 
   const openEditModal = () => {
     if (!selectedProfile) return;
-    setEditDraft({
-      additionalInfo: selectedProfile.additionalInfo,
-      price: selectedProfile.price,
-      timeDetails: selectedProfile.timeDetails,
+    // 작성 모달 UI를 그대로 사용하되 초기값만 주입
+    setIsEditMode(true);
+    setEditingPostId(selectedProfile.id);
+    setNewPost({
+      treatment: selectedProfile.treatment || '',
+      region: selectedProfile.region || '',
+      detailLocation: selectedProfile.category || '',
+      age: selectedProfile.age || '',
+      gender: selectedProfile.gender || '',
+      frequency: selectedProfile.frequency || '',
+      timeDetails: selectedProfile.timeDetails || '',
+      price: typeof selectedProfile.price === 'string' ? selectedProfile.price : String(selectedProfile.price || '') ,
+      additionalInfo: selectedProfile.additionalInfo || ''
     });
-    setShowEditModal(true);
+    // 간단 초기화
+    setSelectedDays([]);
+    setTimeText(selectedProfile.timeDetails || '');
+    setShowCreatePostModal(true);
   };
 
   // 상세 프로필 모달 닫기 (Firebase 실시간 연동 방식)
@@ -986,6 +982,19 @@ export default function RequestBoardFirebase() {
 
   // 실제 게시글 지원하기 (Firebase 실시간 연동 방식)
   const handleApplyToPost = async () => {
+    // 클라이언트 즉시 가드: 이미 2명 찼거나 본인이 이미 지원한 경우 차단
+    if (applications && applications.length >= 2) {
+      alert('죄송합니다. 이 게시글은 이미 지원자가 2명이어서 더 이상 지원할 수 없습니다.');
+      return;
+    }
+    if (
+      applications &&
+      currentUser &&
+      applications.some((a) => a.applicantId === currentUser.uid && a.postId === targetPostId)
+    ) {
+      alert('이미 이 게시글에 지원하셨습니다. 다른 게시글에 지원해 주세요.');
+      return;
+    }
     console.log('🔍 지원 버튼 클릭 - 상태 확인:', {
       currentUser: currentUser ? '✅ 있음' : '❌ 없음',
       userData: userData ? '✅ 있음' : '❌ 없음',
@@ -1005,100 +1014,14 @@ export default function RequestBoardFirebase() {
       return;
     }
 
-    // ✅ 100% 확실한 복구 방법: 단계별 Fallback
-    let profileToUse = selectedProfile;
-    
-    if (!profileToUse) {
-      console.log('⚠️ selectedProfile이 없음 - 다단계 복구 시작');
-      console.log('📊 현재 상태:', {
-        postsData: postsData ? `${postsData.length}개` : 'null',
-        currentUser: currentUser?.uid || 'null'
-      });
-      
-      setIsLoadingSelectedPost(true);
-      
-      // 🎯 1단계: localStorage 백업에서 복구
-      try {
-        const localBackup = localStorage.getItem('selectedPost');
-        if (localBackup) {
-          const parsed = JSON.parse(localBackup);
-          if (parsed.selectedPostId && parsed.userId === currentUser.uid) {
-            console.log('🔄 localStorage 백업에서 게시글 ID 발견:', parsed.selectedPostId);
-            
-            // postsData에서 해당 ID 찾기
-            const foundPost = postsData.find(post => post.id === parsed.selectedPostId);
-            if (foundPost) {
-              profileToUse = foundPost;
-              setSelectedProfile(foundPost);
-              console.log('✅ 1단계: localStorage 백업으로 복구 성공:', foundPost.id);
-            } else {
-              console.log('⚠️ 1단계: localStorage ID는 있지만 postsData에서 찾을 수 없음');
-            }
-          }
-        }
-      } catch (error) {
-        console.warn('⚠️ 1단계: localStorage 복구 실패:', error);
-      }
-      
-      // 🎯 2단계: 첫 번째 게시글 강제 사용 (무조건 성공)
-      if (!profileToUse && postsData && postsData.length > 0) {
-        profileToUse = postsData[0];
-        setSelectedProfile(profileToUse);
-        
-        console.log('🎯 2단계: 첫 번째 게시글 강제 사용:', {
-          id: profileToUse.id,
-          treatment: profileToUse.treatment,
-          author: profileToUse.authorId
-        });
-        
-        // localStorage에 새로운 선택사항 저장
-        try {
-          localStorage.setItem('selectedPost', JSON.stringify({
-            selectedPostId: profileToUse.id,
-            selectedAt: Date.now(),
-            userId: currentUser.uid,
-            method: 'force_fallback'
-          }));
-          console.log('✅ 2단계: 강제 선택 저장 완료');
-        } catch (_error) { // eslint-disable-line @typescript-eslint/no-unused-vars
-          console.warn('⚠️ 2단계: 저장 실패 (복구는 성공)');
-        }
-      }
-      
-      // 🎯 3단계: 그래도 없으면 빈 게시글 생성 (최후의 수단)
-      if (!profileToUse) {
-        console.error('❌ 2단계까지 실패 - 3단계: 빈 게시글 생성');
-        profileToUse = {
-          id: 'fallback-post',
-          treatment: '언어치료',
-          region: '서울',
-          age: '5세',
-          gender: '남',
-          frequency: '주2회',
-          timeDetails: '협의',
-          price: '50000',
-          authorId: 'fallback-author',
-          status: 'matching',
-          applications: 0,
-          createdAt: serverTimestamp(),
-          title: '임시 게시글',
-          category: '서울',
-          details: '임시 생성된 게시글',
-          additionalInfo: '시스템에서 임시로 생성한 게시글입니다.'
-        } as Post;
-        setSelectedProfile(profileToUse);
-        console.log('🛡️ 3단계: 임시 게시글 생성 완료');
-      }
-      
-      setIsLoadingSelectedPost(false);
+    // ✅ 안전 모드: 모달에 표시된 현재 게시글만 사용 (fallback 제거)
+    // 대상 게시글 ID를 안정적으로 결정 (모달 고정 ID 우선 → 모달의 선택 → Firebase 선택)
+    const targetPostId = applyPostId || selectedProfile?.id || currentSelectedPostId;
+    if (!targetPostId || !selectedProfile) {
+      alert('게시글 정보를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
+      return;
     }
-
-    // ✅ profileToUse는 위의 3단계 복구로 인해 무조건 존재함
-    console.log('🎯 최종 사용할 게시글:', {
-      id: profileToUse.id,
-      treatment: profileToUse.treatment,
-      method: profileToUse.id === 'fallback-post' ? 'system-generated' : 'recovered'
-    });
+    const profileToUse = { ...selectedProfile, id: targetPostId } as Post;
 
     if (!userData || userData.userType !== 'therapist') {
       alert('치료사만 지원할 수 있습니다.');
@@ -1142,7 +1065,7 @@ export default function RequestBoardFirebase() {
       profileId: profileToUse.id
     });
     
-    // 2명 이상이면 지원 불가
+    // 서버 측 필드 기반 사전 확인 (백업)
     if (applicationsCount >= 2) {
       alert('죄송합니다. 이 게시글은 이미 지원자가 2명이어서 더 이상 지원할 수 없습니다.');
       return;
@@ -1164,7 +1087,7 @@ export default function RequestBoardFirebase() {
 
       // 지원서 생성
       await createApplication(
-        profileToUse.id,           // 게시글 ID
+        targetPostId,              // 게시글 ID (명시적 고정)
         currentUser.uid,             // 지원자 ID (치료사)
         profileToUse.authorId,    // 게시글 작성자 ID (학부모)
         applicationMessage           // 지원 메시지
@@ -1186,8 +1109,14 @@ export default function RequestBoardFirebase() {
       await clearCurrentSelectedPost();
 
     } catch (error) {
-      console.error('지원 실패:', error);
-      alert('지원에 실패했습니다. 다시 시도해주세요.');
+      console.error('지원 실패:', error, {
+        debug_targetPostId: targetPostId,
+        debug_selectedProfileId: selectedProfile?.id,
+        debug_currentSelectedPostId: currentSelectedPostId,
+        debug_applicationsLen: applications?.length || 0
+      });
+      const msg = error instanceof Error ? error.message : String(error);
+      alert(`${msg}\n(참고: postId=${targetPostId})`);
     } finally {
       setIsApplying(false);
     }
@@ -1357,6 +1286,7 @@ export default function RequestBoardFirebase() {
         setShowTreatmentModal(false);
       }
       // 게시글 작성 모달 외부 클릭 시 모달 닫기
+      // 수정/작성 모달 외부 클릭 닫기: 수정 버튼을 누를 때 즉시 닫히는 현상을 방지하기 위해 클릭 시작 요소를 허용 목록에 포함
       if (!target.closest('.create-post-modal') && !target.closest('[data-create-post-button]')) {
         closeCreatePostModal();
       }
@@ -1609,34 +1539,41 @@ export default function RequestBoardFirebase() {
 
           {/* 새 게시글 작성 버튼 - 게시글 목록 위에 배치 */}
           <div className="mt-8 mb-6 flex justify-end">
-              {canCreatePost ? (
-                hasActivePost ? (
-                  <div className="flex flex-col items-end">
-                    <button
-                      disabled
-                      title="활성 게시글(매칭중/인터뷰중)이 있어 새 글 작성이 제한됩니다. 기존 글을 '매칭완료'로 종료하면 새 글을 등록할 수 있어요."
-                      className="bg-gray-300 cursor-not-allowed text-white px-6 py-3 rounded-2xl font-medium flex items-center gap-2"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                      </svg>
-                      선생님께 요청하기
-                    </button>
-                    <span className="text-xs text-gray-500 mt-1">활성 게시글 1개 규칙으로 인해 비활성화</span>
-                  </div>
-                ) : (
-                <button
-                  onClick={() => setShowCreatePostModal(true)}
-                  data-create-post-button
-                  className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-2xl font-medium transition-colors flex items-center gap-2"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  선생님께 요청하기
-                </button>
-                )
-              ) : (
+              {canCreatePost && hasActivePost && (
+                <div className="flex flex-col items-end">
+                  <button
+                    disabled
+                    title="활성 게시글(매칭중/인터뷰중)이 있어 새 글 작성이 제한됩니다. 기존 글을 '매칭완료'로 종료하면 새 글을 등록할 수 있어요."
+                    className="bg-gray-300 cursor-not-allowed text-white px-6 py-3 rounded-2xl font-medium flex items-center gap-2"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    선생님께 요청하기
+                  </button>
+                  <span className="text-xs text-gray-500 mt-1">활성 게시글 1개 규칙으로 인해 비활성화</span>
+                </div>
+              )}
+              {canCreatePost && !hasActivePost && (
+                <div className="flex flex-col items-end">
+                  <button
+                    onClick={() => setShowCreatePostModal(true)}
+                    data-create-post-button
+                    disabled={isParentWithoutSubscription}
+                    title={isParentWithoutSubscription ? '이용권이 없을 때는 이용권을 구매후 사용해주세요.' : undefined}
+                    className={`${isParentWithoutSubscription ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-600'} text-white px-6 py-3 rounded-2xl font-medium transition-colors flex items-center gap-2`}
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    선생님께 요청하기
+                  </button>
+                  {isParentWithoutSubscription && (
+                    <p className="text-xs text-gray-500 mt-2 text-right">이용권이 없을 때는 이용권을 구매후 사용해주세요.</p>
+                  )}
+                </div>
+              )}
+              {!canCreatePost && (
                 <div className="flex flex-col items-center">
                   <button
                     disabled
@@ -1864,7 +1801,31 @@ export default function RequestBoardFirebase() {
             
             <form onSubmit={(e) => {
               e.preventDefault();
-              addNewPost(newPost);
+              if (isEditMode && editingPostId) {
+                // 수정 저장: 작성 모달과 동일한 UI를 사용하되 업데이트만 수행
+                void (async () => {
+                  try {
+                    await handleEditPost(editingPostId, {
+                      treatment: newPost.treatment,
+                      region: newPost.region,
+                      category: newPost.detailLocation,
+                      age: newPost.age,
+                      gender: newPost.gender,
+                      frequency: newPost.frequency,
+                      timeDetails: newPost.timeDetails,
+                      price: newPost.price,
+                      additionalInfo: newPost.additionalInfo,
+                    } as Partial<Post>);
+                    alert('수정이 저장되었습니다.');
+                    closeCreatePostModal();
+                  } catch (err) {
+                    console.error('수정 저장 실패:', err);
+                    alert('수정 저장에 실패했습니다. 다시 시도해주세요.');
+                  }
+                })();
+              } else {
+                addNewPost(newPost);
+              }
             }} className="space-y-6">
               {/* 안내 고지문 */}
               <div className="bg-blue-50 rounded-lg border border-blue-100 relative p-4">
@@ -2110,7 +2071,7 @@ export default function RequestBoardFirebase() {
                   type="submit"
                   className="px-6 py-3 bg-blue-500 text-white rounded-2xl hover:bg-blue-600 transition-colors"
                 >
-                  선생님께 요청하기
+                  {isEditMode ? '수정 저장하기' : '선생님께 요청하기'}
                 </button>
               </div>
             </form>
@@ -2185,6 +2146,7 @@ export default function RequestBoardFirebase() {
                 {selectedProfile && selectedProfile.authorId === currentUser?.uid && (
                   <button
                     onClick={openEditModal}
+                    data-create-post-button
                     className="inline-flex items-center bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-sm"
                   >
                     <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -2326,6 +2288,7 @@ export default function RequestBoardFirebase() {
                         <TherapistApplicationCard
                           key={application.id}
                           application={application}
+                          disableChat={userData?.userType === 'therapist'}
                           onChatStart={handleChatStart}
                           onViewProfile={handleViewProfile}
                         />
@@ -2349,6 +2312,11 @@ export default function RequestBoardFirebase() {
               <div className="text-center mt-8 pt-6 border-t border-gray-200">
                 <button 
                   onClick={() => {
+                    // 학부모가 본인 게시글일 경우 버튼 무효화
+                    if (userData?.userType === 'parent' && selectedProfile?.authorId === currentUser?.uid) {
+                      alert('본인이 작성한 게시글에서는 지원/문의가 불가합니다. 치료사 지원을 기다려 주세요.');
+                      return;
+                    }
                     // 사용자 유형에 따라 알맞은 확인 모달 오픈
                     if (userData?.userType === 'therapist') {
                       setShowResponseConfirmModal(true);

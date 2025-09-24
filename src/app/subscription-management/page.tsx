@@ -290,7 +290,7 @@ function SubscriptionManagementContent() {
                   </p>
                   {userData?.userType === 'parent' && (
                     <p className="text-blue-100 text-sm">
-                      남은 무료 인터뷰: {subscription.remainingInterviews || 1}회
+                      남은 무료 인터뷰: {subscription.remainingInterviews ?? 0}회
                     </p>
                   )}
                 </div>

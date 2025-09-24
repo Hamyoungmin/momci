@@ -1,0 +1,66 @@
+## 프로젝트 기능/연동 요약 (모든별 키즈)
+
+### 인증/세션
+- **Firebase Auth (이메일/비밀번호만)**: 회원가입, 로그인, 비밀번호 재설정, 로그아웃. `users` 문서에 기본 프로필과 약관 동의 저장, `lastLoginAt` 업데이트.
+- **AuthContext**: 로그인 상태/유저 데이터 전역 제공, 클라이언트 전용 `ClientProviders`에서 감싸 사용.
+
+### 사용자/권한 데이터
+- `users` 컬렉션: `userType` = `parent | therapist | admin`, 인터뷰권(`interviewTokens`), 검증 상태, 통계 필드 등 확장 가능 구조.
+
+### 채팅
+- **컬렉션 구조**: `chats/{chatId}` + `messages` 서브컬렉션.
+- **채팅방 생성 규칙**: `chatId = sort([parentId, therapistId]).join('_')` 로 결정적 ID 생성.
+- **첫 메시지/첫 응답 로직과 인터뷰권**:
+  - 학부모가 첫 메시지를 보낼 때: 활성 구독이 있으면 토큰 차감 없이 진행, 없으면 `users.interviewTokens` 1 차감 후 진행.
+  - 치료사가 첫 응답을 보낼 때: 채팅방에 첫 응답 표시(`firstResponseReceived`) 및 필요 시 토큰 차감 처리.
+  - 상태 필드: `interviewTokenUsed`, `firstResponseReceived`, `firstMessageByParentAt`, `firstResponseAt`, `interviewAccessBy`.
+- **알림(브라우저 Notification API)**: 채팅 신청, 첫 응답, 새 메시지에 대해 알림 표시. 페이지 비활성 시에만 띄우는 유틸과 클릭 리스너 포함.
+- **전화번호 필터링(클라이언트)**: 메시지 내 전화번호 공유 차단(안전장치).
+
+### 매칭/요청 게시판
+- **게시글(`posts`)**: 학부모가 요청 게시.
+- **지원서(`applications`)**: 치료사 지원. 트랜잭션으로 서버에서 지원자 수 검증.
+  - 제한: 게시글당 최대 2명까지 지원 가능(초과 시 생성 거절).
+  - 동일 치료사의 중복 지원 방지.
+- (선택) 지원 후 채팅 시작 연계: 채팅방 생성/연결 유틸 사용 가능.
+
+### 결제/구독
+- **무통장입금 기반 결제 플로우**: `payment-checkout` 페이지에서 완료 버튼 시 상태 반영.
+- **구독 상태 저장**: `user-subscription-status/{uid}` 문서에 `hasActiveSubscription`, `expiryDate`, `planName`, `remainingInterviews`, `totalInterviews`, `paymentMethod` 저장.
+- **채팅 접근 제어와 연계**: 구독이 유효하면 첫 메시지에서 인터뷰권 차감 건너뜀.
+- **관리자 결제 관리 UI**: 구독/레슨 결제 관리 모듈 구성(상세 모달 포함).
+
+### 인터뷰권(토큰)
+- **보관 위치**: `users.interviewTokens`.
+- **기능**: 차감, 복구(치료사 미응답 등), 추가(구매/보상), 후기 보상 전용 추가.
+- **이벤트 연계**: 학부모 첫 메시지 또는 치료사 첫 응답 시점에 차감 판단.
+
+### 관리자 대시보드/통계
+- **실시간 운영 지표**: `userSessions`에서 최근 활동 사용자 수, 여러 컬렉션에서 `status=pending` 합산 등.
+- **대시보드 카드/차트 컴포넌트**: 실시간 값 표시, 로딩/폴백 처리 포함.
+
+### 알림/보안 규칙(요점)
+- **알림 컬렉션 규칙**: 서버/관리자만 생성, 본인/관리자 읽기, 본인 읽음 처리 허용.
+- **결제/입금확인 규칙**: 본인 생성/읽기, 상태 업데이트는 관리자만.
+
+### 주요 데이터 모델 요약
+- `users`: 기본 프로필, 인터뷰권, 검증/통계 필드.
+- `posts`: 학부모 요청 게시글.
+- `applications`: 치료사 지원서(게시글당 최대 2, 중복 방지).
+- `chats`: 채팅방 메타(상태/첫 응답/토큰 사용 등), `messages` 서브컬렉션.
+- `user-subscription-status`: 구독 상태/만료/인터뷰 횟수 관리.
+- `payments`, `payment-confirmations`: 결제/입금확인(규칙으로 보호).
+- `userSessions`: 최근 활동 사용자 추적(관리자 통계용).
+- `notifications`(옵션): 보안 규칙 존재, 현재는 브라우저 알림 중심 구현.
+
+### 기능 간 연동 흐름(텍스트 다이어그램)
+- 회원가입/로그인 → `AuthContext`로 전역 상태 제공 → 페이지/컴포넌트 접근 제어.
+- 요청 게시글(`posts`) ←→ 치료사 지원(`applications` 최대 2) → (필요 시) 채팅 시작.
+- 결제 완료 → `user-subscription-status` 활성화 → 채팅 첫 메시지 시 인터뷰권 차감 면제.
+- 채팅 진행 → 첫 메시지/첫 응답 시점에 토큰/구독 검증 및 상태 플래그 갱신 → 브라우저 알림 발송.
+- 관리자 대시보드 → `userSessions` 및 각 컬렉션 실시간 집계로 운영 지표 표시.
+
+### 비고
+- 환경변수로 Firebase 구성(`NEXT_PUBLIC_FIREBASE_*`).
+- UI는 기존 디자인 유지, 데이터만 바인딩/상태 연동 중심으로 구성.
+

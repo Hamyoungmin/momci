@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { doc, setDoc, Timestamp } from 'firebase/firestore';
+import { doc, setDoc, updateDoc, increment, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -96,6 +96,18 @@ function PaymentCheckoutContent() {
         totalInterviews: totalInterviews,
         paymentMethod: paymentMethod
       });
+
+      // 학부모 구매 시 인터뷰권 부여 (1개월=2회, 3개월=6회)
+      if (paymentData.userType === 'parent' && totalInterviews > 0) {
+        try {
+          await updateDoc(doc(db, 'users', currentUser.uid), {
+            interviewTokens: increment(totalInterviews),
+            lastTokenAdded: Timestamp.now()
+          });
+        } catch (e) {
+          console.warn('인터뷰권 부여 실패(관리자 확인 필요):', e);
+        }
+      }
 
       alert('결제가 완료되었습니다! 이용권이 활성화되었습니다.');
       

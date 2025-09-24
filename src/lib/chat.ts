@@ -166,31 +166,46 @@ export async function sendMessage(
         }
       }
     } else if (senderType === 'parent') {
-      // 3-B. 학부모의 첫 메시지인 경우 인터뷰권 차감 후 알림 발송
+      // 3-B. 학부모의 첫 메시지인 경우: 무료 인터뷰(구독) 우선 소진, 없으면 토큰 차감
       const chatRoomDoc = await getDoc(doc(db, 'chats', chatRoomId));
       if (chatRoomDoc.exists()) {
         const chatData = chatRoomDoc.data() as ChatRoomInfo;
         // 인터뷰권이 아직 사용되지 않았다면 학부모 쪽에서 차감
         if (!chatData.interviewTokenUsed) {
           try {
-            // 구독 활성 여부 확인: 구독이 있으면 토큰 차감 없이 통과
-            const subDoc = await getDoc(doc(db, 'user-subscription-status', chatData.parentId));
+            // 구독 활성 여부 + 남은 무료 인터뷰 확인
+            const subRef = doc(db, 'user-subscription-status', chatData.parentId);
+            const subDoc = await getDoc(subRef);
             let hasActiveSubscription = false;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            let remainingFreeInterviews = 0 as any;
             if (subDoc.exists()) {
               const data = subDoc.data() as { hasActiveSubscription?: boolean; expiryDate?: Timestamp | { toDate?: () => Date } | null };
               const nowTs = Date.now();
               const expiryMs = data?.expiryDate && typeof data.expiryDate.toDate === 'function' ? data.expiryDate.toDate().getTime() : 0;
               hasActiveSubscription = !!data?.hasActiveSubscription && expiryMs > nowTs;
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              remainingFreeInterviews = (subDoc.data() as any)?.remainingInterviews ?? 0;
             }
 
-            if (hasActiveSubscription) {
+            if (hasActiveSubscription && remainingFreeInterviews > 0) {
+              // 무료 인터뷰 1회 소진 (UI 카운터 동기화)
+              try {
+                await updateDoc(subRef, {
+                  remainingInterviews: remainingFreeInterviews - 1,
+                  lastUpdated: serverTimestamp(),
+                } as unknown as Partial<{ remainingInterviews: number }>);
+              } catch (e) {
+                console.warn('remainingInterviews 감소 실패:', e);
+              }
+
               await updateDoc(doc(db, 'chats', chatRoomId), {
                 interviewTokenUsed: true,
                 firstResponseReceived: false,
                 firstMessageByParentAt: serverTimestamp(),
                 interviewAccessBy: 'subscription'
               });
-              console.log('🟦 구독 활성: 토큰 차감 없이 채팅 시작 허용');
+              console.log('🟦 구독 활성+무료 인터뷰 소진: 토큰 차감 없이 채팅 시작');
             } else {
               const deducted = await deductInterviewToken(
                 chatData.parentId,

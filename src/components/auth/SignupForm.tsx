@@ -138,12 +138,10 @@ export default function SignupForm() {
       });
       
       if (result.success) {
-        // 회원가입 성공
+        // 회원가입 성공 → 바로 홈으로 이동하여 역할 기반 UI가 즉시 반영되도록 함
         console.log('회원가입 성공:', result.user);
-        
-        // 성공 메시지와 함께 로그인 페이지로 이동
-        alert('회원가입이 완료되었습니다! 로그인해주세요.');
-        router.push('/auth/login');
+        alert('회원가입이 완료되었습니다!');
+        router.push('/');
       } else {
         // 회원가입 실패
         setErrors({ general: result.error || '회원가입에 실패했습니다.' });

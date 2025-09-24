@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { collection, onSnapshot, orderBy, query, where, limit, addDoc, serverTimestamp, doc, getDoc, updateDoc, Timestamp } from 'firebase/firestore';
 import { db, auth } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
 import { startChatWithTherapist } from '@/lib/chat';
 import OneOnOneChat from '@/components/chat/OneOnOneChat';
 
@@ -51,6 +52,7 @@ interface Teacher {
 
 export default function BrowseBoard() {
   const { currentUser, userData } = useAuth();
+  const sub = useSubscriptionStatus(currentUser?.uid);
   
   // 이름에서 성만 추출하는 함수
   const getLastName = (fullName: string | undefined): string => {
@@ -105,10 +107,12 @@ export default function BrowseBoard() {
   const [chatOtherUserType, setChatOtherUserType] = useState<'parent' | 'therapist'>('therapist');
   const [isStartingChat, setIsStartingChat] = useState(false);
 
-  // 사용자 권한 체크 (치료사 또는 관리자, 또는 특정 관리자 이메일만 게시글 작성 가능)
-  const canCreatePost = currentUser?.email === 'dudals7334@naver.com' || 
-    currentUser?.email === 'everystars@naver.com' ||
-    (userData && (userData.userType === 'therapist' || userData.userType === 'admin'));
+  // 사용자 권한/구독 체크
+  const isWhitelistedAdminEmail = currentUser?.email === 'dudals7334@naver.com' || currentUser?.email === 'everystars@naver.com';
+  const isAdmin = !!userData && userData.userType === 'admin';
+  const isTherapist = !!userData && userData.userType === 'therapist';
+  const canCreatePost = isWhitelistedAdminEmail || isAdmin || isTherapist;
+  const isTherapistWithoutSubscription = isTherapist && (!sub.hasActiveSubscription || sub.subscriptionType !== 'therapist');
 
   // 새 게시글 작성용 상태
   const [newPost, setNewPost] = useState({
@@ -713,8 +717,10 @@ export default function BrowseBoard() {
         last = null;
       }
       if (last && Date.now() - last.getTime() < 24 * 60 * 60 * 1000 && !isAdmin) {
-        const remain = Math.ceil((24 * 60 * 60 * 1000 - (Date.now() - last.getTime())) / (60 * 60 * 1000));
-        alert(`프로필 끌어올림은 24시간에 한 번만 가능합니다. 약 ${remain}시간 후 다시 시도해주세요.`);
+        const remainMs = 24 * 60 * 60 * 1000 - (Date.now() - last.getTime());
+        const hours = Math.floor(remainMs / (60 * 60 * 1000));
+        const minutes = Math.floor((remainMs % (60 * 60 * 1000)) / (60 * 1000));
+        alert(`프로필 끌어올림은 24시간에 한 번만 가능합니다. 약 ${hours}시간 ${minutes}분 후 다시 시도해주세요.`);
         setIsBumpingProfile(false);
         return;
       }
@@ -1112,19 +1118,26 @@ export default function BrowseBoard() {
             </button>
           </div>
 
-          {/* 새 게시글 작성 버튼 */}
+          {/* 새 게시글 작성 버튼 (치료사 전용, 구독 없으면 비활성화 + 안내) */}
           <div className="mb-6 flex justify-end">
             {canCreatePost ? (
+              <div className="flex flex-col items-end">
               <button
                 onClick={openConfirmModal}
                 data-create-post-button
-                className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-2xl font-medium transition-colors flex items-center gap-2"
+                  disabled={isTherapistWithoutSubscription}
+                  title={isTherapistWithoutSubscription ? '이용권이 없을 때는 이용권을 구매후 사용해주세요.' : undefined}
+                  className={`${isTherapistWithoutSubscription ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-600'} text-white px-6 py-3 rounded-2xl font-medium transition-colors flex items-center gap-2`}
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
                 내 프로필 등록하기
               </button>
+                {isTherapistWithoutSubscription && (
+                  <p className="text-xs text-gray-500 mt-2 text-right">이용권이 없을 때는 이용권을 구매후 사용해주세요.</p>
+                )}
+              </div>
             ) : (
               <div className="flex flex-col items-center">
                 <button
@@ -1267,8 +1280,16 @@ export default function BrowseBoard() {
                       {/* 오른쪽: 채팅 버튼 */}
                       <div className="flex flex-col items-end space-y-3 ml-6">
 						<button 
-						  onClick={(e) => { e.stopPropagation(); openChatFlow(); }}
-                          className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-2xl font-medium transition-colors shadow-sm"
+						  onClick={(e) => { 
+						    e.stopPropagation(); 
+						    if (userData?.userType === 'therapist') { 
+						      alert('치료사는 1:1 채팅을 시작할 수 없습니다. 학부모의 채팅 요청을 기다려 주세요.'); 
+						      return; 
+						    }
+						    openChatFlow(); 
+						  }}
+                          className={`${userData?.userType === 'therapist' ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-600 text-white'} px-6 py-3 rounded-2xl font-medium transition-colors shadow-sm`}
+                          disabled={userData?.userType === 'therapist'}
                         >
                           1:1 채팅
                         </button>

@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import { db } from '@/lib/firebase';
-import { doc, onSnapshot, collection, query, where, limit, getDoc, setDoc, updateDoc, addDoc, serverTimestamp, orderBy, deleteDoc } from 'firebase/firestore';
+import { doc, onSnapshot, collection, query, where, limit, getDoc, setDoc, updateDoc, addDoc, serverTimestamp, orderBy, deleteDoc, increment, Timestamp } from 'firebase/firestore';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface Member {
@@ -58,6 +58,7 @@ export default function MemberDetailModal({ isOpen, onClose, member, memberType 
   const [confirmSuspend, setConfirmSuspend] = useState(false);
   const [confirmWithdraw, setConfirmWithdraw] = useState(false);
   const [grantBadgeLoading, setGrantBadgeLoading] = useState(false);
+  const [tokenGranting, setTokenGranting] = useState(false);
   const [granting, setGranting] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -269,18 +270,39 @@ export default function MemberDetailModal({ isOpen, onClose, member, memberType 
       const newExpiry = new Date(base);
       newExpiry.setMonth(newExpiry.getMonth() + months);
 
+      // 학부모에게만 인터뷰권 부여: 1개월=2회, 3개월=6회
+      const totalInterviews = (memberType === 'parent') ? (months === 3 ? 6 : 2) : 0;
+
       const payload = {
         userId: member.id,
         hasActiveSubscription: true,
         subscriptionType: (memberType === 'parent' ? 'parent' : 'therapist'),
-        expiryDate: newExpiry,
+        // Firestore rules에서 timestamp 타입을 검사하므로 반드시 Timestamp로 저장
+        expiryDate: Timestamp.fromDate(newExpiry),
         lastUpdated: serverTimestamp(),
+        ...(memberType === 'parent' ? {
+          // 기존 값이 있다면 누적 증가 (표시값 동기화)
+          remainingInterviews: (typeof subscription?.remainingInterviews === 'number' ? subscription.remainingInterviews : 0) + totalInterviews,
+          totalInterviews: (typeof subscription?.totalInterviews === 'number' ? subscription.totalInterviews : 0) + totalInterviews
+        } : {})
       } as Record<string, unknown>;
 
       if (!statusSnap.exists()) {
         await setDoc(statusRef, payload);
       } else {
         await updateDoc(statusRef, payload);
+      }
+
+      // 학부모인 경우 users 컬렉션의 인터뷰권 수량 증가
+      if (memberType === 'parent' && totalInterviews > 0) {
+        try {
+          await updateDoc(doc(db, 'users', member.id), {
+            interviewTokens: increment(totalInterviews),
+            lastTokenAdded: serverTimestamp()
+          });
+        } catch (tokenErr) {
+          console.warn('인터뷰권 부여 실패(관리자 수기 부여 경로):', tokenErr);
+        }
       }
 
       // 결제 기록 생성 (관리자 수기 부여)
@@ -302,6 +324,52 @@ export default function MemberDetailModal({ isOpen, onClose, member, memberType 
       alert('이용권 부여 중 오류가 발생했습니다.');
     } finally {
       setGranting(false);
+    }
+  };
+
+  // 관리자: 추가 인터뷰권 1회 수동 부여 (9,900원 결제 기록 포함)
+  const grantOneInterviewToken = async () => {
+    if (!member?.id) return;
+    try {
+      setTokenGranting(true);
+
+      // 학부모 대상일 때만 부여 (요건에 따라 변경 가능)
+      if (memberType !== 'parent') {
+        alert('학부모 계정에만 인터뷰권을 부여할 수 있습니다.');
+        return;
+      }
+
+      // users에 인터뷰권 +1
+      await updateDoc(doc(db, 'users', member.id), {
+        interviewTokens: increment(1),
+        lastTokenAdded: serverTimestamp()
+      });
+
+      // user-subscription-status.remainingInterviews도 +1 (표시값 동기화)
+      try {
+        await updateDoc(doc(db, 'user-subscription-status', member.id), {
+          remainingInterviews: increment(1),
+          lastUpdated: serverTimestamp()
+        });
+      } catch (e) {
+        console.warn('remainingInterviews 동기화 실패:', e);
+      }
+
+      // 결제 기록 생성 (9,900원, addon_token 타입)
+      await addDoc(collection(db, 'payments'), {
+        userId: member.id,
+        amount: 9900,
+        type: 'addon_token',
+        createdAt: serverTimestamp(),
+        note: '관리자 수동 인터뷰권 +1 (추가 구매 9,900원)'
+      });
+
+      alert('인터뷰권 1회를 부여했습니다.');
+    } catch (e) {
+      console.error('인터뷰권 1회 부여 실패:', e);
+      alert('인터뷰권 부여 중 오류가 발생했습니다.');
+    } finally {
+      setTokenGranting(false);
     }
   };
 
@@ -706,6 +774,13 @@ export default function MemberDetailModal({ isOpen, onClose, member, memberType 
                     className="px-3 py-2 text-sm font-semibold rounded-md bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
                   >
                     3개월 이용권 부여
+                  </button>
+                  <button
+                    onClick={grantOneInterviewToken}
+                    disabled={tokenGranting}
+                    className="px-3 py-2 text-sm font-semibold rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
+                  >
+                    인터뷰권 +1 (9,900원)
                   </button>
                   <div className="text-sm text-gray-600 ml-2">
                     {subscription?.hasActiveSubscription === true ? '현재 활성화됨' : '비활성'}
