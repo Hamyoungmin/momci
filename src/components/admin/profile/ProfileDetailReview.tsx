@@ -1,6 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { doc, onSnapshot, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 interface ProfileSubmission {
   id: string;
@@ -15,10 +17,12 @@ interface ProfileSubmission {
   education: string;
   certifications: string[];
   documents: {
-    diploma: string;
-    certificate: string;
-    career: string;
-    license: string;
+    diploma: string | string[];
+    certificate: string | string[];
+    career: string | string[];
+    license: string | string[];
+    bankbook?: string | string[];
+    crimeCheck?: string | string[];
   };
   profilePhoto: string;
   selfIntroduction: string;
@@ -30,13 +34,41 @@ interface ProfileDetailReviewProps {
   isOpen: boolean;
   onClose: () => void;
   profile: ProfileSubmission;
-  onAction: (profileId: string, action: 'approve' | 'reject' | 'hold', reason?: string) => void;
+  onAction: (profileId: string, action: 'approve' | 'reject' | 'hold', reason?: string) => Promise<void> | void;
 }
 
 export default function ProfileDetailReview({ isOpen, onClose, profile, onAction }: ProfileDetailReviewProps) {
   const [activeTab, setActiveTab] = useState('profile');
   const [actionType, setActionType] = useState<'approve' | 'reject' | 'hold' | null>(null);
   const [actionReason, setActionReason] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [reg, setReg] = useState<Record<string, unknown> | null>(null);
+  const [feed, setFeed] = useState<Record<string, unknown> | null>(null);
+  const [user, setUser] = useState<Record<string, unknown> | null>(null);
+  const [tprofile, setTprofile] = useState<Record<string, unknown> | null>(null);
+
+  useEffect(() => {
+    if (!isOpen || !profile?.id) return;
+    const ref = doc(db, 'therapist-registrations', profile.id);
+    const un = onSnapshot(ref, (snap) => {
+      if (snap.exists()) setReg(snap.data() as Record<string, unknown>);
+    });
+    // 공개 피드 보조 소스(일부 필드 누락 보완)
+    const feedRef = doc(db, 'therapist-registrations-feed', profile.id);
+    const unFeed = onSnapshot(feedRef, (snap) => {
+      if (snap.exists()) setFeed(snap.data() as Record<string, unknown>);
+    });
+    // 사용자 문서(전화/이메일 등 보완)
+    if (profile.teacherId) {
+      getDoc(doc(db, 'users', profile.teacherId)).then((snap) => {
+        if (snap.exists()) setUser(snap.data() as Record<string, unknown>);
+      }).catch(() => {});
+      getDoc(doc(db, 'therapistProfiles', profile.teacherId)).then((snap) => {
+        if (snap.exists()) setTprofile(snap.data() as Record<string, unknown>);
+      }).catch(() => {});
+    }
+    return () => { un(); unFeed(); };
+  }, [isOpen, profile?.id, profile?.teacherId]);
   const [checklist, setChecklist] = useState({
     profilePhoto: false,
     education: false,
@@ -59,22 +91,72 @@ export default function ProfileDetailReview({ isOpen, onClose, profile, onAction
     setChecklist(prev => ({ ...prev, [key]: checked }));
   };
 
-  const handleAction = () => {
-    if (actionType) {
-      onAction(profile.id, actionType, actionReason);
+  const handleAction = async () => {
+    if (!actionType || submitting) return;
+    try {
+      setSubmitting(true);
+      await onAction(profile.id, actionType, actionReason);
+      setSubmitting(false);
+      onClose();
+    } catch {
+      setSubmitting(false);
     }
   };
 
   const allChecked = Object.values(checklist).every(Boolean);
 
+  const toStr = (v: unknown): string => {
+    // 문자열
+    if (typeof v === 'string') return v;
+    // 숫자
+    if (typeof v === 'number') return String(v);
+    // 타임스탬프(Firestore)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if (v && typeof (v as any).toDate === 'function') {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const d = (v as any).toDate();
+      return new Date(d).toISOString().slice(0, 10); // YYYY-MM-DD
+    }
+    // 배열
+    if (Array.isArray(v)) return (v as Array<unknown>).join(', ');
+    return '';
+  };
+
+  const fv = (...vals: Array<unknown>) => {
+    for (const v of vals) {
+      const s = toStr(v);
+      if (s && s.trim().length > 0) return s;
+    }
+    return '';
+  };
+
+  // 파일 렌더링 유틸
+  const renderFiles = (value: unknown) => {
+    const asArray: string[] = Array.isArray(value)
+      ? (value as string[])
+      : (typeof value === 'string' && value) ? [value as string] : [];
+    if (asArray.length === 0) return <span className="text-sm text-gray-500">-</span>;
+    return (
+      <ul className="space-y-1">
+        {asArray.map((url, idx) => (
+          <li key={idx} className="flex items-center justify-between">
+            <a href={url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:text-blue-800 break-all">
+              {url}
+            </a>
+          </li>
+        ))}
+      </ul>
+    );
+  };
+
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
         {/* 배경 오버레이 */}
-        <div className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onClick={onClose}></div>
+        <div className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75 z-40" onClick={onClose}></div>
 
         {/* 모달 */}
-        <div className="inline-block w-full max-w-6xl p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-lg">
+        <div className="inline-block w-full max-w-6xl p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-lg relative z-50">
           {/* 헤더 */}
           <div className="flex items-center justify-between pb-4 border-b border-gray-200">
             <div>
@@ -108,72 +190,124 @@ export default function ProfileDetailReview({ isOpen, onClose, profile, onAction
           </div>
 
           {/* 탭 컨텐츠 */}
-          <div className="mt-6 max-h-96 overflow-y-auto">
+          <div className="mt-6 max-h-[70vh] overflow-y-auto">
             {activeTab === 'profile' && (
               <div className="space-y-6">
-                {/* 기본 정보 */}
-                <div>
-                  <h4 className="text-base font-medium text-gray-900 mb-4">기본 정보</h4>
+                {/* 기본 정보 - 상세 페이지 디자인 차용 */}
+                <div className="border-2 border-blue-200 rounded-lg p-4 bg-blue-50">
+                  <div className="flex items-center mb-4">
+                    <div className="bg-blue-100 rounded-full p-2 mr-3"><span className="text-blue-600 text-lg">👤</span></div>
+                    <h4 className="text-base font-bold text-gray-900">기본 정보</h4>
+                    <span className="ml-auto inline-flex px-2 py-0.5 text-xs rounded-full bg-yellow-100 text-yellow-700">
+                      {profile.status === 'approved' ? '승인' : profile.status === 'rejected' ? '반려' : profile.status === 'hold' ? '보류' : '대기'}
+                    </span>
+                  </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700">이름</label>
-                      <p className="mt-1 text-sm text-gray-900">{profile.teacherName}</p>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">이름</label>
+                      <input disabled value={(reg?.name as string) || profile.teacherName || ''} className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50" />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700">이메일</label>
-                      <p className="mt-1 text-sm text-gray-900">{profile.email}</p>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">생년월일</label>
+                      <input disabled value={fv(reg?.birthDate, feed?.birthDate, user?.birthDate, tprofile?.birthDate)} className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50" />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700">연락처</label>
-                      <p className="mt-1 text-sm text-gray-900">{profile.phone}</p>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">성별</label>
+                      <input disabled value={((reg?.gender as string) || '') as string} className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50" />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700">경력</label>
-                      <p className="mt-1 text-sm text-gray-900">{profile.experience}년</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 전문 정보 */}
-                <div>
-                  <h4 className="text-base font-medium text-gray-900 mb-4">전문 정보</h4>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">학력</label>
-                      <p className="mt-1 text-sm text-gray-900">{profile.education}</p>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">연락처</label>
+                      <input disabled value={fv(reg?.phone, feed?.phone, user?.phone, tprofile?.phone, profile.phone)} className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50" />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700">전문 분야</label>
-                      <div className="mt-1 flex flex-wrap gap-2">
-                        {profile.specialties.map((specialty, index) => (
-                          <span key={index} className="px-2 py-1 text-sm bg-purple-100 text-purple-800 rounded">
-                            {specialty}
-                          </span>
-                        ))}
-                      </div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">이메일(ID)</label>
+                      <input disabled value={fv(reg?.email, feed?.email, user?.email, tprofile?.email, profile.email)} className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50" />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700">자격증</label>
-                      <div className="mt-1 space-y-1">
-                        {profile.certifications.map((cert, index) => (
-                          <p key={index} className="text-sm text-gray-900">• {cert}</p>
-                        ))}
-                      </div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">주소</label>
+                      <input disabled value={fv(reg?.address, feed?.address, user?.address, tprofile?.address)} className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50" />
                     </div>
                   </div>
                 </div>
 
-                {/* 소개 */}
-                <div>
-                  <h4 className="text-base font-medium text-gray-900 mb-4">자기소개 및 치료 철학</h4>
-                  <div className="space-y-4">
+                {/* 프로필 정보 */}
+                <div className="border-4 border-blue-700 rounded-lg p-4 bg-white">
+                  <div className="flex items-center mb-4">
+                    <div className="bg-blue-100 rounded-full p-2 mr-3"><span className="text-blue-600 text-lg">📋</span></div>
+                    <h4 className="text-base font-bold text-gray-900">프로필 정보</h4>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700">자기소개</label>
-                      <p className="mt-1 text-sm text-gray-900 p-3 bg-gray-50 rounded">{profile.selfIntroduction}</p>
+                      <div className="text-gray-500 mb-1">전문 분야</div>
+                      <input disabled value={(((reg?.specialties as string[])?.[0]) || (reg?.specialty as string) || '') as string} className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50" />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700">치료 철학</label>
-                      <p className="mt-1 text-sm text-gray-900 p-3 bg-gray-50 rounded">{profile.teachingPhilosophy}</p>
+                      <div className="text-gray-500 mb-1">치료 지역</div>
+                      <input disabled value={((reg?.region as string) || '') as string} className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50" />
+                    </div>
+                    <div>
+                      <div className="text-gray-500 mb-1">경력</div>
+                      <input disabled value={((reg?.experience as string) || String(profile.experience) || '') as string} className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50" />
+                    </div>
+                    <div>
+                      <div className="text-gray-500 mb-1">희망 치료비</div>
+                      <input disabled value={((reg?.hourlyRate as string) || '') as string} className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50" />
+                    </div>
+                    <div className="md:col-span-2">
+                      <div className="text-gray-500 mb-1">치료 철학 및 강점</div>
+                      <textarea disabled rows={4} value={((reg?.therapyActivity as string) || '') as string} className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50 resize-none" />
+                    </div>
+                    <div className="md:col-span-2">
+                      <div className="text-gray-500 mb-1">주요 치료 경험 및 사례</div>
+                      <textarea disabled rows={4} value={((reg?.mainSpecialty as string) || '') as string} className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50 resize-none" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 학력/경력 및 자격증 */}
+                <div className="border-4 border-blue-700 rounded-lg p-4 bg-white">
+                  <div className="flex items-center mb-4">
+                    <div className="bg-blue-100 rounded-full p-2 mr-3"><span className="text-blue-600 text-lg">🎓</span></div>
+                    <h4 className="text-base font-bold text-gray-900">학력/경력 및 자격증</h4>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div className="md:col-span-1">
+                      <div className="text-gray-500 mb-1">학력 및 경력</div>
+                      <textarea disabled rows={6} value={((reg?.educationCareer as string) || '') as string} className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50 resize-none" />
+                    </div>
+                    <div className="md:col-span-1">
+                      <div className="text-gray-500 mb-1">보유 자격증</div>
+                      <textarea disabled rows={6} value={((reg?.certifications as string) || '') as string} className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50 resize-none" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 희망 시간/요일 & 계좌 */}
+                <div className="border-2 border-blue-200 rounded-lg p-4 bg-blue-50">
+                  <div className="flex items-center mb-4">
+                    <div className="bg-blue-100 rounded-full p-2 mr-3"><span className="text-blue-600 text-lg">🗓️</span></div>
+                    <h4 className="text-base font-bold text-gray-900">희망 시간/요일 & 계좌</h4>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <div className="text-gray-500 mb-1">치료 가능 요일</div>
+                      <input disabled value={Array.isArray(reg?.availableDays) ? ((reg?.availableDays as string[]).join(', ')) : ''} className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50" />
+                    </div>
+                    <div>
+                      <div className="text-gray-500 mb-1">치료 가능 시간</div>
+                      <input disabled value={((reg?.availableTime as string) || '') as string} className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50" />
+                    </div>
+                    <div>
+                      <div className="text-gray-500 mb-1">은행명</div>
+                      <input disabled value={fv(reg?.bankName)} className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50" />
+                    </div>
+                    <div>
+                      <div className="text-gray-500 mb-1">예금주명</div>
+                      <input disabled value={fv(reg?.accountHolder)} className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50" />
+                    </div>
+                    <div className="md:col-span-2">
+                      <div className="text-gray-500 mb-1">계좌번호</div>
+                      <input disabled value={fv(reg?.accountNumber)} className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50" />
                     </div>
                   </div>
                 </div>
@@ -186,23 +320,27 @@ export default function ProfileDetailReview({ isOpen, onClose, profile, onAction
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="border border-gray-200 rounded-lg p-4">
                     <h5 className="font-medium text-gray-900 mb-2">학력 증명서</h5>
-                    <p className="text-sm text-gray-600 mb-2">{profile.documents.diploma}</p>
-                    <button className="text-sm text-blue-600 hover:text-blue-800">파일 보기</button>
+                    {renderFiles(((reg as Record<string, unknown>)?.documents as Record<string, unknown> | undefined)?.diploma)}
                   </div>
                   <div className="border border-gray-200 rounded-lg p-4">
                     <h5 className="font-medium text-gray-900 mb-2">자격증 사본</h5>
-                    <p className="text-sm text-gray-600 mb-2">{profile.documents.certificate}</p>
-                    <button className="text-sm text-blue-600 hover:text-blue-800">파일 보기</button>
+                    {renderFiles(((reg as Record<string, unknown>)?.documents as Record<string, unknown> | undefined)?.license)}
                   </div>
                   <div className="border border-gray-200 rounded-lg p-4">
                     <h5 className="font-medium text-gray-900 mb-2">경력 증명서</h5>
-                    <p className="text-sm text-gray-600 mb-2">{profile.documents.career}</p>
-                    <button className="text-sm text-blue-600 hover:text-blue-800">파일 보기</button>
+                    {renderFiles(((reg as Record<string, unknown>)?.documents as Record<string, unknown> | undefined)?.career)}
                   </div>
                   <div className="border border-gray-200 rounded-lg p-4">
-                    <h5 className="font-medium text-gray-900 mb-2">면허증</h5>
-                    <p className="text-sm text-gray-600 mb-2">{profile.documents.license}</p>
-                    <button className="text-sm text-blue-600 hover:text-blue-800">파일 보기</button>
+                    <h5 className="font-medium text-gray-900 mb-2">자기소개 영상/기타</h5>
+                    {renderFiles(((reg as Record<string, unknown>)?.documents as Record<string, unknown> | undefined)?.certificate)}
+                  </div>
+                  <div className="border border-gray-200 rounded-lg p-4">
+                    <h5 className="font-medium text-gray-900 mb-2">성범죄 경력 조회 증명서</h5>
+                    {renderFiles(((reg as Record<string, unknown>)?.documents as Record<string, unknown> | undefined)?.crimeCheck)}
+                  </div>
+                  <div className="border border-gray-200 rounded-lg p-4">
+                    <h5 className="font-medium text-gray-900 mb-2">통장 사본</h5>
+                    {renderFiles(((reg as Record<string, unknown>)?.documents as Record<string, unknown> | undefined)?.bankbook)}
                   </div>
                 </div>
               </div>
@@ -337,7 +475,7 @@ export default function ProfileDetailReview({ isOpen, onClose, profile, onAction
                 disabled={!actionType || (actionType !== 'approve' && !actionReason.trim())}
                 className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                처리 완료
+                {submitting ? '처리 중...' : '처리 완료'}
               </button>
             )}
           </div>

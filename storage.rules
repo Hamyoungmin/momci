@@ -242,6 +242,62 @@ service firebase.storage {
                        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.userType == 'parent'));
     }
     
+    // [NEW] 치료사 등록 관련 파일들 - plural 경로 지원 (therapist-registrations/{uid}/{regId}/...)
+    // 프로필 이미지
+    match /therapist-registrations/{userId}/{regId}/profile/{filename} {
+      // 본인만 업로드/수정/삭제 가능
+      allow create, update, delete: if isAuthenticated() && 
+                                       isOwner(userId) &&
+                                       isValidProfileImage() &&
+                                       hasRecentActivity();
+      // 관리자, 본인, 학부모(지원자 정보 열람 시) 읽기 허용
+      allow read: if isAuthenticated() && 
+                     (isOwner(userId) || isAdmin() ||
+                      (firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
+                       firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.userType == 'parent'));
+    }
+
+    // 학력 증빙
+    match /therapist-registrations/{userId}/{regId}/academic/{filename} {
+      allow create: if isAuthenticated() && isOwner(userId) && isValidDocumentType() && hasRecentActivity() && request.resource.size < 15 * 1024 * 1024;
+      allow read: if isAuthenticated() && (isOwner(userId) || isAdmin() || (firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.userType == 'parent'));
+      allow delete: if isAuthenticated() && (isOwner(userId) || isAdmin());
+    }
+
+    // 경력 증빙
+    match /therapist-registrations/{userId}/{regId}/career/{filename} {
+      allow create: if isAuthenticated() && isOwner(userId) && isValidDocumentType() && hasRecentActivity() && request.resource.size < 15 * 1024 * 1024;
+      allow read: if isAuthenticated() && (isOwner(userId) || isAdmin() || (firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.userType == 'parent'));
+      allow delete: if isAuthenticated() && (isOwner(userId) || isAdmin());
+    }
+
+    // 자격증 사본
+    match /therapist-registrations/{userId}/{regId}/license/{filename} {
+      allow create: if isAuthenticated() && isOwner(userId) && isValidDocumentType() && hasRecentActivity() && request.resource.size < 10 * 1024 * 1024;
+      allow read: if isAuthenticated() && (isOwner(userId) || isAdmin() || (firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.userType == 'parent'));
+      allow delete: if isAuthenticated() && (isOwner(userId) || isAdmin());
+    }
+
+    // 성범죄 경력 조회 증명서 (민감)
+    match /therapist-registrations/{userId}/{regId}/crime-check/{filename} {
+      allow create: if isAuthenticated() && isOwner(userId) && isValidDocumentType() && hasRecentActivity() && request.resource.size < 10 * 1024 * 1024;
+      allow read, delete: if isAuthenticated() && (isOwner(userId) || isAdmin());
+    }
+
+    // 통장 사본 (민감)
+    match /therapist-registrations/{userId}/{regId}/bankbook/{filename} {
+      allow create: if isAuthenticated() && isOwner(userId) && isValidDocumentType() && hasRecentActivity() && request.resource.size < 5 * 1024 * 1024;
+      allow read, delete: if isAuthenticated() && (isOwner(userId) || isAdmin());
+    }
+
+    // 자기소개 영상/기타 증빙
+    match /therapist-registrations/{userId}/{regId}/intro/{filename} {
+      // 비디오 또는 문서 허용 (1분 영상 등)
+      allow create: if isAuthenticated() && isOwner(userId) && (isValidVideoType() || isValidDocumentType()) && hasRecentActivity() && request.resource.size < 100 * 1024 * 1024;
+      allow read: if isAuthenticated() && (isOwner(userId) || isAdmin() || (firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.userType == 'parent'));
+      allow delete: if isAuthenticated() && (isOwner(userId) || isAdmin());
+    }
+
     // 학력 증빙 서류 파일 (졸업증명서 등)
     match /therapist-registration/{userId}/academic-credentials/{filename} {
       // 치료사 본인만 업로드 가능

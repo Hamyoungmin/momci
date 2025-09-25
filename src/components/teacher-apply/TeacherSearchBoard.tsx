@@ -1,6 +1,10 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { collection, onSnapshot, query, where, orderBy, addDoc, serverTimestamp, setDoc, doc, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+// import { storage } from '@/lib/firebase';
+// import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -24,6 +28,22 @@ interface Teacher {
   ownerUid?: string; // 소유자 UID
   isModified?: boolean; // 수정됨 표시 (검토 필요)
   lastEditedAt?: string; // 마지막 수정일시
+  // 상세 보기 추가 필드
+  email?: string;
+  phone?: string;
+  birthDate?: string;
+  qualification?: string;
+  availableDays?: string[];
+  availableTime?: string;
+  educationCareer?: string;
+  certifications?: string;
+  therapyActivity?: string; // 치료 철학 및 강점
+  mainSpecialty?: string;   // 주요 치료 경험 및 사례
+  bankName?: string;
+  accountHolder?: string;
+  accountNumber?: string;
+  applicationSource?: string;
+  docId?: string;
 }
 
 export default function TeacherSearchBoard() {
@@ -43,6 +63,8 @@ export default function TeacherSearchBoard() {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [activeTeacher, setActiveTeacher] = useState<Teacher | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [isRegistrationEdit, setIsRegistrationEdit] = useState(false);
+  const [editDocId, setEditDocId] = useState<string | null>(null);
 
   // 등록된 치료사 목록 상태
   const [registeredTeachers, setRegisteredTeachers] = useState<Teacher[]>([]);
@@ -53,99 +75,156 @@ export default function TeacherSearchBoard() {
     registeredTeachersRef.current = registeredTeachers;
   }, [registeredTeachers]);
 
-  // localStorage에서 데이터 불러오기 및 실시간 동기화
+  // Firestore에서 공개 피드 + 본인 신청 목록 실시간 구독 (이전 상태로 복원)
   useEffect(() => {
-    // 초기 데이터 로드
-    const loadTeachers = () => {
-    if (typeof window !== 'undefined') {
-        try {
-      const savedTeachers = localStorage.getItem('registeredTeachers');
-      if (savedTeachers) {
-          const parsedTeachers = JSON.parse(savedTeachers);
-            // 데이터 유효성 검사
-            if (Array.isArray(parsedTeachers)) {
-          setRegisteredTeachers(parsedTeachers);
-            } else {
-              if (process.env.NODE_ENV === 'development') {
-                console.warn('저장된 치료사 데이터 형식이 올바르지 않습니다.');
-              }
-              setRegisteredTeachers([]);
+    const publicQ = query(
+      collection(db, 'therapist-registrations-feed'),
+      orderBy('createdAt', 'desc')
+    );
+    const unPublic = onSnapshot(publicQ, (snapshot) => {
+      const baseRows: Teacher[] = snapshot.docs.map((d, idx) => {
+        const data = d.data() as Record<string, unknown>;
+        return {
+          id: idx + 1,
+          docId: d.id,
+          category: String((data.category as string) || '기타'),
+          name: String((data.title as string) || (data.name as string) || '이름 미등록'),
+          details: String((data.details as string) || ''),
+          hourlyRate: String((data.hourlyRate as string) || '협의'),
+          status: String((data.status as string) || 'pending'),
+          applications: 0,
+          fullName: (data.name as string) || undefined,
+          gender: (data.gender as string) || undefined,
+          residence: (data.address as string) || undefined,
+          treatmentRegion: (data.region as string) || undefined,
+          experience: (data.experience as string) || undefined,
+          specialty: (typeof (data as { specialty?: unknown }).specialty === 'string'
+            ? (data as { specialty?: string }).specialty
+            : (Array.isArray(data.specialties) ? (data.specialties as string[])[0] : undefined)),
+          ownerUid: (data.userId as string) || undefined,
+          isModified: false,
+          lastEditedAt: '',
+          email: (data.email as string) || undefined,
+          phone: (data.phone as string) || undefined,
+          birthDate: (data.birthDate as string) || undefined,
+          qualification: (data.qualification as string) || undefined,
+          availableDays: (data.availableDays as string[]) || [],
+          availableTime: (data.availableTime as string) || undefined,
+          educationCareer: (data.educationCareer as string) || undefined,
+          certifications: (data.certifications as string) || undefined,
+          therapyActivity: (data.therapyActivity as string) || undefined,
+          mainSpecialty: (data.mainSpecialty as string) || undefined,
+          bankName: (data.bankName as string) || undefined,
+          accountHolder: (data.accountHolder as string) || undefined,
+          accountNumber: (data.accountNumber as string) || undefined,
+          applicationSource: (data.applicationSource as string) || undefined
+        };
+      });
+      setRegisteredTeachers(baseRows);
+    }, () => {});
+
+    let unMine: (() => void) | null = null;
+    if (currentUser) {
+      const mineQ = query(
+        collection(db, 'therapist-registrations'),
+        where('userId', '==', currentUser.uid),
+        orderBy('createdAt', 'desc')
+      );
+      unMine = onSnapshot(mineQ, (snapshot) => {
+        const mineRows = snapshot.docs.map((d) => {
+          const data = d.data() as Record<string, unknown>;
+          return {
+            id: 0,
+            docId: d.id,
+            category: String((data.category as string) || '기타'),
+            name: String((data.title as string) || (data.name as string) || '이름 미등록'),
+            details: String((data.details as string) || ''),
+            hourlyRate: String((data.hourlyRate as string) || '협의'),
+            status: String((data.status as string) || 'pending'),
+            applications: 0,
+            fullName: (data.name as string) || undefined,
+            gender: (data.gender as string) || undefined,
+            residence: (data.address as string) || undefined,
+            treatmentRegion: (data.region as string) || undefined,
+            experience: (data.experience as string) || undefined,
+            specialty: (typeof (data as { specialty?: unknown }).specialty === 'string'
+              ? (data as { specialty?: string }).specialty
+              : (Array.isArray(data.specialties) ? (data.specialties as string[])[0] : undefined)),
+            ownerUid: currentUser.uid,
+            isModified: false,
+            lastEditedAt: '',
+            email: (data.email as string) || undefined,
+            phone: (data.phone as string) || undefined,
+            birthDate: (data.birthDate as string) || undefined,
+            qualification: (data.qualification as string) || undefined,
+            availableDays: (data.availableDays as string[]) || [],
+            availableTime: (data.availableTime as string) || undefined,
+            educationCareer: (data.educationCareer as string) || undefined,
+            certifications: (data.certifications as string) || undefined,
+            therapyActivity: (data.therapyActivity as string) || undefined,
+            mainSpecialty: (data.mainSpecialty as string) || undefined,
+            bankName: (data.bankName as string) || undefined,
+            accountHolder: (data.accountHolder as string) || undefined,
+            accountNumber: (data.accountNumber as string) || undefined,
+            applicationSource: (data.applicationSource as string) || undefined
+          } as Teacher;
+        });
+        setRegisteredTeachers((prev) => {
+          const merged = [...prev];
+          mineRows.forEach(m => {
+            if (!merged.find(x => x.docId === m.docId)) {
+              merged.push({ ...m, id: merged.length + 1 });
             }
-          }
-        } catch (error) {
-            if (process.env.NODE_ENV === 'development') {
-          console.error('저장된 치료사 데이터를 불러오는데 실패했습니다:', error);
-        }
-            setRegisteredTeachers([]);
-          }
-      }
-    };
-
-    // 초기 로드
-    loadTeachers();
-
-    // localStorage 변경 감지 (다른 탭에서 변경될 때)
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'registeredTeachers') {
-        loadTeachers();
-      }
-    };
-
-    // 같은 탭에서 localStorage 직접 변경 감지
-    const handleLocalStorageUpdate = () => {
-      loadTeachers();
-    };
-
-    // 이벤트 리스너 등록
-    window.addEventListener('storage', handleStorageChange);
-    window.addEventListener('localStorageUpdate', handleLocalStorageUpdate);
-
-    // 실시간 업데이트를 위한 주기적 동기화 (옵션)
-    const interval = setInterval(() => {
-      try {
-        // 실제 서버와 연결될 때 여기서 API 호출
-        // 현재는 localStorage 재확인으로 대체
-        const currentData = localStorage.getItem('registeredTeachers');
-        if (currentData) {
-          const currentTeachers = JSON.parse(currentData);
-          
-          // 데이터 유효성 확인
-          if (Array.isArray(currentTeachers)) {
-            // 데이터 변경 확인 (간단한 비교)
-            if (JSON.stringify(currentTeachers) !== JSON.stringify(registeredTeachersRef.current)) {
-              setRegisteredTeachers(currentTeachers);
-            }
-          }
-        }
-      } catch (error) {
-        if (process.env.NODE_ENV === 'development') {
-          console.error('주기적 동기화 중 에러 발생:', error);
-        }
-      }
-    }, 5000); // 5초마다 확인
-
-    // 정리 함수
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('localStorageUpdate', handleLocalStorageUpdate);
-      clearInterval(interval);
-    };
-  }, []); // 빈 dependency array로 변경하여 무한 루프 방지
-
-  // localStorage에 데이터 저장하는 함수 (실시간 동기화 포함)
-  const saveToLocalStorage = (teachers: Teacher[]) => {
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem('registeredTeachers', JSON.stringify(teachers));
-        // 같은 탭에서 실시간 업데이트를 위한 이벤트 발생
-        window.dispatchEvent(new Event('localStorageUpdate'));
-      } catch (error) {
-        if (process.env.NODE_ENV === 'development') {
-          console.error('치료사 데이터 저장에 실패했습니다:', error);
-        }
-      }
+          });
+          return merged;
+        });
+      }, () => {});
     }
-  };
+
+    return () => { unPublic(); if (unMine) unMine(); };
+  }, [currentUser]);
+
+  // 관리자 전용: 기존 신청서를 공개 피드로 자동 동기화(보정) - 실시간
+  useEffect(() => {
+    if (!isAdmin) return;
+    const allQ = query(collection(db, 'therapist-registrations'), orderBy('createdAt', 'desc'));
+    const un = onSnapshot(allQ, (snapshot) => {
+      snapshot.docs.forEach(async (d) => {
+        const data = d.data() as Record<string, unknown>;
+        try {
+          await setDoc(doc(db, 'therapist-registrations-feed', d.id), {
+            userId: data.userId,
+            name: data.name,
+            gender: data.gender,
+            region: data.region,
+            address: data.address,
+            specialty: Array.isArray(data.specialties) ? (data.specialties as string[])[0] : '',
+            experience: data.experience,
+            hourlyRate: data.hourlyRate,
+            therapyActivity: data.therapyActivity,
+            mainSpecialty: data.mainSpecialty,
+            educationCareer: data.educationCareer,
+            certifications: data.certifications,
+            availableDays: data.availableDays,
+            availableTime: data.availableTime,
+            email: data.email,
+            phone: data.phone,
+            birthDate: data.birthDate,
+            status: data.status || 'pending',
+            updatedAt: serverTimestamp()
+          }, { merge: true });
+        } catch (e) {
+        if (process.env.NODE_ENV === 'development') {
+            // eslint-disable-next-line no-console
+            console.warn('피드 보정 실패:', d.id, e);
+          }
+        }
+      });
+    });
+    return () => un();
+  }, [isAdmin]);
+
+  // localStorage 사용 제거됨
 
   // 파일 업로드 상태
   const [profileImage, setProfileImage] = useState<File | null>(null);
@@ -196,14 +275,13 @@ export default function TeacherSearchBoard() {
   // 파일 업로드 핸들러
   const handleProfileImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
+    if (!file) return;
       setProfileImage(file);
       const reader = new FileReader();
-      reader.onload = (e) => {
-        setProfileImagePreview(e.target?.result as string);
+    reader.onload = (ev) => {
+      setProfileImagePreview(ev.target?.result as string);
       };
       reader.readAsDataURL(file);
-    }
   };
 
   const handleFileUpload = (
@@ -242,136 +320,121 @@ export default function TeacherSearchBoard() {
     }));
   };
 
-  // 치료사 등록 처리
-  const handleTeacherRegistration = () => {
+  // 치료사 등록 처리 (Firestore 저장)
+  const handleTeacherRegistration = async () => {
     // 필수 항목 검증
     if (!formData.name || !formData.phone || !formData.email || !formData.applicationSource || !formData.agreeTerms) {
       alert('필수 항목을 모두 입력해주세요.');
       return;
     }
 
-    if (!profileImage) {
-      alert('프로필 사진을 업로드해주세요.');
-      return;
+    if (!isRegistrationEdit) {
+      if (!profileImage) { alert('프로필 사진을 업로드해주세요.'); return; }
+      if (academicFiles.length === 0) { alert('학력 증빙 서류를 업로드해주세요.'); return; }
+      if (careerFiles.length === 0) { alert('경력 증빙 서류를 업로드해주세요.'); return; }
+      if (licenseFiles.length === 0) { alert('자격증 사본을 업로드해주세요.'); return; }
+      if (educationFiles.length === 0) { alert('성범죄 경력 조회 증명서를 업로드해주세요.'); return; }
+      if (formData.availableDays.length === 0) { alert('치료 가능 요일을 선택해주세요.'); return; }
     }
 
-    if (academicFiles.length === 0) {
-      alert('학력 증빙 서류를 업로드해주세요.');
-      return;
-    }
+    // 카테고리 매핑 (현재 사용 안 함)
+    // const getCategoryFromSpecialties = () => {
+    //   const specialty = formData.specialties[0];
+    //   if (['언어치료', '인지치료', '학습치료'].includes(specialty)) return '언어/인지치료';
+    //   if (['놀이치료', '감각통합치료'].includes(specialty)) return '놀이/감각통합치료';
+    //   if (['물리치료', '작업치료'].includes(specialty)) return '물리/작업치료';
+    //   if (['ABA치료', '행동치료'].includes(specialty)) return 'ABA/행동치료';
+    //   if (['미술치료', '음악치료'].includes(specialty)) return '미술/음악치료';
+    //   return '기타';
+    // };
 
-    if (careerFiles.length === 0) {
-      alert('경력 증빙 서류를 업로드해주세요.');
-      return;
-    }
-
-    if (licenseFiles.length === 0) {
-      alert('자격증 사본을 업로드해주세요.');
-      return;
-    }
-
-    if (educationFiles.length === 0) {
-      alert('성범죄 경력 조회 증명서를 업로드해주세요.');
-      return;
-    }
-
-    if (formData.availableDays.length === 0) {
-      alert('치료 가능 요일을 선택해주세요.');
-      return;
-    }
-
-    // 카테고리 매핑
-    const getCategoryFromSpecialties = () => {
-      const specialty = formData.specialties[0];
-      if (['언어치료', '인지치료', '학습치료'].includes(specialty)) return '언어/인지치료';
-      if (['놀이치료', '감각통합치료'].includes(specialty)) return '놀이/감각통합치료';
-      if (['물리치료', '작업치료'].includes(specialty)) return '물리/작업치료';
-      if (['ABA치료', '행동치료'].includes(specialty)) return 'ABA/행동치료';
-      if (['미술치료', '음악치료'].includes(specialty)) return '미술/음악치료';
-      return '기타';
-    };
-
-    // 새로운 치료사 생성 - 기존 치료사 중 가장 큰 ID + 1로 생성
-    const nextId = registeredTeachers.length === 0 ? 1 : 
-      Math.max(...registeredTeachers.filter(t => t && typeof t.id === 'number').map(t => t.id || 0)) + 1;
-    
-    // 제목 구성: 치료사 거주 지역/전문 분야/성별/치료 지역/경력/시간당 치료비
-    const titleParts = [
-      formData.address?.split(' ')[0] || '지역미정', // 거주 지역 (주소의 첫 부분)
-      formData.specialties[0] || '전문분야미정', // 전문 분야
-      formData.gender, // 성별
-      formData.region || '치료지역미정', // 치료 지역
-      formData.experience, // 경력
-      `시간당 ${formData.hourlyRate || '협의'}` // 시간당 치료비
-    ];
-    
-    const newTeacher: Teacher = {
-      id: nextId,
-      category: getCategoryFromSpecialties(),
-      name: titleParts.join('/'), // 제목으로 표시될 내용
-      details: `${formData.experience} 경력 / ${formData.specialties.join(', ')} 전문 / ${formData.region || '지역 협의'}`,
-      hourlyRate: formatPrice(formData.hourlyRate) || '협의',
-      status: '등록완료',
-      applications: 0,
-      // 추가 필드들
-      fullName: formData.name, // 실제 이름
+    // Firestore 저장
+    try {
+      if (isRegistrationEdit && editDocId) {
+        // 업데이트 분기
+        const regRef = doc(db, 'therapist-registrations', editDocId);
+        await updateDoc(regRef, {
+          userId: currentUser?.uid,
+          name: formData.name,
+          birthDate: formData.birthDate,
       gender: formData.gender,
-      residence: formData.address?.split(' ')[0] || '지역미정',
-      treatmentRegion: formData.region,
+          phone: formData.phone,
+          email: formData.email,
+          address: formData.address,
+          qualification: formData.qualification,
+          therapyActivity: formData.therapyActivity,
+          mainSpecialty: formData.mainSpecialty,
       experience: formData.experience,
-      specialty: formData.specialties[0],
-      ownerUid: currentUser?.uid || undefined,
-      isModified: false
-    };
+          region: formData.region,
+          availableDays: formData.availableDays,
+          availableTime: formData.availableTime,
+          specialties: formData.specialties,
+          bankName: formData.bankName,
+          accountHolder: formData.accountHolder,
+          accountNumber: formData.accountNumber,
+          hourlyRate: formData.hourlyRate,
+          applicationSource: formData.applicationSource,
+          agreeTerms: formData.agreeTerms,
+          updatedAt: serverTimestamp(),
+          isModified: true,
+          modifiedAt: serverTimestamp()
+        });
 
-    // 치료사 목록에 추가
-    const updatedTeachers = [...registeredTeachers, newTeacher];
-    setRegisteredTeachers(updatedTeachers);
-    
-    // localStorage에 저장
-    saveToLocalStorage(updatedTeachers);
+        await setDoc(doc(db, 'therapist-registrations-feed', editDocId), {
+          userId: currentUser?.uid,
+          name: formData.name,
+          gender: formData.gender,
+          region: formData.region,
+          specialty: formData.specialties?.[0] || '',
+          experience: formData.experience,
+          hourlyRate: formData.hourlyRate,
+          therapyActivity: formData.therapyActivity,
+          mainSpecialty: formData.mainSpecialty,
+          educationCareer: formData.educationCareer,
+          certifications: formData.certifications,
+          availableDays: formData.availableDays,
+          availableTime: formData.availableTime,
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+      } else {
+        await addDoc(collection(db, 'therapist-registrations'), {
+          userId: currentUser?.uid,
+          name: formData.name,
+          birthDate: formData.birthDate,
+          gender: formData.gender,
+          phone: formData.phone,
+          email: formData.email,
+          address: formData.address,
+          qualification: formData.qualification,
+          therapyActivity: formData.therapyActivity,
+          mainSpecialty: formData.mainSpecialty,
+          experience: formData.experience,
+          region: formData.region,
+          availableDays: formData.availableDays,
+          availableTime: formData.availableTime,
+          specialties: formData.specialties,
+          bankName: formData.bankName,
+          accountHolder: formData.accountHolder,
+          accountNumber: formData.accountNumber,
+          hourlyRate: formData.hourlyRate,
+          applicationSource: formData.applicationSource,
+          agreeTerms: formData.agreeTerms,
+          status: 'pending',
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
+        // 기존 업로드 로직 유지
+      }
+    } catch {
+      alert('등록 중 오류가 발생했습니다. 다시 시도해주세요.');
+      return;
+    }
 
-    // 폼 초기화
-    setFormData({
-      name: '',
-      birthDate: '',
-      gender: '여성',
-      phone: '',
-      email: '',
-      address: '',
-      qualification: '',
-      therapyActivity: '',
-      mainSpecialty: '',
-      educationCareer: '',
-      certifications: '',
-      experience: '',
-      region: '',
-      availableDays: [],
-      availableTime: '',
-      specialties: [],
-      bankName: '',
-      accountHolder: '',
-      accountNumber: '',
-      hourlyRate: '',
-      applicationSource: '',
-      agreeTerms: false
-    });
-
-    // 파일 상태 초기화
-    setProfileImage(null);
-    setProfileImagePreview('');
-    setEducationFiles([]);
-    setExperienceFiles([]);
-    setCertificateFiles([]);
-    setBankBookFile(null);
-    setAcademicFiles([]);
-    setCareerFiles([]);
-    setLicenseFiles([]);
-
-    // 팝업 닫기
+    // 완료 처리
     closePopup();
-
-    alert('치료사 등록이 완료되었습니다! 실시간으로 반영됩니다.');
+    setIsRegistrationEdit(false);
+    setEditDocId(null);
+    alert('저장이 완료되었습니다!');
   };
 
   const sidebarItems = ['치료사등록', '정식(경력)치료사 등록'];
@@ -548,6 +611,7 @@ export default function TeacherSearchBoard() {
     try {
       const statusStr = (status || '').toString();
       switch (statusStr) {
+        // 과거 로컬 상태명
         case '등록완료':
           return 'bg-blue-100 text-blue-800';
         case '검토중':
@@ -556,6 +620,15 @@ export default function TeacherSearchBoard() {
           return 'bg-red-100 text-red-800';
         case '자격미달':
           return 'bg-gray-100 text-gray-800';
+        // Firestore 표준 상태
+        case 'pending':
+          return 'bg-yellow-100 text-yellow-800';
+        case 'approved':
+          return 'bg-green-100 text-green-800';
+        case 'rejected':
+          return 'bg-red-100 text-red-800';
+        case 'hold':
+          return 'bg-blue-100 text-blue-800';
         default:
           return 'bg-gray-100 text-gray-800';
       }
@@ -565,6 +638,21 @@ export default function TeacherSearchBoard() {
       }
       return 'bg-gray-100 text-gray-800';
     }
+  };
+
+  // 상태 한글 라벨 변환
+  const formatStatusKorean = (status: string) => {
+    const map: Record<string, string> = {
+      pending: '대기',
+      approved: '승인',
+      rejected: '반려',
+      hold: '보류',
+      등록완료: '등록완료',
+      검토중: '검토중',
+      등록보류: '등록보류',
+      자격미달: '자격미달'
+    };
+    return map[status] || status || '미등록';
   };
 
   // 금액을 천 단위로 포맷팅하는 함수
@@ -900,13 +988,17 @@ export default function TeacherSearchBoard() {
                           </td>
                           <td className="px-4 py-4 w-20">
                             <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(teacher?.status || '미등록')}`}>
-                              {teacher?.status || '미등록'}
+                              {formatStatusKorean(teacher?.status || '미등록')}
                             </span>
                           </td>
                           <td className="px-4 py-4 w-24">
                             <button 
-                              onClick={() => { setActiveTeacher(teacher); setShowDetailModal(true); setIsEditing(false); }}
-                              className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                              onClick={() => {
+                                const isOwner = !!currentUser?.uid && (!!teacher.ownerUid && teacher.ownerUid === currentUser.uid);
+                                if (!isOwner) { alert('본인 게시글만 상세보기를 할 수 있습니다.'); return; }
+                                setActiveTeacher(teacher); setShowDetailModal(true); setIsEditing(false);
+                              }}
+                              className={`text-sm font-medium ${teacher.ownerUid === currentUser?.uid ? 'text-blue-600 hover:text-blue-800' : 'text-gray-400 cursor-not-allowed'}`}
                             >
                               상세보기
                             </button>
@@ -1671,46 +1763,204 @@ export default function TeacherSearchBoard() {
 
       {/* 상세/수정 모달 */}
       {showDetailModal && activeTeacher && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowDetailModal(false)}>
-          <div className="bg-white rounded-xl w-full max-w-3xl shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-4 border-b">
-              <h3 className="text-lg font-semibold">치료사 프로필 {isEditing ? '수정' : '상세'}</h3>
+        <div className="fixed inset-0 bg-gray-900 bg-opacity-60 flex items-center justify-center z-50 p-4" onClick={() => setShowDetailModal(false)}>
+          <div 
+            className="bg-white rounded-xl w-full max-w-4xl max-h-[95vh] overflow-hidden shadow-2xl flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-blue-50">
+              <div>
+                <h3 className="text-xl font-bold text-gray-900">치료사 프로필 상세</h3>
+                <p className="text-sm text-gray-600 mt-1">등록한 프로필 정보를 확인하세요.</p>
+              </div>
               <div className="flex items-center gap-2">
                 {((currentUser?.uid && activeTeacher.ownerUid === currentUser.uid) || isAdmin) && (
-                  <button onClick={() => setIsEditing((v) => !v)} className="px-3 py-1 text-sm rounded bg-blue-600 text-white">{isEditing ? '보기' : '수정'}</button>
+                  <button onClick={() => { setShowDetailModal(false); setIsRegistrationEdit(true); setEditDocId(activeTeacher.docId || null); setFormData({
+                    name: activeTeacher.fullName || '',
+                    birthDate: activeTeacher.birthDate || '',
+                    gender: activeTeacher.gender || '여성',
+                    phone: activeTeacher.phone || '',
+                    email: activeTeacher.email || '',
+                    address: activeTeacher.residence || '',
+                    qualification: activeTeacher.qualification || '',
+                    therapyActivity: activeTeacher.therapyActivity || '',
+                    mainSpecialty: activeTeacher.mainSpecialty || '',
+                    educationCareer: activeTeacher.educationCareer || '',
+                    certifications: activeTeacher.certifications || '',
+                    experience: activeTeacher.experience || '',
+                    region: activeTeacher.treatmentRegion || '',
+                    availableDays: activeTeacher.availableDays || [],
+                    availableTime: activeTeacher.availableTime || '',
+                    specialties: activeTeacher.specialty ? [activeTeacher.specialty] : [],
+                    bankName: activeTeacher.bankName || '',
+                    accountHolder: activeTeacher.accountHolder || '',
+                    accountNumber: activeTeacher.accountNumber || '',
+                    hourlyRate: activeTeacher.hourlyRate || '',
+                    applicationSource: activeTeacher.applicationSource || '',
+                    agreeTerms: true,
+                  }); setShowRegistrationPopup(true); }} className="px-3 py-1.5 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700">수정</button>
                 )}
-                <button onClick={() => setShowDetailModal(false)} className="text-gray-500 text-xl">×</button>
+                <button onClick={() => setShowDetailModal(false)} className="text-gray-500 text-2xl leading-none">×</button>
               </div>
             </div>
 
             {!isEditing ? (
-              <div className="p-4 space-y-2 text-sm">
-                <div><span className="text-gray-500">이름:</span> {activeTeacher.fullName}</div>
-                <div><span className="text-gray-500">분야:</span> {activeTeacher.specialty}</div>
-                <div><span className="text-gray-500">지역:</span> {activeTeacher.treatmentRegion || activeTeacher.residence}</div>
-                <div><span className="text-gray-500">경력:</span> {activeTeacher.experience}</div>
-                <div><span className="text-gray-500">치료비:</span> {activeTeacher.hourlyRate}</div>
-                <div><span className="text-gray-500">상태:</span> {activeTeacher.status}</div>
-                {activeTeacher.isModified && <div className="text-xs text-yellow-700">관리자 검토 대기: 수정된 프로필</div>}
+              <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                {/* 기본 정보 - 등록 팝업과 동일 톤 */}
+                <div className="border-2 border-blue-200 rounded-lg p-4 bg-blue-50">
+                  <div className="flex items-center mb-4">
+                    <div className="bg-blue-100 rounded-full p-2 mr-3"><span className="text-blue-600 text-lg">👤</span></div>
+                    <h4 className="text-lg font-bold text-gray-900">기본 정보</h4>
+                    <span className={`ml-auto inline-flex px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(activeTeacher.status || '미등록')}`}>{formatStatusKorean(activeTeacher.status || '미등록')}</span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* 좌측 프로필 이미지 자리 */}
+                    <div className="md:col-span-1 flex items-center justify-center">
+                      <div className="w-40 h-40 bg-gray-200 rounded-full flex items-center justify-center">
+                        <span className="text-gray-500 text-sm text-center">사진</span>
+                      </div>
+                    </div>
+                    {/* 우측 입력형 레이아웃(읽기 전용) */}
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">이름</label>
+                        <input value={activeTeacher.fullName || ''} disabled className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">생년월일</label>
+                        <input value={activeTeacher.birthDate || ''} disabled className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">성별</label>
+                        <input value={activeTeacher.gender || ''} disabled className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">연락처</label>
+                        <input value={activeTeacher.phone || ''} disabled className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">이메일(ID)</label>
+                        <input value={activeTeacher.email || ''} disabled className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">주소</label>
+                        <input value={activeTeacher.residence || ''} disabled className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 프로필 정보(공개) */}
+                <div className="border-4 border-blue-700 rounded-lg p-4 bg-white">
+                  <div className="flex items-center mb-4">
+                    <div className="bg-blue-100 rounded-full p-2 mr-3"><span className="text-blue-600 text-lg">📋</span></div>
+                    <h4 className="text-lg font-bold text-gray-900">프로필 정보 (학부모 공개)</h4>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <div className="text-gray-500 mb-1">전문 분야</div>
+                      <input value={activeTeacher.specialty || ''} disabled className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50" />
+                    </div>
+                    <div>
+                      <div className="text-gray-500 mb-1">치료 지역</div>
+                      <input value={activeTeacher.treatmentRegion || ''} disabled className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50" />
+                    </div>
+                    <div>
+                      <div className="text-gray-500 mb-1">경력</div>
+                      <input value={activeTeacher.experience || ''} disabled className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50" />
+                    </div>
+                    <div>
+                      <div className="text-gray-500 mb-1">희망 치료비</div>
+                      <input value={activeTeacher.hourlyRate || ''} disabled className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50" />
+                    </div>
+                    <div className="md:col-span-2">
+                      <div className="text-gray-500 mb-1">치료 철학 및 강점</div>
+                      <textarea value={activeTeacher.therapyActivity || ''} disabled rows={4} className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50 resize-none" />
+                    </div>
+                    <div className="md:col-span-2">
+                      <div className="text-gray-500 mb-1">주요 치료 경험 및 사례</div>
+                      <textarea value={activeTeacher.mainSpecialty || ''} disabled rows={4} className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50 resize-none" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 학력/경력 및 자격증 */}
+                <div className="border-4 border-blue-700 rounded-lg p-4 bg-white">
+                  <div className="flex items-center mb-4">
+                    <div className="bg-blue-100 rounded-full p-2 mr-3"><span className="text-blue-600 text-lg">🎓</span></div>
+                    <h4 className="text-lg font-bold text-gray-900">학력/경력 및 자격증</h4>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div className="md:col-span-1">
+                      <div className="text-gray-500 mb-1">학력 및 경력</div>
+                      <textarea value={activeTeacher.educationCareer || ''} disabled rows={6} className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50 resize-none" />
+                    </div>
+                    <div className="md:col-span-1">
+                      <div className="text-gray-500 mb-1">보유 자격증</div>
+                      <textarea value={activeTeacher.certifications || ''} disabled rows={6} className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50 resize-none" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 희망 시간/요일 */}
+                <div className="border-2 border-blue-200 rounded-lg p-4 bg-blue-50">
+                  <div className="flex items-center mb-4">
+                    <div className="bg-blue-100 rounded-full p-2 mr-3"><span className="text-blue-600 text-lg">🗓️</span></div>
+                    <h4 className="text-lg font-bold text-gray-900">희망 시간/요일</h4>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <div className="text-gray-500 mb-1">치료 가능 요일</div>
+                      <input value={(activeTeacher.availableDays || []).join(', ')} disabled className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50" />
+                    </div>
+                    <div>
+                      <div className="text-gray-500 mb-1">치료 가능 시간</div>
+                      <input value={activeTeacher.availableTime || ''} disabled className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 계좌 정보 (관리자 확인용) */}
+                <div className="border-2 border-blue-200 rounded-lg p-4 bg-blue-50">
+                  <div className="flex items-center mb-4">
+                    <div className="bg-blue-100 rounded-full p-2 mr-3"><span className="text-blue-600 text-lg">📄</span></div>
+                    <h4 className="text-lg font-bold text-gray-900">계좌 정보 (관리자 확인용)</h4>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <div className="text-gray-500 mb-1">은행명</div>
+                      <input value={activeTeacher.bankName || ''} disabled className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50" />
+                    </div>
+                    <div>
+                      <div className="text-gray-500 mb-1">예금주명</div>
+                      <input value={activeTeacher.accountHolder || ''} disabled className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50" />
+                    </div>
+                    <div className="md:col-span-2">
+                      <div className="text-gray-500 mb-1">계좌번호</div>
+                      <input value={activeTeacher.accountNumber || ''} disabled className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50" />
+                    </div>
+                    <div className="md:col-span-2">
+                      <div className="text-gray-500 mb-1">지원 경로</div>
+                      <input value={activeTeacher.applicationSource || ''} disabled className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50" />
+                    </div>
+                  </div>
+                </div>
+
+                {activeTeacher.isModified && (
+                  <div className="text-xs text-yellow-700">관리자 검토 대기: 수정된 프로필</div>
+                )}
               </div>
             ) : (
-              <div className="p-4 space-y-3 text-sm">
-                <div className="grid grid-cols-2 gap-3">
-                  <label className="space-y-1"><span className="text-gray-500">이름</span><input defaultValue={activeTeacher.fullName} className="w-full border rounded px-2 py-1" onChange={(e)=> setActiveTeacher({ ...activeTeacher, fullName: e.target.value })}/></label>
-                  <label className="space-y-1"><span className="text-gray-500">치료비</span><input defaultValue={activeTeacher.hourlyRate} className="w-full border rounded px-2 py-1" onChange={(e)=> setActiveTeacher({ ...activeTeacher, hourlyRate: e.target.value })}/></label>
-                  <label className="space-y-1"><span className="text-gray-500">분야</span><input defaultValue={activeTeacher.specialty} className="w-full border rounded px-2 py-1" onChange={(e)=> setActiveTeacher({ ...activeTeacher, specialty: e.target.value })}/></label>
-                  <label className="space-y-1"><span className="text-gray-500">지역</span><input defaultValue={activeTeacher.treatmentRegion || activeTeacher.residence} className="w-full border rounded px-2 py-1" onChange={(e)=> setActiveTeacher({ ...activeTeacher, treatmentRegion: e.target.value })}/></label>
+              <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <label className="space-y-1"><span className="text-gray-500">이름</span><input defaultValue={activeTeacher.fullName || ''} className="w-full border rounded px-2 py-2" onChange={(e)=> setActiveTeacher({ ...activeTeacher, fullName: e.target.value })}/></label>
+                  <label className="space-y-1"><span className="text-gray-500">치료비</span><input defaultValue={activeTeacher.hourlyRate || ''} className="w-full border rounded px-2 py-2" onChange={(e)=> setActiveTeacher({ ...activeTeacher, hourlyRate: e.target.value })}/></label>
+                  <label className="space-y-1"><span className="text-gray-500">분야</span><input defaultValue={activeTeacher.specialty || ''} className="w-full border rounded px-2 py-2" onChange={(e)=> setActiveTeacher({ ...activeTeacher, specialty: e.target.value })}/></label>
+                  <label className="space-y-1"><span className="text-gray-500">지역</span><input defaultValue={activeTeacher.treatmentRegion || activeTeacher.residence || ''} className="w-full border rounded px-2 py-2" onChange={(e)=> setActiveTeacher({ ...activeTeacher, treatmentRegion: e.target.value })}/></label>
                 </div>
                 <div className="flex justify-end gap-2">
-                  <button onClick={() => setIsEditing(false)} className="px-3 py-2 rounded bg-gray-100">취소</button>
-                  <button onClick={() => {
-                    // 저장: localStorage 업데이트 + 수정 플래그/상태 변경(검토중)
-                    const updated = registeredTeachers.map(t => t.id === activeTeacher.id ? { ...activeTeacher, isModified: true, status: '검토중', lastEditedAt: new Date().toISOString() } : t);
-                    setRegisteredTeachers(updated);
-                    saveToLocalStorage(updated);
-                    setIsEditing(false);
-                    alert('수정이 저장되었습니다. 관리자 검토 후 반영됩니다.');
-                  }} className="px-3 py-2 rounded bg-blue-600 text-white">저장</button>
+                  <button onClick={() => setIsEditing(false)} className="px-4 py-2 rounded bg-gray-100">취소</button>
+                  <button onClick={() => { setIsEditing(false); alert('수정은 추후 적용 예정입니다.'); }} className="px-4 py-2 rounded bg-blue-600 text-white">저장</button>
                 </div>
               </div>
             )}

@@ -3,12 +3,13 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { collection, onSnapshot, orderBy, query, where, limit, addDoc, serverTimestamp, doc, getDoc, updateDoc, Timestamp } from 'firebase/firestore';
+import { collection, onSnapshot, orderBy, query, where, limit, serverTimestamp, doc, getDoc, updateDoc, Timestamp, addDoc, getDocs } from 'firebase/firestore';
 import { db, auth } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
 import { startChatWithTherapist } from '@/lib/chat';
 import OneOnOneChat from '@/components/chat/OneOnOneChat';
+import TherapistRegistrationDetailModal from '@/components/browse/TherapistRegistrationDetailModal';
 
 // 치료사 타입 정의
 interface Teacher {
@@ -82,6 +83,8 @@ export default function BrowseBoard() {
   const [selectedProfile, setSelectedProfile] = useState<Teacher | null>(null);
   const [isProfileModalClosing, setIsProfileModalClosing] = useState(false);
   const [isBumpingProfile, setIsBumpingProfile] = useState(false);
+  const [showRegDetailModal, setShowRegDetailModal] = useState(false);
+  const [regDetailData, setRegDetailData] = useState<Record<string, unknown> | null>(null);
 
 	// 프로필 끌어올림 확인/성공 모달 상태
 	const [showBumpConfirmModal, setShowBumpConfirmModal] = useState(false);
@@ -524,13 +527,108 @@ export default function BrowseBoard() {
     }, 300);
   };
 
-  // 프로필 등록 확인 후 작성 모달 열기
-  const handleConfirmRegister = () => {
+  // 프로필 등록 확인 시 즉시 공개 처리 (작성 폼 제거)
+  const handleConfirmRegister = async () => {
     closeConfirmModal();
-    // 확인 팝업이 닫힌 후 프로필 작성 모달 열기
-    setTimeout(() => {
-      setShowCreatePostModal(true);
-    }, 300);
+    if (!currentUser) {
+      alert('로그인이 필요합니다.');
+      return;
+    }
+    try {
+      const profileRef = doc(db, 'therapistProfiles', currentUser.uid);
+      const snap = await getDoc(profileRef);
+      if (!snap.exists()) {
+        alert('승인된 프로필이 없습니다. 관리자 승인 후 등록할 수 있습니다.');
+        return;
+      }
+      const profileData = snap.data() as Record<string, unknown>;
+
+      // 최신 치료사 신청서(원본)도 함께 로드하여 부족한 필드를 보강
+      let regData: Record<string, unknown> | null = null;
+      try {
+        const latestRegSnap = await getDocs(
+          query(
+            collection(db, 'therapist-registrations'),
+            where('userId', '==', currentUser.uid),
+            orderBy('createdAt', 'desc'),
+            limit(1)
+          )
+        );
+        if (!latestRegSnap.empty) {
+          regData = latestRegSnap.docs[0].data() as Record<string, unknown>;
+        }
+      } catch (e) {
+        console.warn('최신 치료사 신청서 조회 실패(무시 가능):', e);
+      }
+
+      await updateDoc(profileRef, {
+        isPublished: true,
+        publishedAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+      
+      // 카드 자동 생성/업데이트: posts 컬렉션 teacher-offer 문서를 1개 유지
+      const existingQ = query(
+        collection(db, 'posts'),
+        where('authorId', '==', currentUser.uid),
+        where('type', '==', 'teacher-offer'),
+        limit(1)
+      );
+      const existingSnap = await getDocs(existingQ);
+
+      const treatment = (Array.isArray((profileData as Record<string, unknown>)?.specialties as unknown[]) && ((profileData as Record<string, unknown>).specialties as string[])[0])
+        || ((regData as Record<string, unknown>)?.specialty as string)
+        || ((profileData as Record<string, unknown>)?.specialty as string)
+        || '치료사';
+      const region = ((regData as Record<string, unknown>)?.treatmentRegion as string)
+        || ((profileData as Record<string, unknown>)?.region as string)
+        || ((profileData as Record<string, unknown>)?.location as string)
+        || '서울';
+      const price = ((regData as Record<string, unknown>)?.hourlyRate as string | number)
+        || (profileData as Record<string, unknown>)?.hourlyRate as string | number
+        || '';
+      const timeDetails = ((regData as Record<string, unknown>)?.availableTime as string)
+        || ((profileData as Record<string, unknown>)?.availability as string)
+        || ((profileData as Record<string, unknown>)?.schedule as string)
+        || '';
+      const additionalInfo = ((regData as Record<string, unknown>)?.therapyActivity as string)
+        || ((profileData as Record<string, unknown>)?.introduction as string)
+        || ((profileData as Record<string, unknown>)?.philosophy as string)
+        || '';
+
+      const profGender = (profileData as Record<string, unknown>)?.gender as string | undefined;
+      const defaultGender = profGender === '남' || profGender === '여' ? profGender : '여';
+      const postPayload = {
+        treatment,
+        region,
+        age: '성인',
+        gender: defaultGender,
+        frequency: '주1회',
+        timeDetails,
+        price: String(price || ''),
+        authorId: currentUser.uid,
+        createdAt: serverTimestamp(),
+        status: 'active',
+        applications: 0,
+        title: ((profileData as Record<string, unknown>)?.name as string) || ((regData as Record<string, unknown>)?.fullName as string) || '치료사',
+        category: region,
+        details: timeDetails,
+        additionalInfo,
+        type: 'teacher-offer' as const,
+      };
+
+      if (existingSnap.empty) {
+        await addDoc(collection(db, 'posts'), postPayload);
+      } else {
+        const docRef = existingSnap.docs[0].ref;
+        await updateDoc(docRef, { ...postPayload, createdAt: serverTimestamp() });
+      }
+
+      alert('프로필이 성공적으로 등록되었습니다! 선생님 둘러보기에서 확인하실 수 있습니다.');
+    } catch (e) {
+      console.error('프로필 공개 처리 실패:', e);
+      alert('프로필 공개 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+    }
   };
 
   // 상세 프로필 모달 열기 - 실제 사용자 데이터 가져오기 (로그인 체크 추가)
@@ -546,14 +644,21 @@ export default function BrowseBoard() {
     // authorId가 없으면 기본 정보로 표시
     if (!teacher.authorId) {
       console.log('❌ 게시글 작성자 ID가 없습니다');
-      setSelectedProfile({
+      const basic = {
         ...teacher,
         isVerified: false,
         hasCertification: false,
         hasExperienceProof: false,
         hasIdVerification: false,
-      });
-      setShowProfileModal(true);
+      };
+      // 본인 카드면 신청페이지 상세 디자인 재사용
+      if (currentUser && teacher.authorId === currentUser.uid) {
+        setRegDetailData(basic);
+        setShowRegDetailModal(true);
+      } else {
+        setSelectedProfile(basic);
+        setShowProfileModal(true);
+      }
       return;
     }
     
@@ -620,27 +725,43 @@ export default function BrowseBoard() {
         console.log('❌ 치료사 프로필을 찾을 수 없습니다');
       }
       
-      // 3. 모든 데이터를 통합하여 selectedProfile 설정
-      const combinedProfile = {
+      // 3. 최신 치료사 신청서(원본)도 함께 로드하여 병합
+      let regData: Record<string, unknown> | null = null;
+      try {
+        const regSnap = await getDocs(
+          query(
+            collection(db, 'therapist-registrations'),
+            where('userId', '==', teacher.authorId),
+            orderBy('createdAt', 'desc'),
+            limit(1)
+          )
+        );
+        if (!regSnap.empty) regData = regSnap.docs[0].data() as Record<string, unknown>;
+      } catch (e) {
+        console.warn('상세 병합용 신청서 조회 실패(무시 가능):', e);
+      }
+
+      // 4. 모든 데이터를 통합하여 selectedProfile 설정
+      const combinedProfile: Teacher = {
         ...teacher,
         // 기본 사용자 정보로 업데이트
-        name: userData?.name || profileData?.name || teacher.name,
+        name: (userData?.name || profileData?.name || teacher.name) as string,
         userName: userData?.name,
         userEmail: userData?.email,
         userPhone: userData?.phone,
         
         // 치료사 프로필 정보로 업데이트
-        experience: profileData?.experience || teacher.experience,
-        specialty: profileData?.specialties?.[0] || teacher.specialty,
+        experience: (regData?.experience as unknown as number) || (profileData?.experience as number) || teacher.experience,
+        specialty: (regData?.specialty as string) || (profileData?.specialties?.[0] as string) || teacher.specialty,
         rating: profileData?.rating || teacher.rating,
         reviewCount: profileData?.reviewCount || teacher.reviewCount,
         profileImage: profileData?.profileImage || teacher.profileImage,
-        education: profileData?.education || teacher.education,
-        career: profileData?.career || teacher.career,
-        introduction: profileData?.introduction || teacher.introduction,
-        philosophy: profileData?.philosophy || teacher.philosophy,
-        certifications: profileData?.certifications || teacher.certifications || [],
-        schedule: profileData?.schedule || teacher.schedule,
+        education: (regData?.educationCareer as string) || (profileData?.education as string) || teacher.education,
+        career: (regData?.educationCareer as string) || (profileData?.career as string) || teacher.career,
+        introduction: (regData?.therapyActivity as string) || (profileData?.introduction as string) || teacher.introduction,
+        philosophy: (regData?.mainSpecialty as string) || (profileData?.philosophy as string) || teacher.philosophy,
+        certifications: (typeof regData?.certifications === 'string' ? [regData?.certifications as string] : (profileData?.certifications as string[]) || teacher.certifications || []),
+        schedule: (regData?.availableTime as string) || (profileData?.schedule as string) || teacher.schedule,
         
         // 게시글의 실제 데이터 보존 (이미 teacher에서 스프레드되지만 명시적으로 추가)
         postAge: teacher.postAge,
@@ -654,12 +775,29 @@ export default function BrowseBoard() {
         hasCertification: profileData?.certifications && profileData.certifications.length > 0,
         hasExperienceProof: !!profileData?.career,
         hasIdVerification: !!profileData?.status,
+        region: (regData?.treatmentRegion as string) || teacher.region,
+        price: (regData?.hourlyRate as string) || teacher.price,
       };
       
+      // 소유자 상세 전용 확장 필드(Teacher 타입에 없음): 모달로만 전달
+      const ownerExtras: Record<string, unknown> = {
+        birthDate: regData?.birthDate as string | undefined,
+        residence: (regData?.address as string) || (regData?.residence as string),
+        qualification: regData?.qualification as string | undefined,
+        documents: (regData?.documents as Record<string, unknown>) || {},
+        profilePhoto: regData?.profilePhoto as string | undefined,
+        applicationSource: regData?.applicationSource as string | undefined,
+      };
+
       console.log('📋 최종 통합 프로필:', combinedProfile);
       
-      setSelectedProfile(combinedProfile);
-      setShowProfileModal(true);
+      if (currentUser && teacher.authorId === currentUser.uid) {
+        setRegDetailData({ ...combinedProfile, ...ownerExtras });
+        setShowRegDetailModal(true);
+      } else {
+        setSelectedProfile(combinedProfile);
+        setShowProfileModal(true);
+      }
       
     } catch (error) {
       console.error('❌ 프로필 모달 열기 오류:', error);
@@ -678,8 +816,13 @@ export default function BrowseBoard() {
         hasIdVerification: false,
       };
       
-      setSelectedProfile(basicProfile);
-      setShowProfileModal(true);
+      if (currentUser && teacher.authorId === currentUser.uid) {
+        setRegDetailData(basicProfile);
+        setShowRegDetailModal(true);
+      } else {
+        setSelectedProfile(basicProfile);
+        setShowProfileModal(true);
+      }
     }
   };
 
@@ -1992,6 +2135,15 @@ export default function BrowseBoard() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* 치료사 신청페이지 상세 디자인 재사용 모달 (본인일 때) */}
+      {showRegDetailModal && regDetailData && (
+        <TherapistRegistrationDetailModal
+          isOpen={showRegDetailModal}
+          onClose={() => { setShowRegDetailModal(false); setRegDetailData(null); }}
+          data={regDetailData}
+        />
       )}
 
       {/* 첫 번째(안전 매칭) 모달은 비활성화됨 */}
