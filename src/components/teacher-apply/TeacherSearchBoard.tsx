@@ -7,6 +7,7 @@ import { db } from '@/lib/firebase';
 // import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import Image from 'next/image';
 
 // 치료사 타입 정의
@@ -437,7 +438,13 @@ export default function TeacherSearchBoard() {
     alert('저장이 완료되었습니다!');
   };
 
-  const sidebarItems = ['치료사등록', '정식(경력)치료사 등록'];
+  // const router = useRouter();
+  const pathname = usePathname();
+
+  // const sidebarNav = [
+  //   { label: '치료사 등록안내', href: '/register-teacher' },
+  //   { label: '치료사 신청', href: '/teacher-apply' }
+  // ];
   
   // 상세 상태 옵션
   const detailStatusOptions = ['전체', '등록완료', '검토중', '등록보류', '자격미달'];
@@ -712,23 +719,18 @@ export default function TeacherSearchBoard() {
     return `${selectedSidebarItem}`;
   };
 
-  const handleSidebarClick = (item: string) => {
-    setSelectedSidebarItem(item);
-  };
+  // const handleSidebarClick = (item: string) => {
+  //   setSelectedSidebarItem(item);
+  // };
 
   // 브레드크럼 경로 생성
   const getBreadcrumbPath = () => {
-    const basePath = [
-      { label: '홈', href: '/' },
-      { label: '치료사등록', href: '/teacher-apply' }
-    ];
-    
-    if (selectedSidebarItem === '치료사등록') {
-      basePath.push({ label: '정식(경력)치료사 등록', href: '#' });
-    } else if (selectedSidebarItem !== '치료사등록') {
-      basePath.push({ label: selectedSidebarItem, href: '#' });
+    const basePath = [{ label: '홈', href: '/' }];
+    if (pathname === '/register-teacher') {
+      basePath.push({ label: '치료사 등록안내', href: '/register-teacher' });
+    } else {
+      basePath.push({ label: '치료사 신청', href: '/teacher-apply' });
     }
-    
     return basePath;
   };
 
@@ -738,22 +740,39 @@ export default function TeacherSearchBoard() {
         {/* 사이드바 */}
         <div className="w-64 bg-white shadow-lg">
               <div className="p-4">
-                {sidebarItems.map((item) => (
-                  <div key={item} className={item === '치료사등록' ? 'mb-4' : 'mb-1'}>
-                    <button
-                      onClick={() => handleSidebarClick(item)}
-                      className={`w-full transition-colors ${
-                        item === '치료사등록'
-                          ? 'bg-blue-500 text-white text-2xl font-bold rounded-lg h-[110px] flex items-center justify-center'
-                          : selectedSidebarItem === item
-                          ? 'bg-blue-50 text-blue-600 text-left px-4 py-3 rounded-lg font-medium text-lg'
-                          : 'text-gray-700 hover:bg-gray-50 text-left px-4 py-3 rounded-lg font-medium text-lg'
-                      }`}
-                    >
-                      {item}
-                    </button>
+            {/* 고정 상단 타일 - 디자인 유지 */}
+            <div className="mb-4">
+              <div className="w-full bg-blue-500 text-white text-2xl font-bold rounded-lg h-[110px] flex items-center justify-center">
+                치료사 등록
+              </div>
+            </div>
+            {/* 항목 1: 치료사 등록안내 */}
+            <div className="mb-1">
+              <Link
+                href="/register-teacher"
+                className={`w-full block text-left px-4 py-3 rounded-lg font-medium text-lg ${
+                  pathname === '/register-teacher'
+                    ? 'bg-blue-50 text-blue-600'
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                치료사 등록안내
+              </Link>
                   </div>
-                ))}
+            {/* 항목 2: 치료사 신청 */}
+            <div className="mb-1">
+              <Link
+                href="/teacher-apply"
+                className={`w-full block text-left px-4 py-3 rounded-lg font-medium text-lg ${
+                  pathname === '/teacher-apply'
+                    ? 'bg-blue-50 text-blue-600'
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`}
+                onClick={() => setSelectedSidebarItem('치료사 신청')}
+              >
+                치료사 신청
+              </Link>
+            </div>
               </div>
             </div>
 
@@ -782,21 +801,13 @@ export default function TeacherSearchBoard() {
 
 
           {/* 메인 배너 - 치료사 등록 관련 페이지에서만 표시 */}
-          {(selectedSidebarItem === '치료사등록' || selectedSidebarItem === '정식(경력)치료사 등록' || selectedSidebarItem === '예비(학생)치료사 등록') && (
+          {(pathname === '/teacher-apply') && (
             <div className="bg-white rounded-lg p-8 mb-4 border-4 border-blue-700">
               <div>
                 <h2 className="text-3xl font-bold text-gray-900 mb-4">
-                  {selectedSidebarItem === '예비(학생)치료사 등록' 
-                    ? '예비 치료사 등록' 
-                    : '정식(경력) 치료사 등록'
-                  }
+                  치료사 신청
                 </h2>
-                <p className="text-lg text-gray-600">
-                  {selectedSidebarItem === '예비(학생)치료사 등록' 
-                    ? '학생 신분으로 치료사 경험을 쌓아보세요!' 
-                    : '이력을 등록하고 가치를 치료사로 활동해보세요!'
-                  }
-                </p>
+                <p className="text-lg text-gray-600">이력을 등록하고 가치를 치료사로 활동해보세요!</p>
               </div>
             </div>
           )}

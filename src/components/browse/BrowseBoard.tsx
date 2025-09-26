@@ -657,7 +657,7 @@ export default function BrowseBoard() {
         setShowRegDetailModal(true);
       } else {
         setSelectedProfile(basic);
-        setShowProfileModal(true);
+      setShowProfileModal(true);
       }
       return;
     }
@@ -788,15 +788,15 @@ export default function BrowseBoard() {
         profilePhoto: regData?.profilePhoto as string | undefined,
         applicationSource: regData?.applicationSource as string | undefined,
       };
-
+      
       console.log('📋 최종 통합 프로필:', combinedProfile);
       
       if (currentUser && teacher.authorId === currentUser.uid) {
         setRegDetailData({ ...combinedProfile, ...ownerExtras });
         setShowRegDetailModal(true);
       } else {
-        setSelectedProfile(combinedProfile);
-        setShowProfileModal(true);
+      setSelectedProfile(combinedProfile);
+      setShowProfileModal(true);
       }
       
     } catch (error) {
@@ -820,8 +820,8 @@ export default function BrowseBoard() {
         setRegDetailData(basicProfile);
         setShowRegDetailModal(true);
       } else {
-        setSelectedProfile(basicProfile);
-        setShowProfileModal(true);
+      setSelectedProfile(basicProfile);
+      setShowProfileModal(true);
       }
     }
   };

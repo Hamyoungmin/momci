@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { collection, onSnapshot, orderBy, query, where, Timestamp, doc } from 'firebase/firestore';
+import { collection, onSnapshot, orderBy, query, where, Timestamp, doc, addDoc, serverTimestamp, getDoc, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 interface ReviewDoc {
@@ -45,6 +45,13 @@ export default function MyReviewsPage() {
   const [tokenInfo, setTokenInfo] = useState<{ base: number; bonus: number; total: number }>({ base: 0, bonus: 0, total: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [therapistReviews, setTherapistReviews] = useState<ReviewDoc[]>([]);
+  const [completedMatches, setCompletedMatches] = useState<Array<{ id: string; therapistId: string; matchedAt?: Timestamp }>>([]);
+  const [therapistNameMap, setTherapistNameMap] = useState<Record<string, string>>({});
+  const [activeChatTherapistIds, setActiveChatTherapistIds] = useState<Set<string>>(new Set());
+  const [writeOpen, setWriteOpen] = useState(false);
+  const [writeClosing, setWriteClosing] = useState(false);
+  const [writeTarget, setWriteTarget] = useState<{ therapistId: string; therapistName: string } | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -116,6 +123,89 @@ export default function MyReviewsPage() {
     return () => unsub();
   }, [currentUser]);
 
+  // 완료된 매칭 구독 (parent 전용) - 정렬은 클라이언트에서 처리해 인덱스 의존 최소화
+  useEffect(() => {
+    if (!currentUser) return;
+    const q = query(
+      collection(db, 'successful-matches'),
+      where('parentId', '==', currentUser.uid)
+    );
+    const unsub = onSnapshot(q, async (snap) => {
+      const list: Array<{ id: string; therapistId: string; matchedAt?: Timestamp }> = [];
+      const needNames: string[] = [];
+      snap.forEach((d) => {
+        const data = d.data() as { therapistId: string; matchedAt?: Timestamp };
+        list.push({ id: d.id, therapistId: data.therapistId, matchedAt: data.matchedAt });
+        if (!therapistNameMap[data.therapistId]) needNames.push(data.therapistId);
+      });
+
+      // 치료사 이름 보강
+      if (needNames.length > 0) {
+        const entries = await Promise.all(needNames.map(async (tid) => {
+          try {
+            const u = await getDoc(doc(db, 'users', tid));
+            const udata = (u.data() as { name?: string }) || {};
+            return [tid, u.exists() ? (udata.name || '치료사') : '치료사'] as [string, string];
+          } catch { return [tid, '치료사'] as [string, string]; }
+        }));
+        setTherapistNameMap((prev) => ({ ...prev, ...Object.fromEntries(entries) }));
+      }
+
+      // 최근 순으로 정렬
+      list.sort((a, b) => (b.matchedAt?.toMillis?.() || 0) - (a.matchedAt?.toMillis?.() || 0));
+      setCompletedMatches(list);
+    });
+    return () => unsub();
+  }, [currentUser, therapistNameMap]);
+
+  // 내 활성 채팅 가져와서 뱃지용 세트 구성(인덱스 의존 최소화 - parentId 단일 조건)
+  useEffect(() => {
+    if (!currentUser) return;
+    (async () => {
+      try {
+        const snap = await getDocs(query(collection(db, 'chats'), where('parentId', '==', currentUser.uid)));
+        const activeSet = new Set<string>();
+        snap.forEach((d) => {
+          const data = d.data() as { status?: string; therapistId?: string };
+          if (data.status === 'active' && typeof data.therapistId === 'string') {
+            activeSet.add(data.therapistId);
+          }
+        });
+        setActiveChatTherapistIds(activeSet);
+      } catch {}
+    })();
+  }, [currentUser]);
+
+  const openWrite = (therapistId: string) => {
+    const name = therapistNameMap[therapistId] || '치료사';
+    setWriteTarget({ therapistId, therapistName: name });
+    setWriteClosing(false);
+    setWriteOpen(true);
+  };
+
+  const submitTherapistReview = async (payload: { rating: number; content: string }) => {
+    if (!currentUser || !writeTarget) return;
+    try {
+      setSubmitting(true);
+      await addDoc(collection(db, 'therapist-reviews'), {
+        parentId: currentUser.uid,
+        therapistId: writeTarget.therapistId,
+        therapistName: writeTarget.therapistName,
+        rating: payload.rating,
+        content: payload.content,
+        createdAt: serverTimestamp()
+      });
+      alert('후기가 등록되었습니다. 감사합니다!');
+      setWriteOpen(false);
+      setWriteTarget(null);
+    } catch (e) {
+      console.error('후기 등록 실패:', e);
+      alert('후기 등록 중 오류가 발생했습니다.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   if (loading || isLoading) {
     return (
       <div className="min-h-screen bg-blue-50 flex items-center justify-center">
@@ -158,6 +248,35 @@ export default function MyReviewsPage() {
           </div>
         </div>
 
+        {/* 완료된 매칭 목록 (후기 작성 진입) */}
+        {currentUser && (
+          <div className="bg-white rounded-xl shadow-sm border mb-6">
+            <div className="p-6 border-b flex items-center justify-between">
+              <h2 className="font-semibold text-gray-900">완료된 매칭 (후기 작성)</h2>
+              <span className="text-sm text-gray-500">총 {completedMatches.length}건</span>
+            </div>
+            {completedMatches.length === 0 ? (
+              <div className="p-6 text-center text-gray-500">완료된 매칭이 없습니다</div>
+            ) : (
+              <ul className="divide-y">
+                {completedMatches.map((m) => (
+                  <li key={m.id} className="p-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="font-medium text-gray-900 cursor-pointer hover:text-blue-600" onClick={() => openWrite(m.therapistId)}>
+                        {therapistNameMap[m.therapistId] || '치료사'}
+                      </div>
+                      {activeChatTherapistIds.has(m.therapistId) && (
+                        <span className="px-2 py-0.5 text-xs rounded-full bg-blue-50 text-blue-700 border border-blue-200">채팅중</span>
+                      )}
+                    </div>
+                    <button onClick={() => openWrite(m.therapistId)} className="px-3 py-1.5 text-sm rounded-md bg-blue-600 text-white hover:bg-blue-700">후기 작성</button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+
         {/* 내가 작성한 후기 */}
         <div className="bg-white rounded-xl shadow-sm border">
           <div className="p-6 border-b">
@@ -188,7 +307,131 @@ export default function MyReviewsPage() {
 
         {/* 지원자 후기는 별도 섹션 없이 '내가 작성한 후기' 목록에 함께 포함 */}
       </div>
+
+      {/* 후기 작성 모달 (단순화: 별점 + 내용, 치료사명 프리필) */}
+      {writeOpen && writeTarget && (
+        <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${writeClosing ? 'animate-fade-out' : 'animate-fade-in'}`}>
+          <div className={`bg-white rounded-lg p-8 max-w-4xl w-[85vw] shadow-xl border-4 border-blue-500 max-h-[90vh] overflow-y-auto ${writeClosing ? 'animate-scale-out' : 'animate-scale-in'}`}>
+            <div className="text-center mb-8 relative">
+              <h2 className="text-2xl font-bold text-gray-900 mb-1">소중한 후기를 남겨주세요</h2>
+              <p className="text-sm text-gray-600">다른 학부모님에게 큰 도움이 됩니다.</p>
+              <button onClick={() => { if (!submitting) { setWriteClosing(true); setTimeout(() => { setWriteOpen(false); setWriteTarget(null); setWriteClosing(false); }, 300); } }} className="absolute -top-2 -right-2 text-gray-400 hover:text-gray-600 transition-colors">
+                <span className="text-2xl">×</span>
+              </button>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-4 mb-6 flex items-center">
+              <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center mr-3">
+                <span className="text-gray-600 text-sm">👤</span>
+              </div>
+              <div>
+                <div className="font-medium text-gray-900">{writeTarget.therapistName} 치료사</div>
+                <div className="text-sm text-gray-600">후기 대상 치료사</div>
+              </div>
+            </div>
+            <TherapistReviewForm onSubmit={submitTherapistReview} submitting={submitting} />
+          </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+function TherapistReviewForm({ onSubmit, submitting }: { onSubmit: (p: { rating: number; content: string }) => void; submitting: boolean; }) {
+  const [rating, setRating] = useState(0);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [content, setContent] = useState('');
+  const [images, setImages] = useState<File[]>([]);
+
+  const toggleTag = (tag: string) => {
+    setSelectedTags((prev) => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      const newFiles = Array.from(files).slice(0, Math.max(0, 3 - images.length));
+      setImages((prev) => [...prev, ...newFiles]);
+    }
+  };
+  const removeImage = (index: number) => {
+    setImages((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSend = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (rating === 0 || selectedTags.length === 0 || content.trim().length < 30) {
+      alert('별점, 좋았던 점 선택, 30자 이상의 내용을 입력해 주세요.');
+      return;
+    }
+    onSubmit({ rating, content });
+  };
+
+  return (
+    <form onSubmit={handleSend} className="space-y-6">
+      {/* 별점 - 중앙 큰 별 스타일 */}
+      <div>
+        <label className="block text-base font-medium text-gray-900 mb-4">수업은 만족스러우셨나요?</label>
+        <div className="flex justify-center gap-2 mb-2">
+          {[1,2,3,4,5].map(star => (
+            <button key={star} type="button" onClick={() => setRating(star)} className={`text-3xl transition-all duration-200 hover:scale-110 ${star <= rating ? 'text-yellow-400' : 'text-gray-300 hover:text-gray-400'}`}>★</button>
+          ))}
+        </div>
+      </div>
+
+      {/* 좋았던 점 태그 */}
+      <div>
+        <label className="block text-base font-medium text-gray-900 mb-4">어떤 점이 좋았나요? <span className="text-sm text-gray-500">(중복 선택 가능)</span></label>
+        <div className="flex flex-wrap gap-2">
+          {['친절해요','체계적이에요','시간 약속을 잘 지켜요','아이가 좋아해요','꼼꼼한 피드백','준비가 철저해요'].map(tag => {
+            const active = selectedTags.includes(tag);
+            return (
+              <button key={tag} type="button" onClick={() => toggleTag(tag)} className={`px-4 py-2 rounded-full text-sm transition-all duration-200 ${active ? 'bg-blue-100 text-blue-700 border border-blue-200' : 'bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200'}`}>{tag}</button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 안내 박스 */}
+      <div className="bg-gray-50 rounded-lg border border-gray-200 p-4 text-center">
+        <p className="text-sm text-black">후기 2건 작성 시 <span className="text-blue-600 font-semibold">인터뷰권 1회</span>가 증정됩니다! <span className="font-extrabold">(회원당 최대 3회)</span></p>
+        <p className="text-xs text-black mt-1">단, 후기는 최소 30자 이상 작성해주셔야 해요.</p>
+      </div>
+
+      {/* 상세 후기 */}
+      <div>
+        <label className="block text-base font-medium text-gray-900 mb-3">상세한 후기를 남겨주세요</label>
+        <textarea value={content} onChange={(e) => setContent(e.target.value)} rows={6} className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none text-sm transition-all duration-200" placeholder="수업을 통해 아이가 어떻게 변화했는지, 어떤 점이 특히 만족스러웠는지 등을 자세히 알려주세요." />
+        <div className={`mt-1 text-xs ${content.trim().length < 30 ? 'text-red-500' : 'text-gray-500'}`}>최소 30자 이상 (현재 {content.trim().length}자)</div>
+      </div>
+
+      {/* 사진 첨부 (선택, 최대 3개) */}
+      <div>
+        <label className="block text-base font-medium text-gray-900 mb-3">사진 첨부 <span className="text-sm text-gray-500">(선택, 최대 3개)</span></label>
+        {images.length > 0 && (
+          <div className="mb-4 grid grid-cols-3 gap-3">
+            {images.map((file, index) => (
+              <div key={index} className="relative group">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={URL.createObjectURL(file)} alt={`업로드된 이미지 ${index+1}`} className="w-full h-24 object-cover rounded-lg border border-gray-200" />
+                <button type="button" onClick={() => removeImage(index)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm hover:bg-red-600 opacity-0 group-hover:opacity-100">×</button>
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 hover:bg-gray-50 transition-all duration-200">
+          <input type="file" accept="image/*" multiple onChange={handleFileUpload} className="hidden" id="therapist-review-image-upload" />
+          <label htmlFor="therapist-review-image-upload" className="cursor-pointer">
+            <div className="text-gray-400 mb-2 text-2xl">📷</div>
+            <div className="text-sm text-gray-600">클릭하여 이미지 업로드 ({images.length}개 선택됨)</div>
+          </label>
+        </div>
+      </div>
+
+      {/* 등록 버튼 */}
+      <div className="pt-2">
+        <button type="submit" disabled={submitting || rating === 0 || selectedTags.length === 0 || content.trim().length < 30} className={`w-full py-3 text-white text-lg font-medium rounded-lg transition-all duration-200 ${submitting || rating === 0 || selectedTags.length === 0 || content.trim().length < 30 ? 'bg-cyan-300 cursor-not-allowed' : 'bg-cyan-500 hover:bg-cyan-600 hover:scale-[1.02] active:scale-[0.98]'}`}>{submitting ? '등록 중…' : '후기 등록하기'}</button>
+      </div>
+    </form>
   );
 }
 

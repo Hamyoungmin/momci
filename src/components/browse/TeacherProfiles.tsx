@@ -142,7 +142,7 @@ export default function TeacherProfiles() {
 
   // 요청 모달 제거됨: 안전하게 닫기만 처리
   const closeRequestModal = () => {
-    setShowRequestModal(false);
+      setShowRequestModal(false);
   };
 
   // 프로필 등록 확인 팝업 열기

@@ -28,12 +28,27 @@ export default function ReviewsList() {
   const [showWriteModal, setShowWriteModal] = useState(false);
   const [isModalClosing, setIsModalClosing] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentUserRole, setCurrentUserRole] = useState<'parent' | 'therapist' | 'admin' | 'unknown'>('unknown');
   const [currentSlide, setCurrentSlide] = useState(0);
 
   // 사용자 인증 상태 관리
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
+      // 사용자 역할 조회
+      (async () => {
+        try {
+          if (user) {
+            const userSnap = await getDoc(doc(db, 'users', user.uid));
+            const role = (userSnap.exists() ? (userSnap.data() as { userType?: string }).userType : undefined) as 'parent' | 'therapist' | 'admin' | undefined;
+            setCurrentUserRole(role || 'unknown');
+          } else {
+            setCurrentUserRole('unknown');
+          }
+        } catch {
+          setCurrentUserRole('unknown');
+        }
+      })();
     });
 
     return () => unsubscribe();
@@ -186,6 +201,10 @@ export default function ReviewsList() {
 
   // 후기 작성 모달 열기/닫기
   const openWriteModal = () => {
+    if (currentUserRole === 'therapist') {
+      alert('치료사 계정은 후기를 작성할 수 없습니다.');
+      return;
+    }
     setShowWriteModal(true);
     setIsModalClosing(false);
   };
@@ -226,6 +245,10 @@ export default function ReviewsList() {
       
       if (!currentUser) {
         alert('로그인이 필요합니다.');
+        return;
+      }
+      if (currentUserRole === 'therapist') {
+        alert('치료사 계정은 후기를 작성할 수 없습니다.');
         return;
       }
 
@@ -486,7 +509,7 @@ export default function ReviewsList() {
           {/* 후기 작성하기 버튼 - 제목 아래쪽에 배치 */}
           <div className="absolute top-20 right-0">
             <button
-              onClick={() => setShowWriteModal(true)}
+              onClick={openWriteModal}
               className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-2xl font-medium transition-colors flex items-center gap-2 shadow-lg"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -512,7 +535,8 @@ export default function ReviewsList() {
             </p>
             <button
               onClick={openWriteModal}
-              className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+              className={`px-6 py-3 rounded-lg font-medium transition-colors text-white ${currentUserRole === 'therapist' ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-600'}`}
+              disabled={currentUserRole === 'therapist'}
             >
               후기 작성하기
             </button>
