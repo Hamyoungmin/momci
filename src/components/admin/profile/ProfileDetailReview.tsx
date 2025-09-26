@@ -237,7 +237,7 @@ export default function ProfileDetailReview({ isOpen, onClose, profile, onAction
                     <h4 className="text-base font-bold text-gray-900">프로필 정보</h4>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                    <div>
+                <div>
                       <div className="text-gray-500 mb-1">전문 분야</div>
                       <input disabled value={(((reg?.specialties as string[])?.[0]) || (reg?.specialty as string) || '') as string} className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50" />
                     </div>
@@ -256,7 +256,7 @@ export default function ProfileDetailReview({ isOpen, onClose, profile, onAction
                     <div className="md:col-span-2">
                       <div className="text-gray-500 mb-1">치료 철학 및 강점</div>
                       <textarea disabled rows={4} value={((reg?.therapyActivity as string) || '') as string} className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50 resize-none" />
-                    </div>
+                      </div>
                     <div className="md:col-span-2">
                       <div className="text-gray-500 mb-1">주요 치료 경험 및 사례</div>
                       <textarea disabled rows={4} value={((reg?.mainSpecialty as string) || '') as string} className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50 resize-none" />
@@ -293,7 +293,7 @@ export default function ProfileDetailReview({ isOpen, onClose, profile, onAction
                       <div className="text-gray-500 mb-1">치료 가능 요일</div>
                       <input disabled value={Array.isArray(reg?.availableDays) ? ((reg?.availableDays as string[]).join(', ')) : ''} className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50" />
                     </div>
-                    <div>
+                <div>
                       <div className="text-gray-500 mb-1">치료 가능 시간</div>
                       <input disabled value={((reg?.availableTime as string) || '') as string} className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50" />
                     </div>

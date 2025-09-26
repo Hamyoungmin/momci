@@ -551,7 +551,7 @@ export default function MyPage() {
               </svg>
             </div>
 
-          {/* 후기 관리 (학부모 전용) */}
+          {/* 후기 작성 및 관리 (학부모 전용) */}
           {userData?.userType === 'parent' && (
             <div 
               onClick={() => handleMenuClick('/mypage/reviews')}
@@ -561,7 +561,7 @@ export default function MyPage() {
                 <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
                   <span className="text-lg">⭐</span>
                 </div>
-                <span className="text-base font-medium text-gray-900">후기 관리</span>
+                <span className="text-base font-medium text-gray-900">후기 작성 및 관리</span>
               </div>
               <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path>
@@ -681,7 +681,7 @@ export default function MyPage() {
         {/* 사용자 타입에 따른 두 번째 섹션 제목 */}
         <div className="mb-4">
           <h2 className="text-lg font-semibold text-gray-900">
-            {userData?.userType === 'therapist' ? '새로운 1:1 채팅 요청' : '진행중인 채팅'}
+            {userData?.userType === 'therapist' ? '새로운 1:1 채팅 요청' : '채팅목록'}
           </h2>
         </div>
 
@@ -755,10 +755,10 @@ export default function MyPage() {
               </div>
             ) : (
               <div className="divide-y divide-gray-200">
-                {chats.map((chat) => (
+                {chats.slice(0, 2).map((chat) => (
                   <div 
                     key={chat.id}
-                    onClick={() => router.push(`/chat/${chat.id}`)}
+                    onClick={() => (window as unknown as { openChatById?: (id: string) => void }).openChatById?.(chat.id)}
                     className="p-4 cursor-pointer hover:bg-gray-50 transition-colors"
                   >
                     <div className="flex items-center space-x-3">
@@ -795,7 +795,7 @@ export default function MyPage() {
                 {chats.length > 0 && (
                   <div className="p-4">
                     <button 
-                      onClick={() => handleMenuClick('/mypage/chat')}
+                      onClick={() => router.push('/mypage/chat')}
                       className="w-full text-center text-blue-500 hover:text-blue-700 text-sm font-medium"
                     >
                       더보기

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { collection, onSnapshot, orderBy, query, where, Timestamp, doc, addDoc, serverTimestamp, getDoc, getDocs } from 'firebase/firestore';
+import { collection, onSnapshot, orderBy, query, where, Timestamp, doc, addDoc, serverTimestamp, getDoc, getDocs, runTransaction } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 interface ReviewDoc {
@@ -194,6 +194,23 @@ export default function MyReviewsPage() {
         rating: payload.rating,
         content: payload.content,
         createdAt: serverTimestamp()
+      });
+
+      // 치료사 프로필 평점/리뷰수 집계 업데이트 (트랜잭션)
+      await runTransaction(db, async (tx) => {
+        const profileRef = doc(db, 'therapistProfiles', writeTarget.therapistId);
+        const snap = await tx.get(profileRef);
+        if (!snap.exists()) {
+          // 프로필 문서가 없으면 집계 스킵 (권한 충돌 방지)
+          return;
+        }
+        const data = snap.data() as { reviewCount?: number; rating?: number };
+        const prevCount = Number(data.reviewCount || 0);
+        const prevRating = Number(data.rating || 0);
+        const newCount = prevCount + 1;
+        const newRatingRaw = (prevRating * prevCount + payload.rating) / newCount;
+        const newRating = Math.round(newRatingRaw * 10) / 10; // 소수점 1자리 반올림
+        tx.update(profileRef, { reviewCount: newCount, rating: newRating, updatedAt: serverTimestamp() });
       });
       alert('후기가 등록되었습니다. 감사합니다!');
       setWriteOpen(false);

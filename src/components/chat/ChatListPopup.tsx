@@ -15,9 +15,10 @@ interface ChatRoom {
 
 interface ChatListPopupProps {
   onClose: () => void;
+  initialChatId?: string;
 }
 
-export default function ChatListPopup({ onClose }: ChatListPopupProps) {
+export default function ChatListPopup({ onClose, initialChatId }: ChatListPopupProps) {
   const { currentUser } = useAuth();
   const [selected, setSelected] = useState<{ id: string; name: string } | null>(null);
   const [showPanel, setShowPanel] = useState(false);
@@ -67,6 +68,14 @@ export default function ChatListPopup({ onClose }: ChatListPopupProps) {
     setSelected({ id, name: name || '상대방' });
     setShowPanel(true);
   };
+
+  // 외부에서 전달된 initialChatId가 있으면 자동으로 선택/오픈
+  useEffect(() => {
+    if (initialChatId && chats.length > 0) {
+      const found = chats.find((c) => c.id === initialChatId);
+      if (found) openInlineChat(found.id, found.otherParticipantName);
+    }
+  }, [initialChatId, chats]);
 
   // 드래그 시작
   const handleDragStart = (e: React.MouseEvent) => {

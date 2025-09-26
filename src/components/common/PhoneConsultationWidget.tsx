@@ -17,6 +17,7 @@ export default function PhoneConsultationWidget() {
   const [chatRoomId, setChatRoomId] = useState<string | null>(null);
   const [isLoginNoticeOpen, setIsLoginNoticeOpen] = useState(false);
   const [isChatListOpen, setIsChatListOpen] = useState(false);
+  const [initialChatId, setInitialChatId] = useState<string | undefined>(undefined);
 
   const togglePhonePopup = () => {
     if (isPhoneOpen) {
@@ -87,6 +88,19 @@ export default function PhoneConsultationWidget() {
     }
     setIsChatListOpen((prev) => !prev);
   };
+
+  // 외부에서 특정 채팅을 열기 위한 글로벌 훅 (MyPage 연동)
+  // window.openChatById('chatId') 형태로 호출하면 목록을 열고 해당 대화를 선택
+  if (typeof window !== 'undefined') {
+    (window as unknown as { openChatById?: (id: string) => void }).openChatById = (chatId: string) => {
+      if (!currentUser || !userData) {
+        setIsLoginNoticeOpen(true);
+        return;
+      }
+      setInitialChatId(chatId);
+      setIsChatListOpen(true);
+    };
+  }
 
   return (
     <div className="fixed bottom-6 right-6 z-50">
@@ -267,7 +281,7 @@ export default function PhoneConsultationWidget() {
       {/* 채팅 목록 팝업 */}
       {isChatListOpen && (
         <div className="absolute bottom-20 right-0">
-          <ChatListPopup onClose={() => setIsChatListOpen(false)} />
+          <ChatListPopup onClose={() => setIsChatListOpen(false)} initialChatId={initialChatId} />
         </div>
       )}
 
