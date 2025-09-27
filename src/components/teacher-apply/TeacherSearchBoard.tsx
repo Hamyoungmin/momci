@@ -435,7 +435,7 @@ export default function TeacherSearchBoard() {
     closePopup();
     setIsRegistrationEdit(false);
     setEditDocId(null);
-    alert('저장이 완료되었습니다!');
+    alert('저장이 완료되었습니다.\n관리자 재심사 후 적용됩니다.');
   };
 
   // const router = useRouter();

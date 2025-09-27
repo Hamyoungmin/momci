@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { 
   ChatMessage, 
@@ -8,7 +9,8 @@ import {
   sendMessage 
 } from '@/lib/chat';
 import { filterPhoneNumber, PhoneFilterResult } from '@/utils/phoneFilter';
-import { Timestamp, FieldValue } from 'firebase/firestore';
+import { Timestamp, FieldValue, doc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 interface OneOnOneChatProps {
   chatRoomId: string;
@@ -38,6 +40,8 @@ export default function OneOnOneChat({
   const [sending, setSending] = useState(false);
   const [phoneFilterResult, setPhoneFilterResult] = useState<PhoneFilterResult | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const [hasTherapistResponded, setHasTherapistResponded] = useState<boolean | null>(null);
 
   // 채팅 메시지 실시간 조회
   useEffect(() => {
@@ -207,7 +211,23 @@ export default function OneOnOneChat({
             ↓
           </button>
           <button
-            onClick={onClose}
+            onClick={async () => {
+              try {
+                const snap = await getDoc(doc(db, 'chats', chatRoomId));
+                const data = snap.data() as { firstResponseReceived?: boolean } | undefined;
+                const respondedFromDoc = data?.firstResponseReceived === true;
+                const respondedFromMessages = messages.some(
+                  (m) => m.senderType === 'therapist'
+                );
+                setHasTherapistResponded(respondedFromDoc || respondedFromMessages);
+              } catch {
+                const respondedFromMessages = messages.some(
+                  (m) => m.senderType === 'therapist'
+                );
+                setHasTherapistResponded(respondedFromMessages ? true : null);
+              }
+              setShowLeaveConfirm(true);
+            }}
             className="text-gray-400 hover:text-gray-600 text-lg"
           >
             ✕
@@ -371,6 +391,34 @@ export default function OneOnOneChat({
           </button>
         </div>
       </div>
+      {/* 종료 확인 모달 */}
+      {showLeaveConfirm && createPortal(
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-xl w-[520px] max-w-[92vw] p-5">
+            <h3 className="text-lg font-bold text-gray-900 mb-3 text-center">채팅방을 나가시겠습니까?</h3>
+            {hasTherapistResponded ? (
+              <div className="text-center text-sm text-gray-700">
+                <div className="w-10 h-10 mx-auto mb-2 rounded-full bg-yellow-400 text-white flex items-center justify-center">!</div>
+                <p className="mb-1 text-gray-700">치료사님이 응답하여 <span className="font-semibold text-amber-600">인터뷰권이 이미 사용되었습니다.</span></p>
+                <p className="text-gray-600 mb-2">지금 나가셔도 환불되지 않습니다.</p>
+                <p className="text-gray-500 text-xs">대화 내용은 저장되며, 언제든 [마이페이지 &gt; 채팅 목록]에서 이어갈 수 있습니다.</p>
+              </div>
+            ) : (
+              <div className="text-center text-sm text-gray-700">
+                <div className="w-10 h-10 mx-auto mb-2 rounded-full bg-green-500 text-white flex items-center justify-center">↻</div>
+                <p className="mb-1 text-gray-700">치료사님이 아직 응답하지 않았습니다.</p>
+                <p className="text-gray-700">지금 채팅을 종료하면 사용 보류 중인 <span className="font-semibold text-green-600">인터뷰권이 즉시 환불됩니다.</span></p>
+              </div>
+            )}
+            <div className="mt-4 flex justify-end gap-2">
+              <button onClick={() => setShowLeaveConfirm(false)} className="px-4 py-2 rounded bg-gray-100 text-gray-800">취소</button>
+              <button onClick={onClose} className="px-4 py-2 rounded bg-blue-600 text-white">나가기</button>
+            </div>
+          </div>
+        </div>,
+        (typeof document !== 'undefined' ? document.body : (null as unknown as Element))
+      )}
     </div>
   );
 }
+

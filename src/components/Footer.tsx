@@ -23,12 +23,12 @@ export default function Footer() {
               <p>모든별(주)</p>
               <p>서울시 마포구 마포대로 92 효성해링턴 스퀘어 A동 3층</p>
               <p>대표 정진우</p>
-              <p>사업자등록번호:</p>
+              <p>사업자등록번호: 578-86-03580</p>
               <p>통신판매업 신고번호:</p>
               <p>대표번호: 010-4549-1903(전화 및 문자 상담가능)</p>
               <p>팩스번호:</p>
               <p>개인정보 보호책임자: 정진우</p>
-              <p>everystar@naver.com</p>
+              <p>everystars@naver.com</p>
             </div>
           </div>
 
