@@ -1,10 +1,9 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { collection, onSnapshot, query, where, orderBy, addDoc, serverTimestamp, setDoc, doc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-// import { storage } from '@/lib/firebase';
-// import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { collection, onSnapshot, query, where, orderBy, addDoc, serverTimestamp, setDoc, doc, updateDoc, getDoc } from 'firebase/firestore';
+import { db, storage } from '@/lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -34,6 +33,7 @@ interface Teacher {
   phone?: string;
   birthDate?: string;
   qualification?: string;
+  address?: string;
   availableDays?: string[];
   availableTime?: string;
   educationCareer?: string;
@@ -48,9 +48,11 @@ interface Teacher {
 }
 
 export default function TeacherSearchBoard() {
-  const { currentUser } = useAuth();
+  const { currentUser, userData } = useAuth();
   const ADMIN_EMAILS = ['dudals7334@naver.com', 'everystars@naver.com'];
   const isAdmin = !!currentUser?.email && ADMIN_EMAILS.includes(currentUser.email);
+  const isParent = userData?.userType === 'parent';
+  const canOpenRegistration = !!currentUser && (!isParent || isAdmin) && (userData?.userType === 'therapist' || isAdmin);
   const [selectedSidebarItem, setSelectedSidebarItem] = useState('치료사등록');
   // const [selectedTab, setSelectedTab] = useState('서울');
   const [searchKeyword, setSearchKeyword] = useState('');
@@ -80,7 +82,8 @@ export default function TeacherSearchBoard() {
   useEffect(() => {
     const publicQ = query(
       collection(db, 'therapist-registrations-feed'),
-      orderBy('createdAt', 'desc')
+      // updatedAt 기준으로 정렬 (createdAt 누락 문서 대비)
+      orderBy('updatedAt', 'desc')
     );
     const unPublic = onSnapshot(publicQ, (snapshot) => {
       const baseRows: Teacher[] = snapshot.docs.map((d, idx) => {
@@ -129,7 +132,8 @@ export default function TeacherSearchBoard() {
       const mineQ = query(
         collection(db, 'therapist-registrations'),
         where('userId', '==', currentUser.uid),
-        orderBy('createdAt', 'desc')
+        // updatedAt 우선 정렬 (createdAt 없어도 목록에 나타나도록)
+        orderBy('updatedAt', 'desc')
       );
       unMine = onSnapshot(mineQ, (snapshot) => {
         const mineRows = snapshot.docs.map((d) => {
@@ -173,7 +177,11 @@ export default function TeacherSearchBoard() {
         setRegisteredTeachers((prev) => {
           const merged = [...prev];
           mineRows.forEach(m => {
-            if (!merged.find(x => x.docId === m.docId)) {
+            const idx = merged.findIndex(x => x.docId === m.docId);
+            if (idx >= 0) {
+              // 내 문서가 이미 목록에 있으면 내 데이터로 덮어써서 ownerUid/세부 필드 누락 문제 해결
+              merged[idx] = { ...merged[idx], ...m } as Teacher;
+            } else {
               merged.push({ ...m, id: merged.length + 1 });
             }
           });
@@ -351,9 +359,55 @@ export default function TeacherSearchBoard() {
 
     // Firestore 저장
     try {
+      // 업로드 유틸(문서 ID 포함 경로)
+      const uploadWithReg = async (regId: string) => {
+        const uploaded: Record<string, unknown> = {};
+        if (profileImage) {
+          const path = `therapist-registrations/${currentUser?.uid}/${regId}/profile/${Date.now()}_profile.jpg`;
+          const sref = ref(storage, path);
+          await uploadBytes(sref, profileImage);
+          uploaded.profilePhoto = await getDownloadURL(sref);
+        }
+        const uploadFileArray = async (files: File[], folder: string): Promise<string[]> => {
+          const urls: string[] = [];
+          for (const file of files) {
+            const p = `therapist-registrations/${currentUser?.uid}/${regId}/${folder}/${Date.now()}_${file.name}`;
+            const r = ref(storage, p);
+            await uploadBytes(r, file);
+            urls.push(await getDownloadURL(r));
+          }
+          return urls;
+        };
+        const academicUrls = await uploadFileArray(academicFiles, 'academic');
+        const careerUrls = await uploadFileArray(careerFiles, 'career');
+        // 규칙 경로에 맞춰 교육/경험 추가 자료도 license 폴더로 업로드
+        const licenseUrls = [
+          ...await uploadFileArray(licenseFiles, 'license'),
+          ...await uploadFileArray(educationFiles, 'license'),
+          ...await uploadFileArray(experienceFiles, 'license'),
+        ];
+        let bankbookUrl: string | null = null;
+        if (bankBookFile) {
+          const p = `therapist-registrations/${currentUser?.uid}/${regId}/bankbook/${Date.now()}_${bankBookFile.name}`;
+          const r = ref(storage, p);
+          await uploadBytes(r, bankBookFile);
+          bankbookUrl = await getDownloadURL(r);
+        }
+        const documents: Record<string, unknown> = {
+          diploma: academicUrls,
+          career: careerUrls,
+          license: licenseUrls,
+          certificate: licenseUrls,
+          bankbook: bankbookUrl ? [bankbookUrl] : [],
+        };
+        return { uploaded, documents } as { uploaded: Record<string, unknown>; documents: Record<string, unknown> };
+      };
       if (isRegistrationEdit && editDocId) {
         // 업데이트 분기
         const regRef = doc(db, 'therapist-registrations', editDocId);
+        // 파일 업로드 (규칙 경로 포함)
+        const { uploaded, documents } = await uploadWithReg(editDocId);
+
         await updateDoc(regRef, {
           userId: currentUser?.uid,
           name: formData.name,
@@ -366,6 +420,10 @@ export default function TeacherSearchBoard() {
           therapyActivity: formData.therapyActivity,
           mainSpecialty: formData.mainSpecialty,
       experience: formData.experience,
+          educationCareer: formData.educationCareer,
+          certifications: formData.certifications,
+          profilePhoto: uploaded.profilePhoto || undefined,
+          documents,
           region: formData.region,
           availableDays: formData.availableDays,
           availableTime: formData.availableTime,
@@ -376,6 +434,8 @@ export default function TeacherSearchBoard() {
           hourlyRate: formData.hourlyRate,
           applicationSource: formData.applicationSource,
           agreeTerms: formData.agreeTerms,
+          // 재검토 요청을 위해 상태를 pending으로 되돌림(보안 규칙 요구)
+          status: 'pending',
           updatedAt: serverTimestamp(),
           isModified: true,
           modifiedAt: serverTimestamp()
@@ -384,21 +444,27 @@ export default function TeacherSearchBoard() {
         await setDoc(doc(db, 'therapist-registrations-feed', editDocId), {
           userId: currentUser?.uid,
           name: formData.name,
+          birthDate: formData.birthDate,
           gender: formData.gender,
-          region: formData.region,
-          specialty: formData.specialties?.[0] || '',
-          experience: formData.experience,
-          hourlyRate: formData.hourlyRate,
+          phone: formData.phone,
+          email: formData.email,
+          address: formData.address,
+          qualification: formData.qualification,
           therapyActivity: formData.therapyActivity,
           mainSpecialty: formData.mainSpecialty,
           educationCareer: formData.educationCareer,
           certifications: formData.certifications,
+          experience: String(formData.experience || ''),
+          region: formData.region,
+          specialty: formData.specialties?.[0] || '',
           availableDays: formData.availableDays,
           availableTime: formData.availableTime,
+          hourlyRate: formData.hourlyRate,
+          status: 'pending',
           updatedAt: serverTimestamp()
         }, { merge: true });
       } else {
-        await addDoc(collection(db, 'therapist-registrations'), {
+        const createdRef = await addDoc(collection(db, 'therapist-registrations'), {
           userId: currentUser?.uid,
           name: formData.name,
           birthDate: formData.birthDate,
@@ -410,6 +476,9 @@ export default function TeacherSearchBoard() {
           therapyActivity: formData.therapyActivity,
           mainSpecialty: formData.mainSpecialty,
           experience: formData.experience,
+          educationCareer: formData.educationCareer,
+          certifications: formData.certifications,
+          // 파일은 생성 후 regId로 업로드하여 이어서 업데이트
           region: formData.region,
           availableDays: formData.availableDays,
           availableTime: formData.availableTime,
@@ -424,7 +493,37 @@ export default function TeacherSearchBoard() {
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp()
         });
-        // 기존 업로드 로직 유지
+        // 생성 후 파일 업로드 → 문서에 반영
+        const { uploaded, documents } = await uploadWithReg(createdRef.id);
+        await updateDoc(createdRef, {
+          profilePhoto: uploaded.profilePhoto || '',
+          documents,
+          updatedAt: serverTimestamp()
+        });
+        // 공개 피드 동기화 (상세보기에서 사용할 필드 일치)
+        await setDoc(doc(db, 'therapist-registrations-feed', createdRef.id), {
+          userId: currentUser?.uid,
+          name: formData.name,
+          birthDate: formData.birthDate,
+          gender: formData.gender,
+          phone: formData.phone,
+          email: formData.email,
+          address: formData.address,
+          qualification: formData.qualification,
+          therapyActivity: formData.therapyActivity,
+          mainSpecialty: formData.mainSpecialty,
+          educationCareer: formData.educationCareer,
+          certifications: formData.certifications,
+          experience: String(formData.experience || ''),
+          region: formData.region,
+          specialty: formData.specialties?.[0] || '',
+          availableDays: formData.availableDays,
+          availableTime: formData.availableTime,
+          hourlyRate: formData.hourlyRate,
+          status: 'pending',
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
       }
     } catch {
       alert('등록 중 오류가 발생했습니다. 다시 시도해주세요.');
@@ -942,8 +1041,10 @@ export default function TeacherSearchBoard() {
               <div className="bg-white border-4 border-blue-700 rounded-t-lg p-4 border-b-0">
                     <div className="flex items-center justify-end">
                       <button 
-                        onClick={() => setShowRegistrationPopup(true)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg text-sm font-semibold shadow-sm transition-colors flex items-center gap-2"
+                        onClick={() => { if (canOpenRegistration) setShowRegistrationPopup(true); }}
+                        disabled={!canOpenRegistration}
+                        title={!canOpenRegistration ? '치료사 계정만 신청할 수 있습니다.' : undefined}
+                        className={`${canOpenRegistration ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400 cursor-not-allowed'} text-white px-5 py-2 rounded-lg text-sm font-semibold shadow-sm transition-colors flex items-center gap-2`}
                       >
                     <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-white text-blue-600 text-xs">＋</span>
                     치료사 등록
@@ -1004,10 +1105,34 @@ export default function TeacherSearchBoard() {
                           </td>
                           <td className="px-4 py-4 w-24">
                             <button 
-                              onClick={() => {
+                              onClick={async () => {
                                 const isOwner = !!currentUser?.uid && (!!teacher.ownerUid && teacher.ownerUid === currentUser.uid);
                                 if (!isOwner) { alert('본인 게시글만 상세보기를 할 수 있습니다.'); return; }
-                                setActiveTeacher(teacher); setShowDetailModal(true); setIsEditing(false);
+                                // 상세보기 직전, 내 문서 최신값(특히 계좌정보)을 원본 컬렉션에서 보강
+                                let merged = teacher;
+                                try {
+                                  if (teacher.docId) {
+                                    const snap = await getDoc(doc(db, 'therapist-registrations', teacher.docId));
+                                    if (snap.exists()) {
+                                      const d = snap.data() as Record<string, unknown>;
+                                      merged = {
+                                        ...teacher,
+                                        bankName: (d.bankName as string) || teacher.bankName,
+                                        accountHolder: (d.accountHolder as string) || teacher.accountHolder,
+                                        accountNumber: (d.accountNumber as string) || teacher.accountNumber,
+                                        phone: (d.phone as string) || teacher.phone,
+                                        email: (d.email as string) || teacher.email,
+                                        address: (d.address as string) || teacher.address || undefined,
+                                        residence: (d.address as string) || teacher.residence || undefined,
+                                        applicationSource: (d.applicationSource as string) || teacher.applicationSource,
+                                        educationCareer: (d.educationCareer as string) || teacher.educationCareer,
+                                        certifications: (d.certifications as string) || teacher.certifications,
+                                        birthDate: (d.birthDate as string) || teacher.birthDate,
+                                      } as Teacher;
+                                    }
+                                  }
+                                } catch { /* noop */ }
+                                setActiveTeacher(merged); setShowDetailModal(true); setIsEditing(false);
                               }}
                               className={`text-sm font-medium ${teacher.ownerUid === currentUser?.uid ? 'text-blue-600 hover:text-blue-800' : 'text-gray-400 cursor-not-allowed'}`}
                             >

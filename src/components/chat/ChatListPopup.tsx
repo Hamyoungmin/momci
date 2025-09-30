@@ -35,7 +35,8 @@ export default function ChatListPopup({ onClose, initialChatId }: ChatListPopupP
 
     const q = query(
       collection(db, 'chats'),
-      where('participants', 'array-contains', currentUser.uid)
+      where('participants', 'array-contains', currentUser.uid),
+      where('status', '==', 'active')
     );
 
     const un = onSnapshot(q, (snap) => {
@@ -170,6 +171,7 @@ export default function ChatListPopup({ onClose, initialChatId }: ChatListPopupP
               onClose={() => {
                 setShowPanel(false);
                 setIsFloating(false);
+                onClose();
               }}
               position={'anchored'}
             />

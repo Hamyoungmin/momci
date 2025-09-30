@@ -8,6 +8,7 @@ import {
   subscribeToMessages, 
   sendMessage 
 } from '@/lib/chat';
+import { handleChatCancellation } from '@/lib/interviewTokens';
 import { filterPhoneNumber, PhoneFilterResult } from '@/utils/phoneFilter';
 import { Timestamp, FieldValue, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -42,6 +43,8 @@ export default function OneOnOneChat({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [hasTherapistResponded, setHasTherapistResponded] = useState<boolean | null>(null);
+  const [isClosing, setIsClosing] = useState(false);
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   // 채팅 메시지 실시간 조회
   useEffect(() => {
@@ -177,13 +180,36 @@ export default function OneOnOneChat({
               ↑
             </button>
             <button
-              onClick={onClose}
+              onClick={async () => {
+                try {
+                  // 최소화에서도 동일 모달을 띄우기 위해 응답 여부를 먼저 판단
+                  const snap = await getDoc(doc(db, 'chats', chatRoomId));
+                  const data = snap.data() as { firstResponseReceived?: boolean } | undefined;
+                  const respondedFromDoc = data?.firstResponseReceived === true;
+                  const respondedFromMessages = messages.some((m) => m.senderType === 'therapist');
+                  const responded = respondedFromDoc || respondedFromMessages;
+                  setHasTherapistResponded(responded);
+                } catch {
+                  const respondedFromMessages = messages.some((m) => m.senderType === 'therapist');
+                  setHasTherapistResponded(respondedFromMessages ? true : null);
+                }
+                // 환불이 필요한 경우(미응답)만 모달 표시, 응답이 있었으면 즉시 닫기
+                if (hasTherapistResponded === false) {
+                  setShowLeaveConfirm(true);
+                } else {
+                  onClose();
+                }
+              }}
               className="text-gray-400 hover:text-gray-600 text-lg"
             >
               ✕
             </button>
           </div>
         </div>
+        {/* 에러 토스트 */}
+        {toast && toast.type === 'error' && (
+          <div className="absolute -top-8 right-4 bg-red-600 text-white text-xs px-3 py-1 rounded shadow">{toast.message}</div>
+        )}
       </div>
     );
   }
@@ -412,11 +438,42 @@ export default function OneOnOneChat({
             )}
             <div className="mt-4 flex justify-end gap-2">
               <button onClick={() => setShowLeaveConfirm(false)} className="px-4 py-2 rounded bg-gray-100 text-gray-800">취소</button>
-              <button onClick={onClose} className="px-4 py-2 rounded bg-blue-600 text-white">나가기</button>
+              <button
+                onClick={async () => {
+                  const isParent = userData?.userType === 'parent';
+                  if (hasTherapistResponded === false && isParent && currentUser) {
+                    try {
+                      setIsClosing(true);
+                      const ok = await handleChatCancellation(chatRoomId, currentUser.uid, '사용자 종료');
+                      if (!ok) {
+                        setToast({ type: 'error', message: '종료/환불 처리에 실패했습니다. 잠시 후 다시 시도해주세요.' });
+                        setTimeout(() => setToast(null), 3000);
+                        return;
+                      }
+                    } catch (e) {
+                      console.error('채팅 종료/환불 처리 실패:', e);
+                      setToast({ type: 'error', message: '네트워크 오류로 실패했습니다.' });
+                      setTimeout(() => setToast(null), 3000);
+                      return;
+                    } finally {
+                      setIsClosing(false);
+                    }
+                  }
+                  onClose();
+                }}
+                disabled={isClosing}
+                className={`px-4 py-2 rounded text-white ${isClosing ? 'bg-blue-300 cursor-not-allowed' : 'bg-blue-600'}`}
+              >
+                {isClosing ? '처리 중...' : '나가기'}
+              </button>
             </div>
           </div>
         </div>,
         (typeof document !== 'undefined' ? document.body : (null as unknown as Element))
+      )}
+      {/* 에러 토스트 (일반 뷰) */}
+      {toast && toast.type === 'error' && (
+        <div className="fixed bottom-24 right-6 z-[100000] bg-red-600 text-white text-sm px-4 py-2 rounded shadow-lg">{toast.message}</div>
       )}
     </div>
   );

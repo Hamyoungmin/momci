@@ -85,47 +85,44 @@ function PaymentCheckoutContent() {
       if (!prepareRes.ok) throw new Error('주문 생성 실패');
       const { merchantUid, amount, name } = await prepareRes.json();
 
-      // 2) PortOne SDK 호출
-      if (typeof window !== 'undefined' && !window.IMP) {
-        // 동적 스크립트 로드
+      // 2) PortOne v2 Bridge 호출
+      if (typeof window !== 'undefined' && !(window as unknown as { PortOne?: unknown }).PortOne) {
         await new Promise<void>((resolve, reject) => {
           const script = document.createElement('script');
-          script.src = 'https://cdn.iamport.kr/v1/iamport.js';
+          script.src = 'https://cdn.portone.io/v2/browser-sdk.js';
           script.onload = () => resolve();
-          script.onerror = () => reject(new Error('Failed to load PortOne SDK'));
+          script.onerror = () => reject(new Error('Failed to load PortOne v2 SDK'));
           document.head.appendChild(script);
         });
       }
 
-      const { IMP } = window;
-      IMP.init((process.env.NEXT_PUBLIC_PORTONE_IMP_ID as string) || '');
-
-      const pg = (process.env.NEXT_PUBLIC_PORTONE_PG as string)
-        || (process.env.NODE_ENV === 'production' ? 'html5_inicis' : 'html5_inicis.INIpayTest');
-
-      const impResult = await new Promise<import('@/types/iamport').PortOneResponse>((resolve) => {
-        IMP.request_pay(
-          {
-            pg,
-            pay_method: 'card',
-            merchant_uid: merchantUid,
-            name,
-            amount,
-            customer_uid: currentUser.uid,
-          },
-          (rsp) => resolve(rsp)
-        );
-      });
-
-      if (!impResult.success) {
-        throw new Error(impResult.error_msg || '결제 실패');
+      const PortOne = (window as unknown as { PortOne: { requestPayment: (args: Record<string, unknown>) => Promise<{ code?: string; message?: string; paymentId?: string }> } }).PortOne;
+      const storeId = process.env.NEXT_PUBLIC_PORTONE_STORE_ID as string;
+      const channelKey = process.env.NEXT_PUBLIC_KG_INICIS_CHANNEL_KEY as string;
+      if (!storeId || !channelKey) {
+        throw new Error('결제 설정이 누락되었습니다. (storeId/channelKey)');
       }
 
-      // 3) 서버 검증
+      const bridgeResult = await PortOne.requestPayment({
+        storeId,
+        channelKey,
+        paymentId: merchantUid,
+        orderName: name,
+        totalAmount: amount,
+        currency: 'KRW',
+        payMethod: 'CARD',
+      });
+
+      if (!bridgeResult || bridgeResult.code !== 'OK') {
+        const msg = bridgeResult?.message || '결제 실패';
+        throw new Error(msg);
+      }
+
+      // 3) 서버 검증 (v2: paymentId 사용)
       const verifyRes = await fetch('/api/payments/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imp_uid: impResult.imp_uid, merchant_uid: merchantUid }),
+        body: JSON.stringify({ paymentId: bridgeResult.paymentId, merchant_uid: merchantUid }),
       });
       if (!verifyRes.ok) throw new Error('결제 검증 실패');
 
@@ -208,7 +205,7 @@ function PaymentCheckoutContent() {
                   <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                   </svg>
-                  <span className="font-medium text-blue-900">무통장입금</span>
+                  <span className="font-medium text-blue-900">신용/체크카드</span>
                 </div>
               </div>
             </div>
@@ -232,7 +229,7 @@ function PaymentCheckoutContent() {
                   <span>결제 처리 중...</span>
                 </div>
               ) : (
-                '입금 완료 확인'
+                '결제하기'
               )}
             </button>
             

@@ -1,13 +1,13 @@
 import { NextRequest } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
-import { getPaymentByImpUid } from '@/lib/portone';
+import { getPaymentByPaymentId } from '@/lib/portone';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   try {
-    const { imp_uid, merchant_uid } = await req.json();
-    if (!imp_uid || !merchant_uid) {
+    const { paymentId, merchant_uid } = await req.json();
+    if (!paymentId || !merchant_uid) {
       return new Response('Invalid payload', { status: 400 });
     }
 
@@ -24,8 +24,8 @@ export async function POST(req: NextRequest) {
       return Response.json({ ok: true, status: 'paid' });
     }
 
-    // 2) PortOne 서버로 결제정보 조회/검증
-    const pay = await getPaymentByImpUid(imp_uid);
+    // 2) PortOne 서버로 결제정보 조회/검증 (v2: paymentId)
+    const pay = await getPaymentByPaymentId(paymentId);
     if (pay.merchant_uid !== merchant_uid) {
       return new Response('Merchant mismatch', { status: 400 });
     }

@@ -1636,12 +1636,18 @@ service cloud.firestore {
       allow update: if isAuthenticated() && (
                        (
                          resource.data.userId == request.auth.uid &&
-                         !request.resource.data.diff(resource.data).affectedKeys().hasAny(['userId','createdAt','status']) &&
+                         // 소유자는 userId/createdAt은 변경 불가. status는 특정 조건에서만 'pending'으로 변경 허용
+                         !request.resource.data.diff(resource.data).affectedKeys().hasAny(['userId','createdAt']) &&
                          (
                            // 승인 전 일반 수정
                            resource.data.status == 'pending' ||
-                           // 승인 후: 검토 플래그와 시간 필수
-                           (resource.data.status == 'approved' && request.resource.data.isModified == true && request.resource.data.modifiedAt is timestamp)
+                           // 승인/반려/보류 후: 수정 시 재검토를 위해 status를 'pending'으로 되돌리면서 수정 허용
+                           (
+                             (resource.data.status in ['approved','rejected','hold']) &&
+                             request.resource.data.isModified == true &&
+                             request.resource.data.modifiedAt is timestamp &&
+                             request.resource.data.status == 'pending'
+                           )
                          ) &&
                          (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['experience']) ||
                           (request.resource.data.experience is string && isValidExperienceLabel(request.resource.data.experience))) &&

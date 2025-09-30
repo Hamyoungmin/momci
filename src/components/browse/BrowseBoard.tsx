@@ -114,7 +114,34 @@ export default function BrowseBoard() {
   const isWhitelistedAdminEmail = currentUser?.email === 'dudals7334@naver.com' || currentUser?.email === 'everystars@naver.com';
   const isAdmin = !!userData && userData.userType === 'admin';
   const isTherapist = !!userData && userData.userType === 'therapist';
-  const canCreatePost = isWhitelistedAdminEmail || isAdmin || isTherapist;
+  // 본인 프로필 승인 여부 조회(간단 쿼리)
+  const [isApprovedProfile, setIsApprovedProfile] = useState<boolean>(false);
+  const [hasProfileDoc, setHasProfileDoc] = useState<boolean>(false);
+  useEffect(() => {
+    let unsub: (() => void) | null = null;
+    (async () => {
+      try {
+        if (!currentUser || !isTherapist) { setIsApprovedProfile(false); return; }
+        const q = query(collection(db, 'therapistProfiles'), where('userId', '==', currentUser.uid), limit(1));
+        unsub = onSnapshot(q, (snap) => {
+          if (!snap.empty) {
+            const status = (snap.docs[0].data() as { status?: string }).status;
+            setIsApprovedProfile(status === 'approved');
+            setHasProfileDoc(true);
+          } else {
+            setIsApprovedProfile(false);
+            setHasProfileDoc(false);
+          }
+        });
+      } catch {
+        setIsApprovedProfile(false);
+        setHasProfileDoc(false);
+      }
+    })();
+    return () => { if (unsub) unsub(); };
+  }, [currentUser, isTherapist]);
+
+  const canCreatePost = (isWhitelistedAdminEmail || isAdmin || isTherapist) && (!isTherapist || isApprovedProfile);
   const isTherapistWithoutSubscription = isTherapist && (!sub.hasActiveSubscription || sub.subscriptionType !== 'therapist');
 
   // 새 게시글 작성용 상태
@@ -741,14 +768,16 @@ export default function BrowseBoard() {
         console.warn('상세 병합용 신청서 조회 실패(무시 가능):', e);
       }
 
-      // 4. 모든 데이터를 통합하여 selectedProfile 설정
-      const combinedProfile: Teacher = {
+      // 4. 모든 데이터를 통합하여 selectedProfile 설정 (상세 모달이 기대하는 키로 매핑)
+      const combinedProfile: Teacher & Record<string, unknown> = {
         ...teacher,
         // 기본 사용자 정보로 업데이트
         name: (userData?.name || profileData?.name || teacher.name) as string,
         userName: userData?.name,
-        userEmail: userData?.email,
-        userPhone: userData?.phone,
+        // 상세 모달은 email/phone 키를 직접 사용하므로 동일 키로 주입
+        email: (userData?.email || (regData?.email as string) || '') as string,
+        phone: (userData?.phone || (regData?.phone as string) || '') as string,
+        gender: ((regData?.gender as string) || (teacher as unknown as { gender?: string }).gender || (teacher.postGender as string) || '') as string,
         
         // 치료사 프로필 정보로 업데이트
         experience: (regData?.experience as unknown as number) || (profileData?.experience as number) || teacher.experience,
@@ -756,12 +785,14 @@ export default function BrowseBoard() {
         rating: profileData?.rating || teacher.rating,
         reviewCount: profileData?.reviewCount || teacher.reviewCount,
         profileImage: profileData?.profileImage || teacher.profileImage,
-        education: (regData?.educationCareer as string) || (profileData?.education as string) || teacher.education,
-        career: (regData?.educationCareer as string) || (profileData?.career as string) || teacher.career,
-        introduction: (regData?.therapyActivity as string) || (profileData?.introduction as string) || teacher.introduction,
-        philosophy: (regData?.mainSpecialty as string) || (profileData?.philosophy as string) || teacher.philosophy,
+        // 상세 모달은 educationCareer/therapyActivity/mainSpecialty/hourlyRate/availableDays/availableTime를 사용
+        educationCareer: (regData?.educationCareer as string) || (profileData?.education as string) || (teacher.education as string) || '',
         certifications: (typeof regData?.certifications === 'string' ? [regData?.certifications as string] : (profileData?.certifications as string[]) || teacher.certifications || []),
-        schedule: (regData?.availableTime as string) || (profileData?.schedule as string) || teacher.schedule,
+        therapyActivity: (regData?.therapyActivity as string) || (profileData?.introduction as string) || (teacher.introduction as string) || '',
+        mainSpecialty: (regData?.mainSpecialty as string) || (profileData?.philosophy as string) || (teacher.philosophy as string) || '',
+        hourlyRate: (regData?.hourlyRate as string) || (profileData as unknown as { hourlyRate?: string })?.hourlyRate || '',
+        availableDays: (regData?.availableDays as string[]) || [],
+        availableTime: (regData?.availableTime as string) || (profileData?.schedule as string) || (teacher.schedule as string) || '',
         
         // 게시글의 실제 데이터 보존 (이미 teacher에서 스프레드되지만 명시적으로 추가)
         postAge: teacher.postAge,
@@ -776,6 +807,7 @@ export default function BrowseBoard() {
         hasExperienceProof: !!profileData?.career,
         hasIdVerification: !!profileData?.status,
         region: (regData?.treatmentRegion as string) || teacher.region,
+        treatmentRegion: (regData?.treatmentRegion as string) || '',
         price: (regData?.hourlyRate as string) || teacher.price,
       };
       
@@ -787,6 +819,9 @@ export default function BrowseBoard() {
         documents: (regData?.documents as Record<string, unknown>) || {},
         profilePhoto: regData?.profilePhoto as string | undefined,
         applicationSource: regData?.applicationSource as string | undefined,
+        bankName: regData?.bankName as string | undefined,
+        accountHolder: regData?.accountHolder as string | undefined,
+        accountNumber: regData?.accountNumber as string | undefined,
       };
       
       console.log('📋 최종 통합 프로필:', combinedProfile);
@@ -1277,8 +1312,12 @@ export default function BrowseBoard() {
                 </svg>
                 내 프로필 등록하기
               </button>
-                {isTherapistWithoutSubscription && (
-                  <p className="text-xs text-gray-500 mt-2 text-right">이용권이 없을 때는 이용권을 구매후 사용해주세요.</p>
+                {/* 안내 문구: 버튼 아래 */}
+                {isTherapist && !hasProfileDoc && (
+                  <p className="text-sm text-gray-600 mt-2 text-right">치료사 신청부터 하고 오셔야 합니다.</p>
+                )}
+                {isTherapist && isApprovedProfile && isTherapistWithoutSubscription && (
+                  <p className="text-sm text-gray-600 mt-2 text-right">이용권 구매 시 사용이 가능합니다.</p>
                 )}
               </div>
             ) : (
@@ -1292,12 +1331,14 @@ export default function BrowseBoard() {
                   </svg>
                   내 프로필 등록하기
                 </button>
-                <p className="text-sm text-gray-600 text-center">
-                  {currentUser ? 
-                    '치료사 계정만 게시글을 작성할 수 있습니다.' : 
-                    '로그인 후 이용해주세요.'
-                  }
-                </p>
+                {/* 안내 문구 분기 */}
+                {isTherapist && (!hasProfileDoc || !isApprovedProfile) ? (
+                  <p className="text-sm text-gray-600 mt-2 text-center">치료사 신청부터 하고 오셔야 합니다.</p>
+                ) : (
+                  <p className="text-sm text-gray-600 text-center">
+                    {currentUser ? '치료사 계정만 게시글을 작성할 수 있습니다.' : '로그인 후 이용해주세요.'}
+                  </p>
+                )}
               </div>
             )}
           </div>

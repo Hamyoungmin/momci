@@ -35,6 +35,7 @@ function SubscriptionManagementContent() {
     expiryDate: null,
     planName: null
   });
+  const [remainingTokens, setRemainingTokens] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [usageHistory, setUsageHistory] = useState<UsageHistory[]>([]);
 
@@ -112,6 +113,30 @@ function SubscriptionManagementContent() {
           }
         );
 
+        // 1-2. 사용자 인터뷰권(토큰) 잔여 수 실시간 감지
+        const unUser = onSnapshot(
+          doc(db, 'users', currentUser.uid),
+          (userDoc) => {
+            if (userDoc.exists()) {
+              const data = userDoc.data() as { interviewTokens?: number };
+              setRemainingTokens(data.interviewTokens ?? 0);
+            } else {
+              setRemainingTokens(0);
+            }
+          },
+          () => setRemainingTokens(0)
+        );
+        // 구독 해제 시 함께 해제되도록 래핑
+        const prevUnsub = unsubscribeSubscription;
+        unsubscribeSubscription = () => {
+          if (prevUnsub) {
+            prevUnsub();
+          }
+          if (unUser) {
+            unUser();
+          }
+        };
+
         // 2. 학부모용 사용 내역 실시간 감지
         if (userData.userType === 'parent') {
           try {
@@ -169,14 +194,13 @@ function SubscriptionManagementContent() {
   }, [authLoading, currentUser, userData]);
 
   const handlePurchase = (planType: '1month' | '3month') => {
-    console.log('구매 요청:', planType);
-    const paymentPath = userData?.userType === 'parent' ? '/parent-payment' : '/teacher-payment';
-    router.push(paymentPath);
+    const targetPath = userData?.userType === 'parent' ? '/parent-payment' : '/teacher-payment';
+    router.push(`${targetPath}?plan=${planType}`);
   };
 
   const handleExtend = () => {
-    const paymentPath = userData?.userType === 'parent' ? '/parent-payment' : '/teacher-payment';
-    router.push(paymentPath);
+    const targetPath = userData?.userType === 'parent' ? '/parent-payment' : '/teacher-payment';
+    router.push(targetPath);
   };
 
   const handleMenuClick = (path: string) => {
@@ -290,7 +314,7 @@ function SubscriptionManagementContent() {
                   </p>
                   {userData?.userType === 'parent' && (
                     <p className="text-blue-100 text-sm">
-                      남은 무료 인터뷰: {subscription.remainingInterviews ?? 0}회
+                      남은 인터뷰권: {remainingTokens}개
                     </p>
                   )}
                 </div>

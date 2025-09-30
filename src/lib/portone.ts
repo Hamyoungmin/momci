@@ -1,7 +1,7 @@
 const PORTONE_API_BASE = 'https://api.portone.io';
 
 export interface PortOneV2PaymentInfo {
-  id: string; // imp_uid
+  id: string; // paymentId
   merchantId: string; // merchant_uid
   status: 'paid' | 'ready' | 'cancelled' | 'failed';
   amount: {
@@ -20,14 +20,14 @@ function getV2AuthHeader(): string {
   return `Basic ${token}`;
 }
 
-// v2: imp_uid로 결제 조회
-export async function getPaymentByImpUid(impUid: string): Promise<{
-  imp_uid: string;
+// v2: paymentId로 결제 조회
+export async function getPaymentByPaymentId(paymentId: string): Promise<{
+  payment_id: string;
   merchant_uid: string;
   status: string;
   amount: number;
 }> {
-  const res = await fetch(`${PORTONE_API_BASE}/payments/${impUid}`, {
+  const res = await fetch(`${PORTONE_API_BASE}/payments/${paymentId}`, {
     headers: { Authorization: getV2AuthHeader() },
   });
 
@@ -38,11 +38,21 @@ export async function getPaymentByImpUid(impUid: string): Promise<{
 
   const data = (await res.json()) as PortOneV2PaymentInfo;
   return {
-    imp_uid: data.id,
+    payment_id: data.id,
     merchant_uid: data.merchantId,
     status: data.status,
     amount: data.amount.total,
   };
+}
+
+// Backward compatibility: v1 style imp_uid == v2 paymentId
+export async function getPaymentByImpUid(impUid: string): Promise<{
+  payment_id: string;
+  merchant_uid: string;
+  status: string;
+  amount: number;
+}> {
+  return getPaymentByPaymentId(impUid);
 }
 
 // v2: 빌링키(고객)로 즉시 결제 요청

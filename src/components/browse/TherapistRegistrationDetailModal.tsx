@@ -43,9 +43,18 @@ export default function TherapistRegistrationDetailModal({ isOpen, onClose, data
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="md:col-span-1 flex items-center justify-center">
-                <div className="w-40 h-40 bg-gray-200 rounded-full flex items-center justify-center">
-                  <span className="text-gray-500 text-sm text-center">사진</span>
-                </div>
+                {data.profilePhoto ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={String(data.profilePhoto)}
+                    alt="프로필 사진"
+                    className="w-40 h-40 rounded-full object-cover border"
+                  />
+                ) : (
+                  <div className="w-40 h-40 bg-gray-200 rounded-full flex items-center justify-center">
+                    <span className="text-gray-500 text-sm text-center">사진</span>
+                  </div>
+                )}
               </div>
               <div className="space-y-4">
                 <div>
@@ -126,6 +135,54 @@ export default function TherapistRegistrationDetailModal({ isOpen, onClose, data
                 <textarea value={fv(data.certifications, '')} disabled rows={6} className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50 resize-none" />
               </div>
             </div>
+          </div>
+
+          {/* 증빙 자료 (이미지/문서/영상 링크) */}
+          <div className="border-2 border-blue-200 rounded-lg p-4 bg-blue-50">
+            <div className="flex items-center mb-4">
+              <div className="bg-blue-100 rounded-full p-2 mr-3"><span className="text-blue-600 text-lg">📎</span></div>
+              <h4 className="text-lg font-bold text-gray-900">증빙 자료</h4>
+            </div>
+            {(() => {
+              const docs = (data.documents as Record<string, unknown>) || {};
+              const entries = Object.entries(docs);
+              if (!entries.length) return <div className="text-sm text-gray-500">등록된 증빙 자료가 없습니다.</div>;
+              const renderItem = (label: string, value: unknown) => {
+                const urls = Array.isArray(value) ? value as unknown[] : [value];
+                return (
+                  <div className="mb-3" key={label}>
+                    <div className="text-gray-600 text-sm mb-1">{label}</div>
+                    <div className="flex flex-wrap gap-2">
+                      {urls.map((u, idx) => {
+                        const href = String(u || '');
+                        if (!href) return null;
+                        const isVideo = /\.(mp4|webm|mov|qt)$/i.test(href);
+                        const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(href);
+                        return (
+                          <div key={label + idx} className="border rounded p-2 bg-white">
+                            {isVideo ? (
+                              <video src={href} controls className="w-64 max-h-40" />
+                            ) : isImage ? (
+                              <a href={href} target="_blank" rel="noreferrer">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={href} alt={label} className="w-32 h-32 object-cover" />
+                              </a>
+                            ) : (
+                              <a href={href} target="_blank" rel="noreferrer" className="text-blue-600 underline text-sm">{href}</a>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              };
+              return (
+                <div>
+                  {entries.map(([k, v]) => renderItem(k, v))}
+                </div>
+              );
+            })()}
           </div>
 
           {/* 희망 시간/요일 */}

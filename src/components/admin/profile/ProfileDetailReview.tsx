@@ -132,20 +132,31 @@ export default function ProfileDetailReview({ isOpen, onClose, profile, onAction
 
   // 파일 렌더링 유틸
   const renderFiles = (value: unknown) => {
-    const asArray: string[] = Array.isArray(value)
+    const urls: string[] = Array.isArray(value)
       ? (value as string[])
       : (typeof value === 'string' && value) ? [value as string] : [];
-    if (asArray.length === 0) return <span className="text-sm text-gray-500">-</span>;
+    if (urls.length === 0) return <span className="text-sm text-gray-500">-</span>;
     return (
-      <ul className="space-y-1">
-        {asArray.map((url, idx) => (
-          <li key={idx} className="flex items-center justify-between">
-            <a href={url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:text-blue-800 break-all">
-              {url}
-            </a>
-          </li>
-        ))}
-      </ul>
+      <div className="flex flex-wrap gap-3">
+        {urls.map((url, idx) => {
+          const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(url);
+          const isVideo = /\.(mp4|webm|mov|qt)$/i.test(url);
+          return (
+            <div key={idx} className="border rounded p-2 bg-gray-50">
+              {isImage ? (
+                <a href={url} target="_blank" rel="noopener noreferrer">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={url} alt={`evidence-${idx}`} className="w-32 h-32 object-cover" />
+                </a>
+              ) : isVideo ? (
+                <video src={url} controls className="w-64 max-h-40" />
+              ) : (
+                <a href={url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 underline break-all">{url}</a>
+              )}
+            </div>
+          );
+        })}
+      </div>
     );
   };
 
@@ -202,12 +213,22 @@ export default function ProfileDetailReview({ isOpen, onClose, profile, onAction
                       {profile.status === 'approved' ? '승인' : profile.status === 'rejected' ? '반려' : profile.status === 'hold' ? '보류' : '대기'}
                     </span>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="md:col-span-1 flex items-center justify-center">
+                      {fv(reg?.profilePhoto) ? (
+                        <div>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={fv(reg?.profilePhoto)} alt="프로필 사진" className="w-28 h-28 rounded-full object-cover border" />
+                        </div>
+                      ) : (
+                        <div className="w-28 h-28 bg-gray-200 rounded-full flex items-center justify-center text-gray-500 text-sm">사진</div>
+                      )}
+                    </div>
+                    <div className="md:col-span-1">
                       <label className="block text-sm font-medium text-gray-700 mb-1">이름</label>
                       <input disabled value={(reg?.name as string) || profile.teacherName || ''} className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50" />
                     </div>
-                    <div>
+                    <div className="md:col-span-1">
                       <label className="block text-sm font-medium text-gray-700 mb-1">생년월일</label>
                       <input disabled value={fv(reg?.birthDate, feed?.birthDate, user?.birthDate, tprofile?.birthDate)} className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50" />
                     </div>
@@ -273,11 +294,11 @@ export default function ProfileDetailReview({ isOpen, onClose, profile, onAction
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                     <div className="md:col-span-1">
                       <div className="text-gray-500 mb-1">학력 및 경력</div>
-                      <textarea disabled rows={6} value={((reg?.educationCareer as string) || '') as string} className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50 resize-none" />
+                      <textarea disabled rows={6} value={fv(reg?.educationCareer, feed?.educationCareer)} className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50 resize-none" />
                     </div>
                     <div className="md:col-span-1">
                       <div className="text-gray-500 mb-1">보유 자격증</div>
-                      <textarea disabled rows={6} value={((reg?.certifications as string) || '') as string} className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50 resize-none" />
+                      <textarea disabled rows={6} value={fv(reg?.certifications, feed?.certifications)} className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50 resize-none" />
                     </div>
                   </div>
                 </div>

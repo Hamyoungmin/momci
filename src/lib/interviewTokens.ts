@@ -54,55 +54,20 @@ export async function deductInterviewToken(
   therapistName: string
 ): Promise<boolean> {
   try {
-    console.log('💳 인터뷰권 차감 시도:', {
-      userId,
-      chatRoomId,
-      therapistId,
-      therapistName
+    console.log('💳 인터뷰권 차감(API) 시도:', { userId, chatRoomId, therapistId, therapistName });
+    const resp = await fetch('/api/interview-tokens/deduct', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chatRoomId, parentId: userId, therapistId })
     });
-
-    const result = await runTransaction(db, async (transaction) => {
-      const userRef = doc(db, 'users', userId);
-      const userDoc = await transaction.get(userRef);
-      
-      if (!userDoc.exists()) {
-        throw new Error('사용자 정보를 찾을 수 없습니다');
-      }
-      
-      const userData = userDoc.data();
-      const currentTokens = userData.interviewTokens || 0;
-      
-      if (currentTokens <= 0) {
-        console.log('❌ 인터뷰권 부족:', currentTokens);
-        return false;
-      }
-      
-      // 인터뷰권 1개 차감
-      transaction.update(userRef, {
-        interviewTokens: currentTokens - 1,
-        lastTokenUsed: serverTimestamp()
-      });
-      
-      // 사용 내역 기록 (선택사항 - 필요시 구현)
-      // const usageRef = doc(collection(db, 'tokenUsage'));
-      // transaction.set(usageRef, {
-      //   userId,
-      //   chatRoomId,
-      //   therapistId,
-      //   therapistName,
-      //   action: 'used',
-      //   amount: 1,
-      //   reason: '치료사 첫 응답',
-      //   createdAt: serverTimestamp()
-      // });
-      
-      console.log('✅ 인터뷰권 차감 완료:', currentTokens - 1);
-      return true;
-    });
-    
-    return result;
+    if (!resp.ok) {
+      console.warn('deduct API 실패:', await resp.text());
+      return false;
+    }
+    const data = await resp.json();
+    return data.ok === true;
   } catch (error) {
-    console.error('❌ 인터뷰권 차감 실패:', error);
+    console.error('❌ 인터뷰권 차감(API) 실패:', error);
     return false;
   }
 }
@@ -116,47 +81,20 @@ export async function refundInterviewToken(
   reason: string = '치료사 미응답'
 ): Promise<boolean> {
   try {
-    console.log('🔄 인터뷰권 복구 시도:', {
-      userId,
-      chatRoomId,
-      reason
+    console.log('🔄 인터뷰권 복구(API) 시도:', { userId, chatRoomId, reason });
+    const resp = await fetch('/api/interview-tokens/refund', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chatRoomId, parentId: userId, reason })
     });
-
-    const result = await runTransaction(db, async (transaction) => {
-      const userRef = doc(db, 'users', userId);
-      const userDoc = await transaction.get(userRef);
-      
-      if (!userDoc.exists()) {
-        throw new Error('사용자 정보를 찾을 수 없습니다');
-      }
-      
-      const userData = userDoc.data();
-      const currentTokens = userData.interviewTokens || 0;
-      
-      // 인터뷰권 1개 복구
-      transaction.update(userRef, {
-        interviewTokens: currentTokens + 1,
-        lastTokenRefunded: serverTimestamp()
-      });
-      
-      // 복구 내역 기록 (선택사항)
-      // const usageRef = doc(collection(db, 'tokenUsage'));
-      // transaction.set(usageRef, {
-      //   userId,
-      //   chatRoomId,
-      //   action: 'refunded',
-      //   amount: 1,
-      //   reason,
-      //   createdAt: serverTimestamp()
-      // });
-      
-      console.log('✅ 인터뷰권 복구 완료:', currentTokens + 1);
-      return true;
-    });
-    
-    return result;
+    if (!resp.ok) {
+      console.warn('refund API 실패:', await resp.text());
+      return false;
+    }
+    const data = await resp.json();
+    return data.ok === true;
   } catch (error) {
-    console.error('❌ 인터뷰권 복구 실패:', error);
+    console.error('❌ 인터뷰권 복구(API) 실패:', error);
     return false;
   }
 }
@@ -312,46 +250,23 @@ export async function handleChatCancellation(
   reason: string = '채팅 취소'
 ): Promise<boolean> {
   try {
-    console.log('🔄 채팅 취소 처리:', {
+    console.log('🔄 채팅 취소 처리(API):', {
       chatRoomId,
       parentId,
       reason
     });
-
-    const chatRoomDoc = await getDoc(doc(db, 'chats', chatRoomId));
-    
-    if (!chatRoomDoc.exists()) {
-      console.log('❌ 채팅방을 찾을 수 없음');
+    // 서버 API가 원자적으로 검증+환불+상태갱신 수행
+    const resp = await fetch('/api/interview-tokens/refund', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chatRoomId, parentId, reason })
+    });
+    if (!resp.ok) {
+      console.warn('handleChatCancellation API 실패:', await resp.text());
       return false;
     }
-    
-    const chatData = chatRoomDoc.data();
-    
-    // 첫 응답이 없었고, 인터뷰권이 사용되지 않았으면 복구할 필요 없음
-    if (!chatData.firstResponseReceived && !chatData.interviewTokenUsed) {
-      console.log('ℹ️ 인터뷰권 복구 불필요 (첫 응답 없음)');
-      return true;
-    }
-    
-    // 첫 응답이 있었으면 복구하지 않음 (정상적인 차감)
-    if (chatData.firstResponseReceived) {
-      console.log('ℹ️ 인터뷰권 복구 불가 (이미 첫 응답 완료)');
-      return false;
-    }
-    
-    // 복구 처리
-    const refunded = await refundInterviewToken(parentId, chatRoomId, reason);
-    
-    if (refunded) {
-      // 채팅방 상태 업데이트
-      await updateDoc(doc(db, 'chats', chatRoomId), {
-        status: 'closed',
-        interviewTokenRefunded: true,
-        cancelledAt: serverTimestamp()
-      });
-    }
-    
-    return refunded;
+    const data = await resp.json();
+    return data.ok === true;
   } catch (error) {
     console.error('❌ 채팅 취소 처리 실패:', error);
     return false;

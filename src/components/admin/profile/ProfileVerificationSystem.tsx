@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import ProfileReviewQueue from './ProfileReviewQueue';
 import ProfileDetailReview from './ProfileDetailReview';
 import { incrementTeacherCount } from '@/lib/statistics';
-import { collection, onSnapshot, query, orderBy, updateDoc, doc, serverTimestamp, getDoc, setDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, updateDoc, doc, serverTimestamp, getDoc, setDoc, where, limit, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -216,6 +216,41 @@ export default function ProfileVerificationSystem() {
           } catch (e) {
             // eslint-disable-next-line no-console
             console.warn('피드 갱신 실패(무시 가능):', e);
+          }
+
+          // 둘러보기 카드 자동 갱신: 이미 존재하는 teacher-offer 게시글만 최신 신청서 값으로 덮어쓰기 (없으면 건너뜀)
+          try {
+            const existingQ = query(
+              collection(db, 'posts'),
+              where('authorId', '==', target.teacherId),
+              where('type', '==', 'teacher-offer'),
+              limit(1)
+            );
+            const existingSnap = await getDocs(existingQ);
+            if (!existingSnap.empty) {
+              // 카드 요약 필드 구성: 신청서 우선, 없으면 프로필 보강
+              const region = regData.treatmentRegion || regData.region || '';
+              const treatment = Array.isArray(regData.specialties) && regData.specialties.length > 0
+                ? regData.specialties[0]
+                : (regData.specialty || '치료사');
+              const price = regData.hourlyRate || '';
+              const timeDetails = regData.availableTime || '';
+              const additionalInfo = regData.therapyActivity || regData.mainSpecialty || '';
+              const title = (target.teacherName || regData.name || '치료사');
+
+              await updateDoc(existingSnap.docs[0].ref, {
+                treatment,
+                region: region || '',
+                timeDetails: String(timeDetails || ''),
+                price: String(price || ''),
+                additionalInfo: String(additionalInfo || ''),
+                title: String(title || ''),
+                category: region || '',
+                updatedAt: serverTimestamp(),
+              });
+            }
+          } catch (e) {
+            console.warn('둘러보기 카드 자동 갱신 실패(무시 가능):', e);
           }
         } else {
           // 반려/보류: 상태만 갱신, 문서가 없으면 생성하지 않음
