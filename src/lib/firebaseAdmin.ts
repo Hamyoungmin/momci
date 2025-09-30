@@ -4,6 +4,19 @@ import { getFirestore } from 'firebase-admin/firestore';
 
 // Firebase Admin 초기화 (서비스 계정 최소 권한 사용 권장)
 // 환경변수 두 가지 방식을 지원: 단일 JSON(FIREBASE_ADMIN_CREDENTIALS) 또는 분리형
+function sanitizePrivateKey(key: string): string {
+  let sanitized = key.trim();
+  // Remove accidental surrounding quotes (common in env UIs)
+  if ((sanitized.startsWith('"') && sanitized.endsWith('"')) || (sanitized.startsWith("'") && sanitized.endsWith("'"))) {
+    sanitized = sanitized.slice(1, -1);
+  }
+  // Normalize newlines for different inputs: "\\n", "\\r\\n", actual CRLF
+  sanitized = sanitized.replace(/\\r\\n/g, '\n');
+  sanitized = sanitized.replace(/\\n/g, '\n');
+  sanitized = sanitized.replace(/\r\n/g, '\n');
+  return sanitized;
+}
+
 function createAdminApp(): App {
   const existing = getApps()[0];
   if (existing) return existing;
@@ -31,8 +44,8 @@ function createAdminApp(): App {
     throw new Error('Missing Firebase Admin credentials');
   }
 
-  // GitHub/Vercel 환경에서 \n 이스케이프 처리
-  privateKey = privateKey.replace(/\\n/g, '\n');
+  // Normalize key format for various deployment envs
+  privateKey = sanitizePrivateKey(privateKey);
 
   return initializeApp({
     credential: cert({
