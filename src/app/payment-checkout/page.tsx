@@ -2,8 +2,6 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { doc, setDoc, updateDoc, increment, Timestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface PaymentData {
@@ -21,7 +19,6 @@ function PaymentCheckoutContent() {
   const searchParams = useSearchParams();
   const [paymentData, setPaymentData] = useState<PaymentData | null>(null);
   const [loading, setLoading] = useState(true);
-  const paymentMethod = 'bank'; // 무통장입금만 지원
   const [isProcessing, setIsProcessing] = useState(false);
 
   // URL 파라미터에서 결제 정보 가져오기
@@ -36,7 +33,7 @@ function PaymentCheckoutContent() {
       setPaymentData({
         planType,
         planName,
-        price: parseInt(price),
+        price: parseInt(price, 10),
         benefits,
         userType
       });
@@ -70,57 +67,76 @@ function PaymentCheckoutContent() {
   }, [currentUser, userData, authLoading, paymentData, router]);
 
   const handlePaymentComplete = async () => {
-    if (!paymentData || !currentUser || !userData) return;
-    
+    if (!paymentData || !currentUser) return;
     setIsProcessing(true);
-    
     try {
-      // 결제 완료 시 이용권 상태 업데이트
-      const planDuration = paymentData.planType === '3month' ? 90 : 30; // 일 수
-      const expiryDate = new Date(Date.now() + planDuration * 24 * 60 * 60 * 1000);
-      
-      const totalInterviews = paymentData.userType === 'parent' 
-        ? (paymentData.planType === '3month' ? 6 : 2)
-        : 0; // 치료사는 인터뷰 횟수 없음
-      
-      await setDoc(doc(db, 'user-subscription-status', currentUser.uid), {
-        userId: currentUser.uid,
-        hasActiveSubscription: true,
-        subscriptionType: paymentData.userType,
-        expiryDate: Timestamp.fromDate(expiryDate),
-        planName: paymentData.planName,
-        lastUpdated: Timestamp.now(),
-        purchaseDate: Timestamp.now(),
-        amount: paymentData.price,
-        remainingInterviews: totalInterviews,
-        totalInterviews: totalInterviews,
-        paymentMethod: paymentMethod
+      // 1) 서버에서 주문 생성
+      const prepareRes = await fetch('/api/payments/prepare', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: currentUser.uid,
+          amount: paymentData.price,
+          name: paymentData.planName,
+          planType: paymentData.planType,
+          userType: paymentData.userType,
+        }),
       });
+      if (!prepareRes.ok) throw new Error('주문 생성 실패');
+      const { merchantUid, amount, name } = await prepareRes.json();
 
-      // 학부모 구매 시 인터뷰권 부여 (1개월=2회, 3개월=6회)
-      if (paymentData.userType === 'parent' && totalInterviews > 0) {
-        try {
-          await updateDoc(doc(db, 'users', currentUser.uid), {
-            interviewTokens: increment(totalInterviews),
-            lastTokenAdded: Timestamp.now()
-          });
-        } catch (e) {
-          console.warn('인터뷰권 부여 실패(관리자 확인 필요):', e);
-        }
+      // 2) PortOne SDK 호출
+      if (typeof window !== 'undefined' && !window.IMP) {
+        // 동적 스크립트 로드
+        await new Promise<void>((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = 'https://cdn.iamport.kr/v1/iamport.js';
+          script.onload = () => resolve();
+          script.onerror = () => reject(new Error('Failed to load PortOne SDK'));
+          document.head.appendChild(script);
+        });
       }
 
-      alert('결제가 완료되었습니다! 이용권이 활성화되었습니다.');
-      
-      // 결제 완료 후 이동할 페이지
+      const { IMP } = window;
+      IMP.init((process.env.NEXT_PUBLIC_PORTONE_IMP_ID as string) || '');
+
+      const pg = (process.env.NEXT_PUBLIC_PORTONE_PG as string)
+        || (process.env.NODE_ENV === 'production' ? 'html5_inicis' : 'html5_inicis.INIpayTest');
+
+      const impResult = await new Promise<import('@/types/iamport').PortOneResponse>((resolve) => {
+        IMP.request_pay(
+          {
+            pg,
+            pay_method: 'card',
+            merchant_uid: merchantUid,
+            name,
+            amount,
+            customer_uid: currentUser.uid,
+          },
+          (rsp) => resolve(rsp)
+        );
+      });
+
+      if (!impResult.success) {
+        throw new Error(impResult.error_msg || '결제 실패');
+      }
+
+      // 3) 서버 검증
+      const verifyRes = await fetch('/api/payments/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imp_uid: impResult.imp_uid, merchant_uid: merchantUid }),
+      });
+      if (!verifyRes.ok) throw new Error('결제 검증 실패');
+
+      alert('결제가 완료되었습니다!');
       const redirectPath = paymentData.userType === 'parent' 
         ? '/subscription-management?type=parent'
         : '/subscription-management?type=therapist';
-      
       router.push(redirectPath);
-      
-    } catch (error) {
-      console.error('결제 처리 실패:', error);
-      alert('결제 처리 중 오류가 발생했습니다. 다시 시도해주세요.');
+    } catch (e) {
+      console.error(e);
+      alert((e as Error).message || '결제 중 오류가 발생했습니다.');
     } finally {
       setIsProcessing(false);
     }
