@@ -44,6 +44,7 @@ export function useUserSession() {
       
       try {
         await setDoc(sessionRef, {
+          userId: currentUser.uid,
           lastActivity: serverTimestamp(),
           page: window.location.pathname,
         }, { merge: true });
@@ -97,7 +98,7 @@ export function useUserSession() {
     return () => {
       clearInterval(activityInterval);
       window.removeEventListener('beforeunload', handleBeforeUnload);
-      document.addEventListener('visibilitychange', handleVisibilityChange);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('popstate', handleRouteChange);
       
       // 컴포넌트 언마운트 시 세션 종료

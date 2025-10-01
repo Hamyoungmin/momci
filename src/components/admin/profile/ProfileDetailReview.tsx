@@ -23,6 +23,8 @@ interface ProfileSubmission {
     license: string | string[];
     bankbook?: string | string[];
     crimeCheck?: string | string[];
+    additional?: string | string[];
+    introVideo?: string | string[];
   };
   profilePhoto: string;
   selfIntroduction: string;
@@ -352,12 +354,16 @@ export default function ProfileDetailReview({ isOpen, onClose, profile, onAction
                     {renderFiles(((reg as Record<string, unknown>)?.documents as Record<string, unknown> | undefined)?.career)}
                   </div>
                   <div className="border border-gray-200 rounded-lg p-4">
-                    <h5 className="font-medium text-gray-900 mb-2">자기소개 영상/기타</h5>
-                    {renderFiles(((reg as Record<string, unknown>)?.documents as Record<string, unknown> | undefined)?.certificate)}
-                  </div>
-                  <div className="border border-gray-200 rounded-lg p-4">
                     <h5 className="font-medium text-gray-900 mb-2">성범죄 경력 조회 증명서</h5>
                     {renderFiles(((reg as Record<string, unknown>)?.documents as Record<string, unknown> | undefined)?.crimeCheck)}
+                  </div>
+                  <div className="border border-gray-200 rounded-lg p-4">
+                    <h5 className="font-medium text-gray-900 mb-2">기타 첨부파일</h5>
+                    {renderFiles(((reg as Record<string, unknown>)?.documents as Record<string, unknown> | undefined)?.additional)}
+                  </div>
+                  <div className="border border-gray-200 rounded-lg p-4">
+                    <h5 className="font-medium text-gray-900 mb-2">1분 자기소개 영상</h5>
+                    {renderFiles(((reg as Record<string, unknown>)?.documents as Record<string, unknown> | undefined)?.introVideo)}
                   </div>
                   <div className="border border-gray-200 rounded-lg p-4">
                     <h5 className="font-medium text-gray-900 mb-2">통장 사본</h5>

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { collection, addDoc, onSnapshot, orderBy, query, where, serverTimestamp, doc, getDoc, setDoc, Timestamp, FirestoreError, FieldValue, updateDoc, limit } from 'firebase/firestore';
+import { collection, addDoc, onSnapshot, orderBy, query, where, serverTimestamp, doc, getDoc, getDocs, setDoc, Timestamp, FirestoreError, FieldValue, updateDoc, limit } from 'firebase/firestore';
 import { db, auth } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
@@ -516,6 +516,26 @@ export default function RequestBoardFirebase() {
             therapistProfile = therapistDoc.data();
           }
           
+          // 치료사 신청서에서 프로필 사진 가져오기
+          let profilePhoto = therapistProfile?.profileImage;
+          try {
+            const regSnap = await getDocs(
+              query(
+                collection(db, 'therapist-registrations'),
+                where('userId', '==', applicationData.applicantId),
+                orderBy('createdAt', 'desc'),
+                limit(1)
+              )
+            );
+            if (!regSnap.empty) {
+              const regData = regSnap.docs[0].data();
+              // profilePhoto 필드를 우선적으로 사용
+              profilePhoto = regData?.profilePhoto || profilePhoto;
+            }
+          } catch (e) {
+            console.warn('프로필 사진 조회 실패(무시 가능):', e);
+          }
+          
           const application: TherapistApplication = {
             id: applicationDoc.id,
             postId: applicationData.postId,
@@ -530,7 +550,7 @@ export default function RequestBoardFirebase() {
             therapistExperience: therapistProfile?.experience || 0,
             therapistRating: therapistProfile?.rating || 0,
             therapistReviewCount: therapistProfile?.reviewCount || 0,
-            therapistProfileImage: therapistProfile?.profileImage,
+            therapistProfileImage: profilePhoto,
             therapistCertifications: therapistProfile?.certifications || [],
             therapistSpecialtyTags: therapistProfile?.specialtyTags || [],
             // 인증 상태
@@ -705,7 +725,34 @@ export default function RequestBoardFirebase() {
       const therapistDoc = await getDoc(doc(db, 'users', therapistId));
       if (therapistDoc.exists()) {
         const therapistData = therapistDoc.data();
-        setSelectedTherapistProfile(therapistData as TherapistProfile);
+        
+        // 치료사 신청서에서 프로필 사진 가져오기
+        let profilePhoto = therapistData?.profileImage;
+        try {
+          const regSnap = await getDocs(
+            query(
+              collection(db, 'therapist-registrations'),
+              where('userId', '==', therapistId),
+              orderBy('createdAt', 'desc'),
+              limit(1)
+            )
+          );
+          if (!regSnap.empty) {
+            const regData = regSnap.docs[0].data();
+            // profilePhoto 필드를 우선적으로 사용
+            profilePhoto = regData?.profilePhoto || profilePhoto;
+          }
+        } catch (e) {
+          console.warn('프로필 사진 조회 실패(무시 가능):', e);
+        }
+        
+        // profileImage 필드에 profilePhoto 값을 설정
+        const profileWithImage = {
+          ...therapistData,
+          profileImage: profilePhoto
+        };
+        
+        setSelectedTherapistProfile(profileWithImage as TherapistProfile);
         setCurrentTherapistId(therapistId);
         setShowTherapistProfileModal(true);
       } else {
@@ -779,6 +826,11 @@ export default function RequestBoardFirebase() {
       );
 
       console.log('✅ 채팅방 생성 완료:', chatRoomId);
+      
+      // 위젯의 채팅 목록 닫기 (중복 방지)
+      if (typeof window !== 'undefined' && (window as { closeChatList?: () => void }).closeChatList) {
+        (window as { closeChatList?: () => void }).closeChatList?.();
+      }
       
       // 🔔 치료사에게 채팅 요청 알림 발송
       try {
@@ -982,6 +1034,9 @@ export default function RequestBoardFirebase() {
 
   // 실제 게시글 지원하기 (Firebase 실시간 연동 방식)
   const handleApplyToPost = async () => {
+    // ✅ 대상 게시글 ID를 먼저 결정 (모달 고정 ID 우선 → 모달의 선택 → Firebase 선택)
+    const targetPostId = applyPostId || selectedProfile?.id || currentSelectedPostId;
+
     // 클라이언트 즉시 가드: 이미 2명 찼거나 본인이 이미 지원한 경우 차단
     if (applications && applications.length >= 2) {
       alert('죄송합니다. 이 게시글은 이미 지원자가 2명이어서 더 이상 지원할 수 없습니다.');
@@ -999,9 +1054,12 @@ export default function RequestBoardFirebase() {
       currentUser: currentUser ? '✅ 있음' : '❌ 없음',
       userData: userData ? '✅ 있음' : '❌ 없음',
       selectedProfile: selectedProfile ? '✅ 있음' : '❌ 없음',
+      applyPostId: applyPostId ? '✅ 있음' : '❌ 없음',
+      applyPostIdValue: applyPostId,
       currentSelectedPostId: currentSelectedPostId,
       userType: userData?.userType,
-      profileId: selectedProfile?.id
+      profileId: selectedProfile?.id,
+      targetPostId: targetPostId
     });
 
     if (!currentUser) {
@@ -1015,13 +1073,39 @@ export default function RequestBoardFirebase() {
     }
 
     // ✅ 안전 모드: 모달에 표시된 현재 게시글만 사용 (fallback 제거)
-    // 대상 게시글 ID를 안정적으로 결정 (모달 고정 ID 우선 → 모달의 선택 → Firebase 선택)
-    const targetPostId = applyPostId || selectedProfile?.id || currentSelectedPostId;
-    if (!targetPostId || !selectedProfile) {
+    if (!targetPostId) {
       alert('게시글 정보를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
       return;
     }
-    const profileToUse = { ...selectedProfile, id: targetPostId } as Post;
+
+    // selectedProfile이 없으면 Firebase에서 다시 가져오기
+    let profileToUse = selectedProfile;
+    if (!profileToUse && targetPostId) {
+      console.log('📥 게시글 정보 Firebase에서 다시 가져오기:', targetPostId);
+      try {
+        const postDoc = await getDoc(doc(db, 'posts', targetPostId));
+        if (postDoc.exists()) {
+          profileToUse = { id: postDoc.id, ...postDoc.data() } as Post;
+          console.log('✅ 게시글 정보 가져오기 성공:', profileToUse);
+        } else {
+          console.error('❌ 게시글이 존재하지 않음:', targetPostId);
+          alert('게시글을 찾을 수 없습니다. 삭제되었거나 존재하지 않는 게시글입니다.');
+          return;
+        }
+      } catch (error) {
+        console.error('❌ 게시글 정보 가져오기 실패:', error);
+        alert('게시글 정보를 불러올 수 없습니다. 다시 시도해주세요.');
+        return;
+      }
+    } else if (profileToUse) {
+      // selectedProfile이 있는 경우 ID를 targetPostId로 고정
+      profileToUse = { ...profileToUse, id: targetPostId } as Post;
+    }
+
+    if (!profileToUse) {
+      alert('게시글 정보를 불러올 수 없습니다. 다시 시도해주세요.');
+      return;
+    }
 
     if (!userData || userData.userType !== 'therapist') {
       alert('치료사만 지원할 수 있습니다.');
@@ -1291,7 +1375,8 @@ export default function RequestBoardFirebase() {
         closeCreatePostModal();
       }
       // 상세 프로필 모달 외부 클릭 시 모달 닫기
-      if (showProfileModal && !target.closest('.profile-modal')) {
+      // 단, 두 번째 모달(치료사 프로필, 채팅 확인, 응답 확인)이 열려있을 때는 첫 번째 모달을 닫지 않음
+      if (showProfileModal && !target.closest('.profile-modal') && !showTherapistProfileModal && !showParentChatConfirmModal && !showResponseConfirmModal && !target.closest('.therapist-profile-modal') && !target.closest('.parent-chat-confirm-modal') && !target.closest('.response-confirm-modal')) {
         closeProfileModal();
       }
       
@@ -1314,7 +1399,7 @@ export default function RequestBoardFirebase() {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showProfileModal]);
+  }, [showProfileModal, showTherapistProfileModal, showParentChatConfirmModal, showResponseConfirmModal]);
 
   // 컴포넌트 언마운트 시 리스너 정리
   useEffect(() => {
@@ -2312,16 +2397,20 @@ export default function RequestBoardFirebase() {
               <div className="text-center mt-8 pt-6 border-t border-gray-200">
                 <button 
                   onClick={() => {
-                    // 학부모가 본인 게시글일 경우 버튼 무효화
-                    if (userData?.userType === 'parent' && selectedProfile?.authorId === currentUser?.uid) {
-                      alert('본인이 작성한 게시글에서는 지원/문의가 불가합니다. 치료사 지원을 기다려 주세요.');
+                    // 학부모는 어떤 게시글에도 지원할 수 없음 (본인 게시글이든 남의 게시글이든)
+                    if (userData?.userType === 'parent') {
+                      alert('학부모는 게시글에 지원할 수 없습니다. 학부모 계정은 요청 게시글을 작성하고 치료사의 지원을 기다리는 용도입니다.');
                       return;
                     }
-                    // 사용자 유형에 따라 알맞은 확인 모달 오픈
+                    // 치료사만 지원 가능
                     if (userData?.userType === 'therapist') {
+                      // 응답 확인 모달을 열기 전에 applyPostId를 확실하게 설정
+                      if (selectedProfile?.id) {
+                        setApplyPostId(selectedProfile.id);
+                      }
                       setShowResponseConfirmModal(true);
                     } else {
-                      setShowParentChatConfirmModal(true);
+                      alert('치료사만 게시글에 지원할 수 있습니다.');
                     }
                   }}
                   className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-4 rounded-lg font-medium transition-colors text-lg w-full max-w-md inline-flex items-center justify-center"
@@ -2341,12 +2430,15 @@ export default function RequestBoardFirebase() {
 
     {/* 응답 전 필수 확인 사항 모달 (치료사 전용) - 가장 높은 z-index */}
     {showResponseConfirmModal && (
-        <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-60">
-          <div className={`bg-white border-4 border-blue-700 rounded-lg max-w-md w-[95vw] max-h-[90vh] overflow-y-auto shadow-xl response-confirm-modal ${isResponseConfirmModalClosing ? 'animate-slideOut' : 'animate-slideIn'}`}>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+          <div className={`relative bg-white border-4 border-blue-700 rounded-lg max-w-md w-[95vw] max-h-[90vh] overflow-y-auto shadow-xl response-confirm-modal ${isResponseConfirmModalClosing ? 'animate-slideOut' : 'animate-slideIn'}`} onClick={(e) => e.stopPropagation()}>
             {/* 헤더 */}
             <div className="flex justify-end p-4">
               <button
-                onClick={closeResponseConfirmModal}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  closeResponseConfirmModal();
+                }}
                 className="text-gray-400 hover:text-gray-600 text-2xl"
               >
                 ✕
@@ -2417,13 +2509,19 @@ export default function RequestBoardFirebase() {
               {/* 버튼들 */}
               <div className="flex gap-3">
                 <button
-                  onClick={closeResponseConfirmModal}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    closeResponseConfirmModal();
+                  }}
                   className="flex-1 px-4 py-3 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition-colors"
                 >
                   취소
                 </button>
                 <button
-                  onClick={handleApplyToPost}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleApplyToPost();
+                  }}
                   disabled={isApplying || isLoadingSelectedPost}
                   className={`flex-1 px-4 py-3 rounded-lg font-medium transition-colors ${
                     (isApplying || isLoadingSelectedPost)
@@ -2481,12 +2579,16 @@ export default function RequestBoardFirebase() {
 
     {/* 학부모용 치료사 상세 프로필 모달 - 선생님 둘러보기와 동일한 디자인 */}
     {showTherapistProfileModal && selectedTherapistProfile && (
-        <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50">
-          <div className="bg-white rounded-lg max-w-6xl w-[95vw] shadow-xl border-4 border-blue-500 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+          {/* 모달 컨텐츠 */}
+          <div className="relative bg-white rounded-lg max-w-6xl w-[95vw] shadow-xl border-4 border-blue-500 max-h-[90vh] overflow-y-auto therapist-profile-modal" onClick={(e) => e.stopPropagation()}>
             {/* 모달 헤더 */}
             <div className="flex justify-end p-6 pb-2">
               <button
-                onClick={() => setShowTherapistProfileModal(false)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowTherapistProfileModal(false);
+                }}
                 className="text-gray-400 hover:text-gray-600 text-2xl"
               >
                 ✕
@@ -2764,7 +2866,10 @@ export default function RequestBoardFirebase() {
               {/* 1:1 채팅으로 인터뷰 시작하기 버튼 - 맨 밑에 */}
               <div className="text-center">
                 <button 
-                  onClick={handleProfileChatStart}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleProfileChatStart();
+                  }}
                   className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-4 rounded-lg font-medium transition-colors text-lg w-full max-w-md"
                 >
                   <svg className="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2989,12 +3094,16 @@ export default function RequestBoardFirebase() {
 
     {/* 학부모용 채팅 시작 전 필수 확인 모달 - 선생님 둘러보기와 동일한 디자인 */}
     {showParentChatConfirmModal && (
-        <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-60">
-          <div className="bg-white border-4 border-blue-700 rounded-lg max-w-md w-[95vw] max-h-[90vh] overflow-y-auto shadow-xl">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+          {/* 모달 컨텐츠 */}
+          <div className="relative bg-white border-4 border-blue-700 rounded-lg max-w-md w-[95vw] max-h-[90vh] overflow-y-auto shadow-xl parent-chat-confirm-modal" onClick={(e) => e.stopPropagation()}>
             {/* 헤더 */}
             <div className="flex justify-end p-4">
               <button
-                onClick={() => setShowParentChatConfirmModal(false)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowParentChatConfirmModal(false);
+                }}
                 className="text-gray-400 hover:text-gray-600 text-2xl"
               >
                 ✕
@@ -3071,13 +3180,19 @@ export default function RequestBoardFirebase() {
                 {/* 버튼들 */}
                 <div className="flex gap-3">
                   <button
-                    onClick={() => setShowParentChatConfirmModal(false)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowParentChatConfirmModal(false);
+                    }}
                     className="flex-1 px-4 py-3 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition-colors"
                   >
                     취소
                   </button>
                   <button
-                    onClick={handleParentChatConfirm}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleParentChatConfirm();
+                    }}
                     className="flex-1 px-4 py-3 bg-blue-500 text-white hover:bg-blue-600 rounded-lg font-medium transition-colors"
                   >
                     동의하고 채팅 시작

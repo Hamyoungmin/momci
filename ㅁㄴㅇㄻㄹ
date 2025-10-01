@@ -267,16 +267,9 @@ service firebase.storage {
     }
 
     // 성범죄 경력 조회 증명서 (민감)
-    match /therapist-registrations/{userId}/{regId}/crimeCheck/{filename} {
+    match /therapist-registrations/{userId}/{regId}/crime-check/{filename} {
       allow create: if isAuthenticated() && isOwner(userId) && isValidDocumentType() && hasRecentActivity();
       allow read, delete: if isAuthenticated() && (isOwner(userId) || isAdmin());
-    }
-
-    // 기타 첨부파일
-    match /therapist-registrations/{userId}/{regId}/additional/{filename} {
-      allow create: if isAuthenticated() && isOwner(userId) && isValidDocumentType() && hasRecentActivity();
-      allow read: if isAuthenticated() && (isOwner(userId) || isAdmin() || (firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.userType == 'parent'));
-      allow delete: if isAuthenticated() && (isOwner(userId) || isAdmin());
     }
 
     // 통장 사본 (민감)
@@ -285,15 +278,7 @@ service firebase.storage {
       allow read, delete: if isAuthenticated() && (isOwner(userId) || isAdmin());
     }
 
-    // 1분 자기소개 영상
-    match /therapist-registrations/{userId}/{regId}/introVideo/{filename} {
-      // 영상 파일 허용
-      allow create: if isAuthenticated() && isOwner(userId) && isValidVideoType() && hasRecentActivity();
-      allow read: if isAuthenticated() && (isOwner(userId) || isAdmin() || (firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.userType == 'parent'));
-      allow delete: if isAuthenticated() && (isOwner(userId) || isAdmin());
-    }
-
-    // 자기소개 영상/기타 증빙 (레거시 호환)
+    // 자기소개 영상/기타 증빙
     match /therapist-registrations/{userId}/{regId}/intro/{filename} {
       // 비디오 또는 문서 허용 (1분 영상 등)
       allow create: if isAuthenticated() && isOwner(userId) && (isValidVideoType() || isValidDocumentType()) && hasRecentActivity();

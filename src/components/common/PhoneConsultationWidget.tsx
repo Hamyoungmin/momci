@@ -100,6 +100,11 @@ export default function PhoneConsultationWidget() {
       setInitialChatId(chatId);
       setIsChatListOpen(true);
     };
+    
+    // 외부에서 채팅 목록 닫기 (다른 곳에서 채팅 시작 시)
+    (window as unknown as { closeChatList?: () => void }).closeChatList = () => {
+      setIsChatListOpen(false);
+    };
   }
 
   return (

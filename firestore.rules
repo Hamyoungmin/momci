@@ -1040,6 +1040,38 @@ service cloud.firestore {
       allow update, delete: if false;
     }
     
+    // 학부모 요청 게시글 (parent-requests 컬렉션)
+    match /parent-requests/{postId} {
+      // 개별 게시글 조회 - 인증된 사용자만 (치료사가 게시글 정보 가져오기 위해 필요)
+      allow get: if isAuthenticated();
+      
+      // 게시글 목록 조회 - 인증된 사용자만
+      allow list: if isAuthenticated() && hasRecentActivity();
+      
+      // 학부모만 요청 게시글 생성 가능
+      allow create: if isAuthenticated() && 
+                       request.resource.data.authorId == request.auth.uid &&
+                       exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+                       get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType == 'parent' &&
+                       request.resource.data.keys().hasAll(['authorId', 'createdAt', 'status']) &&
+                       request.resource.data.status in ['active', 'matching'] &&
+                       hasRecentActivity() &&
+                       rateLimitCheck(5);
+      
+      // 작성자와 관리자만 수정 가능
+      allow update: if isAuthenticated() && (
+                       isOwner(resource.data.authorId) || 
+                       isAdmin()
+                     ) &&
+                     !request.resource.data.diff(resource.data).affectedKeys().hasAny(['authorId', 'createdAt']);
+      
+      // 작성자와 관리자만 삭제 가능
+      allow delete: if isAuthenticated() && (
+                       isOwner(resource.data.authorId) || 
+                       isAdmin()
+                     );
+    }
+    
     // 게시글 (선생님 요청하기 - posts 컬렉션) - 단순화된 규칙
     match /posts/{postId} {
       // 게시글 조회(상세/목록) 모두 허용 - 운영 단계에서 필터는 쿼리로 제어

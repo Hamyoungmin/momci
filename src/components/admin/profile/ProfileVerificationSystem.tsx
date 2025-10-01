@@ -42,11 +42,11 @@ export default function ProfileVerificationSystem() {
 
   useEffect(() => {
     // 실시간: 치료사 신청서(therapist-registrations) 대기열 구독
-    // pending/hold/approved/rejected 모두 표시하되 기본 정렬은 제출일 내림차순
+    // pending/hold/approved/rejected 모두 표시하되 기본 정렬은 최근 수정일 내림차순
     const q = query(
       collection(db, 'therapist-registrations'),
       // 상태별 필터가 필요하면 where('status', '==', 'pending')로 축소 가능
-      orderBy('createdAt', 'desc')
+      orderBy('updatedAt', 'desc')
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
