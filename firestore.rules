@@ -1673,6 +1673,14 @@ service cloud.firestore {
                          (
                            // 승인 전 일반 수정
                            resource.data.status == 'pending' ||
+                           // 승인 후 간편 수정: status 유지하면서 특정 필드만 수정 (희망 치료비, 치료 지역, 치료 가능 요일/시간)
+                           (
+                             resource.data.status == 'approved' &&
+                             request.resource.data.status == 'approved' &&
+                             request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                               'hourlyRate', 'treatmentRegion', 'region', 'availableDays', 'availableTime', 'updatedAt'
+                             ])
+                           ) ||
                            // 승인/반려/보류 후: 수정 시 재검토를 위해 status를 'pending'으로 되돌리면서 수정 허용
                            (
                              (resource.data.status in ['approved','rejected','hold']) &&
@@ -1707,7 +1715,7 @@ service cloud.firestore {
           // 허용 필드 화이트리스트(민감정보 제외)
         function feedAllowedKeys() {
           return [
-            'userId','name','gender','region','address','specialty','experience','hourlyRate','status',
+            'userId','name','gender','region','address','treatmentRegion','specialty','experience','hourlyRate','status',
             'createdAt','updatedAt','therapyActivity','mainSpecialty','educationCareer','certifications',
             'availableDays','availableTime','email','phone','birthDate','qualification'
           ];
@@ -1724,7 +1732,7 @@ service cloud.firestore {
           allow update: if (
                             isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid)
                       ) && request.resource.data.diff(resource.data).affectedKeys()
-                            .hasOnly(['name','gender','region','address','specialty','experience','hourlyRate','status','updatedAt',
+                            .hasOnly(['name','gender','region','address','treatmentRegion','specialty','experience','hourlyRate','status','updatedAt',
                                       'therapyActivity','mainSpecialty','educationCareer','certifications','availableDays','availableTime','email','phone','birthDate','qualification']);
 
           // 삭제: 관리자만

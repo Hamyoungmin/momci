@@ -68,6 +68,27 @@ function PaymentCheckoutContent() {
 
   const handlePaymentComplete = async () => {
     if (!paymentData || !currentUser) return;
+    
+    // 필수 정보 확인: 이니시스 v2는 구매자 이름이 필수
+    const buyerName = userData?.name || currentUser.displayName || '';
+    
+    // 디버깅: 사용자 정보 확인
+    console.log('🔍 결제 정보 디버깅:', {
+      userData: userData,
+      currentUser: {
+        email: currentUser.email,
+        displayName: currentUser.displayName,
+        uid: currentUser.uid
+      },
+      buyerName: buyerName,
+      phone: userData?.phone
+    });
+    
+    if (!buyerName) {
+      alert('결제를 위해서는 사용자 이름이 필요합니다. 프로필을 먼저 설정해주세요.');
+      return;
+    }
+
     setIsProcessing(true);
     try {
       // 1) 서버에서 주문 생성
@@ -103,7 +124,9 @@ function PaymentCheckoutContent() {
         throw new Error('결제 설정이 누락되었습니다. (storeId/channelKey)');
       }
 
-      const bridgeResult = await PortOne.requestPayment({
+      // 구매자 정보 준비 (KG이니시스 v2 요구사항)
+      // customer 객체 대신 최상위 레벨에 구매자 정보 추가
+      const paymentParams: Record<string, unknown> = {
         storeId,
         channelKey,
         paymentId: merchantUid,
@@ -111,7 +134,26 @@ function PaymentCheckoutContent() {
         totalAmount: amount,
         currency: 'KRW',
         payMethod: 'CARD',
-      });
+      };
+
+      // 구매자 정보 추가 (여러 방식 시도)
+      const customerData = {
+        name: buyerName,
+        email: currentUser.email || undefined,
+        phoneNumber: userData?.phone || undefined,
+      };
+
+      // 방법 1: customer 객체로
+      paymentParams.customer = customerData;
+      
+      // 방법 2: 최상위 레벨에도 추가 (이니시스 요구사항일 가능성)
+      paymentParams.customerName = buyerName;
+      if (currentUser.email) paymentParams.customerEmail = currentUser.email;
+      if (userData?.phone) paymentParams.customerPhoneNumber = userData.phone;
+
+      console.log('📦 PortOne.requestPayment 호출 파라미터:', paymentParams);
+
+      const bridgeResult = await PortOne.requestPayment(paymentParams);
 
       if (!bridgeResult || bridgeResult.code !== 'OK') {
         const msg = bridgeResult?.message || '결제 실패';

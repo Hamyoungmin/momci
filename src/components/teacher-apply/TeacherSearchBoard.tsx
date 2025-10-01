@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import Image from 'next/image';
+// FFmpeg는 서버(Firebase Functions)에서 자동으로 처리됩니다
 
 // 서류 타입 정의
 interface TeacherDocuments {
@@ -68,6 +69,8 @@ export default function TeacherSearchBoard() {
   const isAdmin = !!currentUser?.email && ADMIN_EMAILS.includes(currentUser.email);
   const isParent = userData?.userType === 'parent';
   const [selectedSidebarItem, setSelectedSidebarItem] = useState('치료사등록');
+  
+  // 서버 측 비디오 변환 (Firebase Functions)을 사용하므로 클라이언트 변환 불필요
   // const [selectedTab, setSelectedTab] = useState('서울');
   const [searchKeyword, setSearchKeyword] = useState('');
   // const [selectedTherapyTypes, setSelectedTherapyTypes] = useState<string[]>([]);
@@ -91,6 +94,9 @@ export default function TeacherSearchBoard() {
   useEffect(() => {
     registeredTeachersRef.current = registeredTeachers;
   }, [registeredTeachers]);
+
+  // FFmpeg 초기화
+  // 서버 측 비디오 변환 (Firebase Functions)이 자동으로 처리하므로 클라이언트 로딩 불필요
 
   // 현재 사용자가 이미 등록했는지 확인
   const hasAlreadyRegistered = registeredTeachers.some(
@@ -125,7 +131,7 @@ export default function TeacherSearchBoard() {
           fullName: (data.name as string) || undefined,
           gender: (data.gender as string) || undefined,
           residence: (data.address as string) || undefined,
-          treatmentRegion: (data.region as string) || undefined,
+          treatmentRegion: (data.treatmentRegion as string) || (data.region as string) || undefined,
           experience: (data.experience as string) || undefined,
           specialty: (typeof (data as { specialty?: unknown }).specialty === 'string'
             ? (data as { specialty?: string }).specialty
@@ -175,7 +181,7 @@ export default function TeacherSearchBoard() {
             fullName: (data.name as string) || undefined,
             gender: (data.gender as string) || undefined,
             residence: (data.address as string) || undefined,
-            treatmentRegion: (data.region as string) || undefined,
+            treatmentRegion: (data.treatmentRegion as string) || (data.region as string) || undefined,
             experience: (data.experience as string) || undefined,
             specialty: (typeof (data as { specialty?: unknown }).specialty === 'string'
               ? (data as { specialty?: string }).specialty
@@ -351,12 +357,39 @@ export default function TeacherSearchBoard() {
       reader.readAsDataURL(file);
   };
 
+  // 서버 측에서 자동 변환하므로 원본 파일을 그대로 반환
+  // Firebase Functions가 업로드 후 자동으로 웹 호환 MP4로 변환합니다
+  const convertVideoToWebFormat = async (file: File): Promise<File> => {
+    console.log(`📤 비디오 업로드 준비: ${file.name}`);
+    console.log('💡 서버에서 자동으로 웹 호환 형식으로 변환됩니다');
+    return file; // 원본 파일을 그대로 반환
+  };
+
   const handleFileUpload = (
     e: React.ChangeEvent<HTMLInputElement>, 
     setFiles: React.Dispatch<React.SetStateAction<File[]>>
   ) => {
     const files = Array.from(e.target.files || []);
     setFiles(prev => [...prev, ...files]);
+  };
+  
+  // 비디오 파일 업로드 핸들러 (자동 변환 포함)
+  const handleVideoUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    setFiles: React.Dispatch<React.SetStateAction<File[]>>
+  ) => {
+    const files = Array.from(e.target.files || []);
+    
+    if (files.length === 0) return;
+    
+    // 각 비디오 파일을 웹 호환 형식으로 변환
+    const convertedFiles: File[] = [];
+    for (const file of files) {
+      const converted = await convertVideoToWebFormat(file);
+      convertedFiles.push(converted);
+    }
+    
+    setFiles(prev => [...prev, ...convertedFiles]);
   };
 
   const handleSingleFileUpload = (
@@ -1275,6 +1308,11 @@ export default function TeacherSearchBoard() {
                                         birthDate: (d.birthDate as string) || teacher.birthDate,
                                         documents: d.documents || teacher.documents,
                                         specialties: d.specialties || teacher.specialties,
+                                        // 간편 수정 필드들 추가
+                                        hourlyRate: (d.hourlyRate as string) || teacher.hourlyRate,
+                                        treatmentRegion: (d.treatmentRegion as string) || (d.region as string) || teacher.treatmentRegion,
+                                        availableDays: (d.availableDays as string[]) || teacher.availableDays,
+                                        availableTime: (d.availableTime as string) || teacher.availableTime,
                                       } as Teacher;
                                     }
                                   }
@@ -1936,16 +1974,21 @@ export default function TeacherSearchBoard() {
                   {/* (선택) 1분 자기소개 영상 */}
                   <div className="mb-4">
                     <label className="block text-sm font-medium text-gray-700 mb-2">(선택) 1분 자기소개 영상</label>
+                    <div className="mb-3 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                      <p className="text-sm text-blue-700">💡 <strong>서버에서 자동 변환</strong></p>
+                      <p className="text-xs text-blue-600 mt-1">업로드 후 1-2분 내에 웹 호환 형식(MP4)으로 자동 변환됩니다.</p>
+                    </div>
                     <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center relative cursor-pointer hover:border-blue-300 transition-colors">
                       <input
                         type="file"
                         multiple
-                        accept=".mp4,.mov,.avi,.webm,.mkv"
-                        onChange={(e) => handleFileUpload(e, setCertificateFiles)}
+                        accept="video/*"
+                        onChange={(e) => handleVideoUpload(e, setCertificateFiles)}
                         className="absolute inset-0 opacity-0 cursor-pointer"
                       />
                       <p className="text-base text-gray-500">영상 파일을 여기에 드래그하거나 클릭하여 업로드하세요.</p>
-                      <p className="text-xs text-gray-400 mt-1">(MP4, MOV, AVI, WEBM, MKV 형식)</p>
+                      <p className="text-xs text-gray-400 mt-1">어떤 형식이든 업로드 후 자동으로 변환됩니다 ✨</p>
+                      <p className="text-xs text-green-600 mt-2">📱 휴대폰/카메라로 찍은 영상도 OK!</p>
                     </div>
                     {/* 기존 파일 표시 */}
                     {existingIntroVideoUrls.length > 0 && certificateFiles.length === 0 && (
@@ -2477,12 +2520,25 @@ export default function TeacherSearchBoard() {
                         {introVideo.length > 0 && (
                           <div>
                             <div className="text-sm font-medium text-gray-700 mb-2">(선택) 1분 자기소개 영상</div>
-                            <div className="space-y-1">
+                            <div className="space-y-3">
                               {introVideo.map((url: string, index: number) => (
-                                <div key={index} className="flex items-center bg-blue-50 p-2 rounded">
-                                  <a href={url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline flex-1 truncate">
+                                <div key={index} className="bg-gray-100 rounded-lg overflow-hidden">
+                                  <video 
+                                    src={url} 
+                                    controls 
+                                    autoPlay
+                                    loop
+                                    className="w-full h-auto rounded-lg" 
+                                    style={{ maxHeight: '300px' }}
+                                    onError={(e) => {
+                                      console.error('영상 재생 오류:', e);
+                                    }}
+                                  >
+                                    자기소개 영상을 재생할 수 없습니다.
+                                  </video>
+                                  <div className="text-xs text-gray-500 text-center py-2 bg-blue-50">
                                     자기소개 영상 {index + 1}
-                                  </a>
+                                  </div>
                                 </div>
                               ))}
                             </div>

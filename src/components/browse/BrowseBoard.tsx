@@ -862,6 +862,74 @@ export default function BrowseBoard() {
     }
   };
 
+  // 프로필 간편 수정 핸들러
+  const handleEditProfile = async (updatedData: { hourlyRate: string; treatmentRegion: string; region: string; availableDays: string[]; availableTime: string }) => {
+    const profile = selectedProfile || regDetailData;
+    
+    if (!currentUser || !userData || !profile) {
+      alert('로그인이 필요합니다.');
+      throw new Error('로그인 필요');
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const profileAny = profile as any;
+    const isOwner = (profileAny.authorId || profileAny.userId || profileAny.id) === currentUser.uid;
+    const isAdmin = userData.userType === 'admin';
+
+    if (!isOwner && !isAdmin) {
+      alert('본인 프로필만 수정할 수 있습니다.');
+      throw new Error('권한 없음');
+    }
+
+    try {
+      const docId = profileAny.docId || profileAny.id;
+      if (!docId) {
+        throw new Error('문서 ID를 찾을 수 없습니다.');
+      }
+
+      // therapist-registrations-feed 업데이트 (공개 피드)
+      const feedRef = doc(db, 'therapist-registrations-feed', docId);
+      const feedSnap = await getDoc(feedRef);
+      
+      if (feedSnap.exists()) {
+        await updateDoc(feedRef, {
+          hourlyRate: updatedData.hourlyRate,
+          treatmentRegion: updatedData.treatmentRegion,
+          region: updatedData.region,
+          availableDays: updatedData.availableDays,
+          availableTime: updatedData.availableTime,
+          updatedAt: serverTimestamp()
+          // status는 그대로 유지 (approved)
+        });
+      }
+
+      // therapist-registrations 업데이트 (개인 신청서)
+      const registrationQuery = query(
+        collection(db, 'therapist-registrations'),
+        where('userId', '==', currentUser.uid)
+      );
+      const registrationSnap = await getDocs(registrationQuery);
+      
+      if (!registrationSnap.empty) {
+        const registrationDoc = registrationSnap.docs[0];
+        await updateDoc(doc(db, 'therapist-registrations', registrationDoc.id), {
+          hourlyRate: updatedData.hourlyRate,
+          treatmentRegion: updatedData.treatmentRegion,
+          region: updatedData.region,
+          availableDays: updatedData.availableDays,
+          availableTime: updatedData.availableTime,
+          updatedAt: serverTimestamp()
+          // status는 그대로 유지
+        });
+      }
+
+      console.log('✅ 프로필 수정 완료');
+    } catch (error) {
+      console.error('❌ 프로필 수정 실패:', error);
+      throw error;
+    }
+  };
+
   // 프로필 끌어올림 (24시간 1회 제한, 본인 또는 관리자만)
   const handleBumpProfile = async () => {
     // selectedProfile이 없으면 regDetailData 사용
@@ -2033,9 +2101,14 @@ export default function BrowseBoard() {
                     <video 
                       src={selectedProfile.videoUrl} 
                       controls 
+                      autoPlay
+                      loop
                       className="w-full h-auto rounded-lg" 
                       poster="/placeholder-video.png"
                       style={{ maxHeight: '400px' }}
+                      onError={(e) => {
+                        console.error('영상 재생 오류:', e);
+                      }}
                     >
                       영상을 재생할 수 없습니다.
                     </video>
@@ -2202,6 +2275,7 @@ export default function BrowseBoard() {
           onBump={openBumpConfirmModal}
           canBump={!!(currentUser && userData && ((regDetailData.authorId || regDetailData.id) === currentUser.uid || userData.userType === 'admin'))}
           isBumping={isBumpingProfile}
+          onEdit={handleEditProfile}
         />
       )}
 
