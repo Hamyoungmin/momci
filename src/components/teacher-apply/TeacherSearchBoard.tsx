@@ -9,6 +9,17 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import Image from 'next/image';
 
+// 서류 타입 정의
+interface TeacherDocuments {
+  diploma?: string[];
+  career?: string[];
+  license?: string[];
+  crimeCheck?: string[];
+  bankbook?: string[];
+  additional?: string[];
+  introVideo?: string[];
+}
+
 // 치료사 타입 정의
 interface Teacher {
   id: number;
@@ -25,7 +36,9 @@ interface Teacher {
   treatmentRegion?: string; // 치료 지역
   experience?: string; // 경력
   specialty?: string; // 전문 분야
+  specialties?: string[]; // 전문 분야 배열 (복수 선택)
   ownerUid?: string; // 소유자 UID
+  userId?: string; // 사용자 UID (ownerUid와 동일)
   isModified?: boolean; // 수정됨 표시 (검토 필요)
   lastEditedAt?: string; // 마지막 수정일시
   // 상세 보기 추가 필드
@@ -43,8 +56,10 @@ interface Teacher {
   bankName?: string;
   accountHolder?: string;
   accountNumber?: string;
+  profilePhoto?: string; // 프로필 사진 URL
   applicationSource?: string;
   docId?: string;
+  documents?: TeacherDocuments; // 서류 관련 필드
 }
 
 export default function TeacherSearchBoard() {
@@ -52,7 +67,6 @@ export default function TeacherSearchBoard() {
   const ADMIN_EMAILS = ['dudals7334@naver.com', 'everystars@naver.com'];
   const isAdmin = !!currentUser?.email && ADMIN_EMAILS.includes(currentUser.email);
   const isParent = userData?.userType === 'parent';
-  const canOpenRegistration = !!currentUser && (!isParent || isAdmin) && (userData?.userType === 'therapist' || isAdmin);
   const [selectedSidebarItem, setSelectedSidebarItem] = useState('치료사등록');
   // const [selectedTab, setSelectedTab] = useState('서울');
   const [searchKeyword, setSearchKeyword] = useState('');
@@ -77,6 +91,17 @@ export default function TeacherSearchBoard() {
   useEffect(() => {
     registeredTeachersRef.current = registeredTeachers;
   }, [registeredTeachers]);
+
+  // 현재 사용자가 이미 등록했는지 확인
+  const hasAlreadyRegistered = registeredTeachers.some(
+    (teacher: Teacher) => (teacher.userId === currentUser?.uid || teacher.ownerUid === currentUser?.uid)
+  );
+
+  // 등록 가능 여부 체크: 치료사 계정이면서 아직 등록하지 않은 경우 (관리자는 제외)
+  const canOpenRegistration = !!currentUser && 
+    (!isParent || isAdmin) && 
+    (userData?.userType === 'therapist' || isAdmin) &&
+    (!hasAlreadyRegistered || isAdmin); // 관리자는 중복 등록 가능
 
   // Firestore에서 공개 피드 + 본인 신청 목록 실시간 구독 (이전 상태로 복원)
   useEffect(() => {
@@ -245,6 +270,19 @@ export default function TeacherSearchBoard() {
   const [academicFiles, setAcademicFiles] = useState<File[]>([]);
   const [careerFiles, setCareerFiles] = useState<File[]>([]);
   const [licenseFiles, setLicenseFiles] = useState<File[]>([]);
+  
+  // 수정 모드에서 기존 파일 URL 저장
+  const [existingProfilePhotoUrl, setExistingProfilePhotoUrl] = useState<string>('');
+  const [existingDocuments, setExistingDocuments] = useState<Record<string, unknown>>({});
+  
+  // 기존 파일 URL들을 화면 표시용으로 저장
+  const [existingAcademicUrls, setExistingAcademicUrls] = useState<string[]>([]);
+  const [existingCareerUrls, setExistingCareerUrls] = useState<string[]>([]);
+  const [existingLicenseUrls, setExistingLicenseUrls] = useState<string[]>([]);
+  const [existingCrimeCheckUrls, setExistingCrimeCheckUrls] = useState<string[]>([]);
+  const [existingAdditionalUrls, setExistingAdditionalUrls] = useState<string[]>([]);
+  const [existingIntroVideoUrls, setExistingIntroVideoUrls] = useState<string[]>([]);
+  const [existingBankbookUrls, setExistingBankbookUrls] = useState<string[]>([]);
 
   // 등록 폼 데이터
   const [formData, setFormData] = useState({
@@ -278,6 +316,26 @@ export default function TeacherSearchBoard() {
     setTimeout(() => {
       setShowRegistrationPopup(false);
       setIsPopupClosing(false);
+      // 상태 초기화
+      setIsRegistrationEdit(false);
+      setEditDocId(null);
+      setExistingProfilePhotoUrl('');
+      setExistingDocuments({});
+      setExistingAcademicUrls([]);
+      setExistingCareerUrls([]);
+      setExistingLicenseUrls([]);
+      setExistingCrimeCheckUrls([]);
+      setExistingAdditionalUrls([]);
+      setExistingIntroVideoUrls([]);
+      setExistingBankbookUrls([]);
+      setProfileImage(null);
+      setProfileImagePreview('');
+      setAcademicFiles([]);
+      setCareerFiles([]);
+      setLicenseFiles([]);
+      setEducationFiles([]);
+      setExperienceFiles([]);
+      setBankBookFile(null);
     }, 300);
   };
 
@@ -331,19 +389,64 @@ export default function TeacherSearchBoard() {
 
   // 치료사 등록 처리 (Firestore 저장)
   const handleTeacherRegistration = async () => {
-    // 필수 항목 검증
-    if (!formData.name || !formData.phone || !formData.email || !formData.applicationSource || !formData.agreeTerms) {
-      alert('필수 항목을 모두 입력해주세요.');
-      return;
+    // 중복 등록 방지 (신규 등록인 경우만 체크, 수정은 가능)
+    if (!isRegistrationEdit && !isAdmin) {
+      const alreadyRegistered = registeredTeachers.some(
+        (teacher: Teacher) => (teacher.userId === currentUser?.uid || teacher.ownerUid === currentUser?.uid)
+      );
+      if (alreadyRegistered) {
+        alert('이미 치료사 등록을 완료하셨습니다.\n등록한 내용을 수정하려면 목록에서 "상세보기" → "수정" 버튼을 이용해주세요.');
+        closePopup();
+        return;
+      }
     }
 
+    // 필수 항목 검증
+    // 기본 정보
+    if (!formData.name?.trim()) { alert('이름은 필수 사항입니다. 입력해주세요.'); return; }
+    if (!formData.birthDate?.trim()) { alert('생년월일은 필수 사항입니다. 입력해주세요.'); return; }
+    if (!formData.gender?.trim()) { alert('성별은 필수 사항입니다. 선택해주세요.'); return; }
+    if (!formData.phone?.trim()) { alert('연락처는 필수 사항입니다. 입력해주세요.'); return; }
+    if (!formData.email?.trim()) { alert('이메일(ID)은 필수 사항입니다. 입력해주세요.'); return; }
+    if (!formData.address?.trim()) { alert('주소는 필수 사항입니다. 입력해주세요.'); return; }
+    if (!formData.qualification?.trim()) { alert('자격구분은 필수 사항입니다. 선택해주세요.'); return; }
+    
+    // 프로필 정보
+    if (!formData.therapyActivity?.trim()) { alert('치료 철학 및 강점은 필수 사항입니다. 입력해주세요.'); return; }
+    if (!formData.mainSpecialty?.trim()) { alert('주요 치료 경험 및 사례는 필수 사항입니다. 입력해주세요.'); return; }
+    
+    // 경력 및 치료 정보
+    if (!formData.hourlyRate?.trim()) { alert('희망 시간당 치료비는 필수 사항입니다. 입력해주세요.'); return; }
+    if (formData.availableDays.length === 0) { alert('치료 가능 요일은 필수 사항입니다. 선택해주세요.'); return; }
+    if (!formData.availableTime?.trim()) { alert('치료 가능 시간은 필수 사항입니다. 입력해주세요.'); return; }
+    
+    // 지원 경로
+    if (!formData.applicationSource?.trim()) { alert('지원 경로는 필수 사항입니다. 선택해주세요.'); return; }
+    
+    // 계좌 정보
+    if (!formData.bankName?.trim()) { alert('은행명은 필수 사항입니다. 입력해주세요.'); return; }
+    if (!formData.accountHolder?.trim()) { alert('예금주명은 필수 사항입니다. 입력해주세요.'); return; }
+    if (!formData.accountNumber?.trim()) { alert('계좌번호는 필수 사항입니다. 입력해주세요.'); return; }
+    
+    // 이용약관 동의
+    if (!formData.agreeTerms) { alert('이용약관 동의는 필수 사항입니다. 동의해주세요.'); return; }
+
+    // 파일 업로드 검증 (신규 등록일 때만)
     if (!isRegistrationEdit) {
-      if (!profileImage) { alert('프로필 사진을 업로드해주세요.'); return; }
-      if (academicFiles.length === 0) { alert('학력 증빙 서류를 업로드해주세요.'); return; }
-      if (careerFiles.length === 0) { alert('경력 증빙 서류를 업로드해주세요.'); return; }
-      if (licenseFiles.length === 0) { alert('자격증 사본을 업로드해주세요.'); return; }
-      if (educationFiles.length === 0) { alert('성범죄 경력 조회 증명서를 업로드해주세요.'); return; }
-      if (formData.availableDays.length === 0) { alert('치료 가능 요일을 선택해주세요.'); return; }
+      if (!profileImage) { alert('프로필 사진은 필수 사항입니다. 업로드해주세요.'); return; }
+      if (academicFiles.length === 0) { alert('학력 증빙 서류는 필수 사항입니다. 업로드해주세요.'); return; }
+      if (careerFiles.length === 0) { alert('경력 증빙 서류는 필수 사항입니다. 업로드해주세요.'); return; }
+      if (licenseFiles.length === 0) { alert('자격증 사본은 필수 사항입니다. 업로드해주세요.'); return; }
+      if (educationFiles.length === 0) { alert('성범죄 경력 조회 증명서는 필수 사항입니다. 업로드해주세요.'); return; }
+      if (!bankBookFile) { alert('통장 사본은 필수 사항입니다. 업로드해주세요.'); return; }
+    } else {
+      // 수정 모드에서는 기존 파일이 있는지 확인
+      if (!profileImage && !existingProfilePhotoUrl) { alert('프로필 사진은 필수 사항입니다. 업로드해주세요.'); return; }
+      if (academicFiles.length === 0 && existingAcademicUrls.length === 0) { alert('학력 증빙 서류는 필수 사항입니다. 업로드해주세요.'); return; }
+      if (careerFiles.length === 0 && existingCareerUrls.length === 0) { alert('경력 증빙 서류는 필수 사항입니다. 업로드해주세요.'); return; }
+      if (licenseFiles.length === 0 && existingLicenseUrls.length === 0) { alert('자격증 사본은 필수 사항입니다. 업로드해주세요.'); return; }
+      if (educationFiles.length === 0 && existingCrimeCheckUrls.length === 0) { alert('성범죄 경력 조회 증명서는 필수 사항입니다. 업로드해주세요.'); return; }
+      if (!bankBookFile && existingBankbookUrls.length === 0) { alert('통장 사본은 필수 사항입니다. 업로드해주세요.'); return; }
     }
 
     // 카테고리 매핑 (현재 사용 안 함)
@@ -362,12 +465,17 @@ export default function TeacherSearchBoard() {
       // 업로드 유틸(문서 ID 포함 경로)
       const uploadWithReg = async (regId: string) => {
         const uploaded: Record<string, unknown> = {};
+        
+        // 프로필 이미지 처리 - 새 이미지가 있으면 업로드, 없으면 기존 URL 사용
         if (profileImage) {
           const path = `therapist-registrations/${currentUser?.uid}/${regId}/profile/${Date.now()}_profile.jpg`;
           const sref = ref(storage, path);
           await uploadBytes(sref, profileImage);
           uploaded.profilePhoto = await getDownloadURL(sref);
+        } else if (isRegistrationEdit && existingProfilePhotoUrl) {
+          uploaded.profilePhoto = existingProfilePhotoUrl;
         }
+        
         const uploadFileArray = async (files: File[], folder: string): Promise<string[]> => {
           const urls: string[] = [];
           for (const file of files) {
@@ -378,26 +486,44 @@ export default function TeacherSearchBoard() {
           }
           return urls;
         };
-        const academicUrls = await uploadFileArray(academicFiles, 'academic');
-        const careerUrls = await uploadFileArray(careerFiles, 'career');
-        // 규칙 경로에 맞춰 교육/경험 추가 자료도 license 폴더로 업로드
-        const licenseUrls = [
-          ...await uploadFileArray(licenseFiles, 'license'),
-          ...await uploadFileArray(educationFiles, 'license'),
-          ...await uploadFileArray(experienceFiles, 'license'),
-        ];
+        
+        // 기존 문서 URL 가져오기
+        const existingAcademicUrls = (existingDocuments?.diploma as string[]) || [];
+        const existingCareerUrls = (existingDocuments?.career as string[]) || [];
+        const existingLicenseUrls = (existingDocuments?.license as string[]) || [];
+        const existingCrimeCheckUrls = (existingDocuments?.crimeCheck as string[]) || [];
+        const existingAdditionalUrls = (existingDocuments?.additional as string[]) || [];
+        const existingIntroVideoUrls = (existingDocuments?.introVideo as string[]) || [];
+        const existingBankbookUrls = (existingDocuments?.bankbook as string[]) || [];
+        
+        // 새 파일이 있으면 업로드, 없으면 기존 URL 사용
+        const academicUrls = academicFiles.length > 0 ? await uploadFileArray(academicFiles, 'academic') : existingAcademicUrls;
+        const careerUrls = careerFiles.length > 0 ? await uploadFileArray(careerFiles, 'career') : existingCareerUrls;
+        
+        // 각 파일 타입을 별도로 업로드
+        const licenseUrls = licenseFiles.length > 0 ? await uploadFileArray(licenseFiles, 'license') : existingLicenseUrls;
+        const crimeCheckUrls = educationFiles.length > 0 ? await uploadFileArray(educationFiles, 'crimeCheck') : existingCrimeCheckUrls;
+        const additionalUrls = experienceFiles.length > 0 ? await uploadFileArray(experienceFiles, 'additional') : existingAdditionalUrls;
+        const introVideoUrls = certificateFiles.length > 0 ? await uploadFileArray(certificateFiles, 'introVideo') : existingIntroVideoUrls;
+        
         let bankbookUrl: string | null = null;
         if (bankBookFile) {
           const p = `therapist-registrations/${currentUser?.uid}/${regId}/bankbook/${Date.now()}_${bankBookFile.name}`;
           const r = ref(storage, p);
           await uploadBytes(r, bankBookFile);
           bankbookUrl = await getDownloadURL(r);
+        } else if (isRegistrationEdit && existingBankbookUrls.length > 0) {
+          bankbookUrl = existingBankbookUrls[0];
         }
+        
         const documents: Record<string, unknown> = {
           diploma: academicUrls,
           career: careerUrls,
           license: licenseUrls,
-          certificate: licenseUrls,
+          crimeCheck: crimeCheckUrls,
+          additional: additionalUrls,
+          introVideo: introVideoUrls,
+          certificate: licenseUrls, // 레거시 호환성
           bankbook: bankbookUrl ? [bankbookUrl] : [],
         };
         return { uploaded, documents } as { uploaded: Record<string, unknown>; documents: Record<string, unknown> };
@@ -408,21 +534,20 @@ export default function TeacherSearchBoard() {
         // 파일 업로드 (규칙 경로 포함)
         const { uploaded, documents } = await uploadWithReg(editDocId);
 
-        await updateDoc(regRef, {
+        const updateData: Record<string, unknown> = {
           userId: currentUser?.uid,
           name: formData.name,
           birthDate: formData.birthDate,
-      gender: formData.gender,
+          gender: formData.gender,
           phone: formData.phone,
           email: formData.email,
           address: formData.address,
           qualification: formData.qualification,
           therapyActivity: formData.therapyActivity,
           mainSpecialty: formData.mainSpecialty,
-      experience: formData.experience,
+          experience: formData.experience,
           educationCareer: formData.educationCareer,
           certifications: formData.certifications,
-          profilePhoto: uploaded.profilePhoto || undefined,
           documents,
           region: formData.region,
           availableDays: formData.availableDays,
@@ -439,7 +564,14 @@ export default function TeacherSearchBoard() {
           updatedAt: serverTimestamp(),
           isModified: true,
           modifiedAt: serverTimestamp()
-        });
+        };
+        
+        // profilePhoto가 있을 때만 업데이트 (undefined 방지)
+        if (uploaded.profilePhoto) {
+          updateData.profilePhoto = uploaded.profilePhoto;
+        }
+        
+        await updateDoc(regRef, updateData);
 
         await setDoc(doc(db, 'therapist-registrations-feed', editDocId), {
           userId: currentUser?.uid,
@@ -531,10 +663,8 @@ export default function TeacherSearchBoard() {
     }
 
     // 완료 처리
-    closePopup();
-    setIsRegistrationEdit(false);
-    setEditDocId(null);
     alert('저장이 완료되었습니다.\n관리자 재심사 후 적용됩니다.');
+    closePopup();
   };
 
   // const router = useRouter();
@@ -749,7 +879,7 @@ export default function TeacherSearchBoard() {
   // 상태 한글 라벨 변환
   const formatStatusKorean = (status: string) => {
     const map: Record<string, string> = {
-      pending: '대기',
+      pending: '검토중',
       approved: '승인',
       rejected: '반려',
       hold: '보류',
@@ -1041,9 +1171,23 @@ export default function TeacherSearchBoard() {
               <div className="bg-white border-4 border-blue-700 rounded-t-lg p-4 border-b-0">
                     <div className="flex items-center justify-end">
                       <button 
-                        onClick={() => { if (canOpenRegistration) setShowRegistrationPopup(true); }}
+                        onClick={() => { 
+                          if (!canOpenRegistration) {
+                            if (hasAlreadyRegistered && !isAdmin) {
+                              alert('이미 치료사 등록을 완료하셨습니다.\n등록한 내용을 수정하려면 목록에서 "상세보기" → "수정" 버튼을 이용해주세요.');
+                            }
+                            return;
+                          }
+                          setShowRegistrationPopup(true);
+                        }}
                         disabled={!canOpenRegistration}
-                        title={!canOpenRegistration ? '치료사 계정만 신청할 수 있습니다.' : undefined}
+                        title={
+                          !canOpenRegistration 
+                            ? (hasAlreadyRegistered && !isAdmin 
+                                ? '이미 등록을 완료하셨습니다. 수정은 상세보기에서 가능합니다.' 
+                                : '치료사 계정만 신청할 수 있습니다.')
+                            : undefined
+                        }
                         className={`${canOpenRegistration ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400 cursor-not-allowed'} text-white px-5 py-2 rounded-lg text-sm font-semibold shadow-sm transition-colors flex items-center gap-2`}
                       >
                     <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-white text-blue-600 text-xs">＋</span>
@@ -1108,7 +1252,7 @@ export default function TeacherSearchBoard() {
                               onClick={async () => {
                                 const isOwner = !!currentUser?.uid && (!!teacher.ownerUid && teacher.ownerUid === currentUser.uid);
                                 if (!isOwner) { alert('본인 게시글만 상세보기를 할 수 있습니다.'); return; }
-                                // 상세보기 직전, 내 문서 최신값(특히 계좌정보)을 원본 컬렉션에서 보강
+                                // 상세보기 직전, 내 문서 최신값(특히 계좌정보, 프로필 사진, documents)을 원본 컬렉션에서 보강
                                 let merged = teacher;
                                 try {
                                   if (teacher.docId) {
@@ -1117,6 +1261,7 @@ export default function TeacherSearchBoard() {
                                       const d = snap.data() as Record<string, unknown>;
                                       merged = {
                                         ...teacher,
+                                        profilePhoto: (d.profilePhoto as string) || undefined,
                                         bankName: (d.bankName as string) || teacher.bankName,
                                         accountHolder: (d.accountHolder as string) || teacher.accountHolder,
                                         accountNumber: (d.accountNumber as string) || teacher.accountNumber,
@@ -1128,6 +1273,8 @@ export default function TeacherSearchBoard() {
                                         educationCareer: (d.educationCareer as string) || teacher.educationCareer,
                                         certifications: (d.certifications as string) || teacher.certifications,
                                         birthDate: (d.birthDate as string) || teacher.birthDate,
+                                        documents: d.documents || teacher.documents,
+                                        specialties: d.specialties || teacher.specialties,
                                       } as Teacher;
                                     }
                                   }
@@ -1579,6 +1726,20 @@ export default function TeacherSearchBoard() {
                       />
                       <p className="text-base text-gray-500">파일을 여기에 드래그하거나 클릭하며 업로드하세요.</p>
                     </div>
+                    {/* 기존 파일 표시 */}
+                    {existingAcademicUrls.length > 0 && academicFiles.length === 0 && (
+                      <div className="mt-2 space-y-1">
+                        <p className="text-sm text-gray-600 mb-1">기존 업로드 파일:</p>
+                        {existingAcademicUrls.map((url, index) => (
+                          <div key={index} className="flex items-center justify-between bg-blue-50 p-2 rounded">
+                            <a href={url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline flex-1 truncate">
+                              학력증명서 {index + 1}
+                            </a>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {/* 새로 선택한 파일 표시 */}
                     {academicFiles.length > 0 && (
                       <div className="mt-2 space-y-1">
                         {academicFiles.map((file, index) => (
@@ -1609,6 +1770,20 @@ export default function TeacherSearchBoard() {
                       />
                       <p className="text-base text-gray-500">파일을 여기에 드래그하거나 클릭하며 업로드하세요.</p>
                     </div>
+                    {/* 기존 파일 표시 */}
+                    {existingCareerUrls.length > 0 && careerFiles.length === 0 && (
+                      <div className="mt-2 space-y-1">
+                        <p className="text-sm text-gray-600 mb-1">기존 업로드 파일:</p>
+                        {existingCareerUrls.map((url, index) => (
+                          <div key={index} className="flex items-center justify-between bg-blue-50 p-2 rounded">
+                            <a href={url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline flex-1 truncate">
+                              경력증명서 {index + 1}
+                            </a>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {/* 새로 선택한 파일 표시 */}
                     {careerFiles.length > 0 && (
                       <div className="mt-2 space-y-1">
                         {careerFiles.map((file, index) => (
@@ -1639,6 +1814,20 @@ export default function TeacherSearchBoard() {
                       />
                       <p className="text-base text-gray-500">파일을 여기에 드래그하거나 클릭하며 업로드하세요.</p>
                     </div>
+                    {/* 기존 파일 표시 */}
+                    {existingLicenseUrls.length > 0 && licenseFiles.length === 0 && (
+                      <div className="mt-2 space-y-1">
+                        <p className="text-sm text-gray-600 mb-1">기존 업로드 파일:</p>
+                        {existingLicenseUrls.map((url, index) => (
+                          <div key={index} className="flex items-center justify-between bg-blue-50 p-2 rounded">
+                            <a href={url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline flex-1 truncate">
+                              자격증 {index + 1}
+                            </a>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {/* 새로 선택한 파일 표시 */}
                     {licenseFiles.length > 0 && (
                       <div className="mt-2 space-y-1">
                         {licenseFiles.map((file, index) => (
@@ -1669,6 +1858,20 @@ export default function TeacherSearchBoard() {
                       />
                       <p className="text-base text-gray-500">파일을 여기에 드래그하거나 클릭하며 업로드하세요.</p>
                     </div>
+                    {/* 기존 파일 표시 */}
+                    {existingCrimeCheckUrls.length > 0 && educationFiles.length === 0 && (
+                      <div className="mt-2 space-y-1">
+                        <p className="text-sm text-gray-600 mb-1">기존 업로드 파일:</p>
+                        {existingCrimeCheckUrls.map((url, index) => (
+                          <div key={index} className="flex items-center justify-between bg-blue-50 p-2 rounded">
+                            <a href={url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline flex-1 truncate">
+                              증명서 {index + 1}
+                            </a>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {/* 새로 선택한 파일 표시 */}
                     {educationFiles.length > 0 && (
                       <div className="mt-2 space-y-1">
                         {educationFiles.map((file, index) => (
@@ -1699,6 +1902,20 @@ export default function TeacherSearchBoard() {
                       />
                       <p className="text-base text-gray-500">파일을 여기에 드래그하거나 클릭하며 업로드하세요.</p>
                     </div>
+                    {/* 기존 파일 표시 */}
+                    {existingAdditionalUrls.length > 0 && experienceFiles.length === 0 && (
+                      <div className="mt-2 space-y-1">
+                        <p className="text-sm text-gray-600 mb-1">기존 업로드 파일:</p>
+                        {existingAdditionalUrls.map((url, index) => (
+                          <div key={index} className="flex items-center justify-between bg-blue-50 p-2 rounded">
+                            <a href={url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline flex-1 truncate">
+                              첨부파일 {index + 1}
+                            </a>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {/* 새로 선택한 파일 표시 */}
                     {experienceFiles.length > 0 && (
                       <div className="mt-2 space-y-1">
                         {experienceFiles.map((file, index) => (
@@ -1723,12 +1940,27 @@ export default function TeacherSearchBoard() {
                       <input
                         type="file"
                         multiple
-                        accept=".pdf,.jpg,.jpeg,.png"
+                        accept=".mp4,.mov,.avi,.webm,.mkv"
                         onChange={(e) => handleFileUpload(e, setCertificateFiles)}
                         className="absolute inset-0 opacity-0 cursor-pointer"
                       />
-                      <p className="text-base text-gray-500">파일을 여기에 드래그하거나 클릭하며 업로드하세요.</p>
+                      <p className="text-base text-gray-500">영상 파일을 여기에 드래그하거나 클릭하여 업로드하세요.</p>
+                      <p className="text-xs text-gray-400 mt-1">(MP4, MOV, AVI, WEBM, MKV 형식)</p>
                     </div>
+                    {/* 기존 파일 표시 */}
+                    {existingIntroVideoUrls.length > 0 && certificateFiles.length === 0 && (
+                      <div className="mt-2 space-y-1">
+                        <p className="text-sm text-gray-600 mb-1">기존 업로드 파일:</p>
+                        {existingIntroVideoUrls.map((url, index) => (
+                          <div key={index} className="flex items-center justify-between bg-blue-50 p-2 rounded">
+                            <a href={url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline flex-1 truncate">
+                              자기소개 영상 {index + 1}
+                            </a>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {/* 새로 선택한 파일 표시 */}
                     {certificateFiles.length > 0 && (
                       <div className="mt-2 space-y-1">
                         {certificateFiles.map((file, index) => (
@@ -1834,6 +2066,18 @@ export default function TeacherSearchBoard() {
                       />
                       <p className="text-base text-gray-500">통장 첫 페이지 사본을 업로드해주세요.</p>
                     </div>
+                    {/* 기존 파일 표시 */}
+                    {existingBankbookUrls.length > 0 && !bankBookFile && (
+                      <div className="mt-2">
+                        <p className="text-sm text-gray-600 mb-1">기존 업로드 파일:</p>
+                        <div className="flex items-center justify-between bg-blue-50 p-2 rounded">
+                          <a href={existingBankbookUrls[0]} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline flex-1 truncate">
+                            통장 사본
+                          </a>
+                        </div>
+                      </div>
+                    )}
+                    {/* 새로 선택한 파일 표시 */}
                     {bankBookFile && (
                       <div className="mt-2">
                         <div className="flex items-center justify-between bg-gray-50 p-2 rounded">
@@ -1911,30 +2155,68 @@ export default function TeacherSearchBoard() {
               </div>
               <div className="flex items-center gap-2">
                 {((currentUser?.uid && activeTeacher.ownerUid === currentUser.uid) || isAdmin) && (
-                  <button onClick={() => { setShowDetailModal(false); setIsRegistrationEdit(true); setEditDocId(activeTeacher.docId || null); setFormData({
-                    name: activeTeacher.fullName || '',
-                    birthDate: activeTeacher.birthDate || '',
-                    gender: activeTeacher.gender || '여성',
-                    phone: activeTeacher.phone || '',
-                    email: activeTeacher.email || '',
-                    address: activeTeacher.residence || '',
-                    qualification: activeTeacher.qualification || '',
-                    therapyActivity: activeTeacher.therapyActivity || '',
-                    mainSpecialty: activeTeacher.mainSpecialty || '',
-                    educationCareer: activeTeacher.educationCareer || '',
-                    certifications: activeTeacher.certifications || '',
-                    experience: activeTeacher.experience || '',
-                    region: activeTeacher.treatmentRegion || '',
-                    availableDays: activeTeacher.availableDays || [],
-                    availableTime: activeTeacher.availableTime || '',
-                    specialties: activeTeacher.specialty ? [activeTeacher.specialty] : [],
-                    bankName: activeTeacher.bankName || '',
-                    accountHolder: activeTeacher.accountHolder || '',
-                    accountNumber: activeTeacher.accountNumber || '',
-                    hourlyRate: activeTeacher.hourlyRate || '',
-                    applicationSource: activeTeacher.applicationSource || '',
-                    agreeTerms: true,
-                  }); setShowRegistrationPopup(true); }} className="px-3 py-1.5 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700">수정</button>
+                  <button onClick={async () => { 
+                    setShowDetailModal(false); 
+                    setIsRegistrationEdit(true); 
+                    setEditDocId(activeTeacher.docId || null);
+                    
+                    // 기존 파일 URL들 로드
+                    if (activeTeacher.docId) {
+                      try {
+                        const docRef = doc(db, 'therapist-registrations', activeTeacher.docId);
+                        const docSnap = await getDoc(docRef);
+                        if (docSnap.exists()) {
+                          const data = docSnap.data();
+                          // 기존 프로필 사진 URL 저장
+                          if (data.profilePhoto) {
+                            setExistingProfilePhotoUrl(data.profilePhoto as string);
+                            setProfileImagePreview(data.profilePhoto as string);
+                          }
+                          // 기존 문서 URL들 저장
+                          if (data.documents) {
+                            setExistingDocuments(data.documents as Record<string, unknown>);
+                            const docs = data.documents as Record<string, unknown>;
+                            // 각 문서 타입별로 URL 배열 저장
+                            setExistingAcademicUrls(Array.isArray(docs.diploma) ? docs.diploma as string[] : []);
+                            setExistingCareerUrls(Array.isArray(docs.career) ? docs.career as string[] : []);
+                            setExistingLicenseUrls(Array.isArray(docs.license) ? docs.license as string[] : []);
+                            setExistingCrimeCheckUrls(Array.isArray(docs.crimeCheck) ? docs.crimeCheck as string[] : []);
+                            setExistingAdditionalUrls(Array.isArray(docs.additional) ? docs.additional as string[] : []);
+                            setExistingIntroVideoUrls(Array.isArray(docs.introVideo) ? docs.introVideo as string[] : []);
+                            setExistingBankbookUrls(Array.isArray(docs.bankbook) ? docs.bankbook as string[] : []);
+                          }
+                        }
+                      } catch (error) {
+                        console.error('기존 파일 정보 로드 실패:', error);
+                      }
+                    }
+                    
+                    setFormData({
+                      name: activeTeacher.fullName || '',
+                      birthDate: activeTeacher.birthDate || '',
+                      gender: activeTeacher.gender || '여성',
+                      phone: activeTeacher.phone || '',
+                      email: activeTeacher.email || '',
+                      address: activeTeacher.residence || '',
+                      qualification: activeTeacher.qualification || '',
+                      therapyActivity: activeTeacher.therapyActivity || '',
+                      mainSpecialty: activeTeacher.mainSpecialty || '',
+                      educationCareer: activeTeacher.educationCareer || '',
+                      certifications: activeTeacher.certifications || '',
+                      experience: activeTeacher.experience || '',
+                      region: activeTeacher.treatmentRegion || '',
+                      availableDays: activeTeacher.availableDays || [],
+                      availableTime: activeTeacher.availableTime || '',
+                      specialties: activeTeacher.specialty ? [activeTeacher.specialty] : [],
+                      bankName: activeTeacher.bankName || '',
+                      accountHolder: activeTeacher.accountHolder || '',
+                      accountNumber: activeTeacher.accountNumber || '',
+                      hourlyRate: activeTeacher.hourlyRate || '',
+                      applicationSource: activeTeacher.applicationSource || '',
+                      agreeTerms: true,
+                    }); 
+                    setShowRegistrationPopup(true); 
+                  }} className="px-3 py-1.5 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700">수정</button>
                 )}
                 <button onClick={() => setShowDetailModal(false)} className="text-gray-500 text-2xl leading-none">×</button>
               </div>
@@ -1952,8 +2234,18 @@ export default function TeacherSearchBoard() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* 좌측 프로필 이미지 자리 */}
                     <div className="md:col-span-1 flex items-center justify-center">
-                      <div className="w-40 h-40 bg-gray-200 rounded-full flex items-center justify-center">
-                        <span className="text-gray-500 text-sm text-center">사진</span>
+                      <div className="w-40 h-40 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden">
+                        {activeTeacher.profilePhoto ? (
+                          <Image 
+                            src={activeTeacher.profilePhoto} 
+                            alt="프로필 사진" 
+                            width={160}
+                            height={160}
+                            className="w-full h-full object-cover rounded-full"
+                          />
+                        ) : (
+                          <span className="text-gray-500 text-sm text-center">사진</span>
+                        )}
                       </div>
                     </div>
                     {/* 우측 입력형 레이아웃(읽기 전용) */}
@@ -1982,6 +2274,10 @@ export default function TeacherSearchBoard() {
                         <label className="block text-sm font-medium text-gray-700 mb-2">주소</label>
                         <input value={activeTeacher.residence || ''} disabled className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50" />
                       </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">자격구분</label>
+                        <input value={activeTeacher.qualification || ''} disabled className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50" />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1993,9 +2289,20 @@ export default function TeacherSearchBoard() {
                     <h4 className="text-lg font-bold text-gray-900">프로필 정보 (학부모 공개)</h4>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <div className="text-gray-500 mb-1">전문 분야</div>
-                      <input value={activeTeacher.specialty || ''} disabled className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50" />
+                    <div className="md:col-span-2">
+                      <div className="text-gray-500 mb-1">전문 분야 (중복 선택 가능)</div>
+                      <div className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50 min-h-[40px]">
+                        {(() => {
+                          // specialties 배열이 있으면 사용, 없으면 specialty 단일값 사용
+                          const specialtiesArray = Array.isArray(activeTeacher.specialties) 
+                            ? activeTeacher.specialties 
+                            : (activeTeacher.specialty ? [activeTeacher.specialty] : []);
+                          
+                          return specialtiesArray.length > 0 
+                            ? specialtiesArray.join(', ') 
+                            : '없음';
+                        })()}
+                      </div>
                     </div>
                     <div>
                       <div className="text-gray-500 mb-1">치료 지역</div>
@@ -2005,7 +2312,7 @@ export default function TeacherSearchBoard() {
                       <div className="text-gray-500 mb-1">경력</div>
                       <input value={activeTeacher.experience || ''} disabled className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50" />
                     </div>
-                    <div>
+                    <div className="md:col-span-2">
                       <div className="text-gray-500 mb-1">희망 치료비</div>
                       <input value={activeTeacher.hourlyRate || ''} disabled className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50" />
                     </div>
@@ -2056,6 +2363,148 @@ export default function TeacherSearchBoard() {
                   </div>
                 </div>
 
+                {/* 자격 검증 섹션 (관리자 확인용) */}
+                <div className="border-4 border-blue-700 rounded-lg p-4 bg-white">
+                  <div className="flex items-center mb-4">
+                    <div className="bg-blue-100 rounded-full p-2 mr-3"><span className="text-blue-600 text-lg">🔍</span></div>
+                    <h4 className="text-lg font-bold text-gray-900">자격 검증 (관리자 확인용)</h4>
+                  </div>
+                  
+                  <p className="text-sm text-gray-600 mb-4">
+                    제출된 서류는 자격 검증을 위해서만 사용되며, 학부모에게 공개되지 않습니다.
+                  </p>
+                  
+                  {(() => {
+                    const docs = activeTeacher.documents || {};
+                    const diploma = Array.isArray(docs.diploma) ? docs.diploma : [];
+                    const career = Array.isArray(docs.career) ? docs.career : [];
+                    const license = Array.isArray(docs.license) ? docs.license : [];
+                    const crimeCheck = Array.isArray(docs.crimeCheck) ? docs.crimeCheck : [];
+                    const additional = Array.isArray(docs.additional) ? docs.additional : [];
+                    const introVideo = Array.isArray(docs.introVideo) ? docs.introVideo : [];
+
+                    return (
+                      <div className="space-y-4">
+                        {/* 학력 증빙 서류 */}
+                        <div>
+                          <div className="text-sm font-medium text-gray-700 mb-2">학력 증빙 서류(졸업증명서 등)</div>
+                          {diploma.length > 0 ? (
+                            <div className="space-y-1">
+                              {diploma.map((url: string, index: number) => (
+                                <div key={index} className="flex items-center bg-blue-50 p-2 rounded">
+                                  <a href={url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline flex-1 truncate">
+                                    학력증명서 {index + 1}
+                                  </a>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-sm text-gray-400 bg-gray-50 p-2 rounded">제출된 파일 없음</div>
+                          )}
+                        </div>
+
+                        {/* 경력 증빙 서류 */}
+                        <div>
+                          <div className="text-sm font-medium text-gray-700 mb-2">경력 증빙 서류 (경력증명서 등)</div>
+                          {career.length > 0 ? (
+                            <div className="space-y-1">
+                              {career.map((url: string, index: number) => (
+                                <div key={index} className="flex items-center bg-blue-50 p-2 rounded">
+                                  <a href={url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline flex-1 truncate">
+                                    경력증명서 {index + 1}
+                                  </a>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-sm text-gray-400 bg-gray-50 p-2 rounded">제출된 파일 없음</div>
+                          )}
+                        </div>
+
+                        {/* 자격증 사본 */}
+                        <div>
+                          <div className="text-sm font-medium text-gray-700 mb-2">자격증 사본</div>
+                          {license.length > 0 ? (
+                            <div className="space-y-1">
+                              {license.map((url: string, index: number) => (
+                                <div key={index} className="flex items-center bg-blue-50 p-2 rounded">
+                                  <a href={url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline flex-1 truncate">
+                                    자격증 {index + 1}
+                                  </a>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-sm text-gray-400 bg-gray-50 p-2 rounded">제출된 파일 없음</div>
+                          )}
+                        </div>
+
+                        {/* 성범죄 경력 조회 증명서 */}
+                        <div>
+                          <div className="text-sm font-medium text-gray-700 mb-2">성범죄 경력 조회 증명서</div>
+                          {crimeCheck.length > 0 ? (
+                            <div className="space-y-1">
+                              {crimeCheck.map((url: string, index: number) => (
+                                <div key={index} className="flex items-center bg-blue-50 p-2 rounded">
+                                  <a href={url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline flex-1 truncate">
+                                    증명서 {index + 1}
+                                  </a>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-sm text-gray-400 bg-gray-50 p-2 rounded">제출된 파일 없음</div>
+                          )}
+                        </div>
+
+                        {/* 기타 첨부파일 */}
+                        {additional.length > 0 && (
+                          <div>
+                            <div className="text-sm font-medium text-gray-700 mb-2">(선택) 기타 첨부파일</div>
+                            <div className="space-y-1">
+                              {additional.map((url: string, index: number) => (
+                                <div key={index} className="flex items-center bg-blue-50 p-2 rounded">
+                                  <a href={url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline flex-1 truncate">
+                                    첨부파일 {index + 1}
+                                  </a>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* 자기소개 영상 */}
+                        {introVideo.length > 0 && (
+                          <div>
+                            <div className="text-sm font-medium text-gray-700 mb-2">(선택) 1분 자기소개 영상</div>
+                            <div className="space-y-1">
+                              {introVideo.map((url: string, index: number) => (
+                                <div key={index} className="flex items-center bg-blue-50 p-2 rounded">
+                                  <a href={url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline flex-1 truncate">
+                                    자기소개 영상 {index + 1}
+                                  </a>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                {/* 지원 경로 섹션 */}
+                <div className="border-2 border-blue-200 rounded-lg p-4 bg-blue-50">
+                  <div className="flex items-center mb-4">
+                    <div className="bg-blue-100 rounded-full p-2 mr-3"><span className="text-blue-600 text-lg">🔍</span></div>
+                    <h4 className="text-lg font-bold text-gray-900">지원 경로</h4>
+                  </div>
+                  <div className="text-sm">
+                    <div className="text-gray-500 mb-1">경로를 선택해주세요.</div>
+                    <input value={activeTeacher.applicationSource || ''} disabled className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50" />
+                  </div>
+                </div>
+
                 {/* 계좌 정보 (관리자 확인용) */}
                 <div className="border-2 border-blue-200 rounded-lg p-4 bg-blue-50">
                   <div className="flex items-center mb-4">
@@ -2076,8 +2525,25 @@ export default function TeacherSearchBoard() {
                       <input value={activeTeacher.accountNumber || ''} disabled className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50" />
                     </div>
                     <div className="md:col-span-2">
-                      <div className="text-gray-500 mb-1">지원 경로</div>
-                      <input value={activeTeacher.applicationSource || ''} disabled className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50" />
+                      <div className="text-gray-500 mb-1">통장 사본</div>
+                      {(() => {
+                        const docs = activeTeacher.documents || {};
+                        const bankbook = Array.isArray(docs.bankbook) ? docs.bankbook : [];
+                        
+                        return bankbook.length > 0 ? (
+                          <div className="space-y-1">
+                            {bankbook.map((url: string, index: number) => (
+                              <div key={index} className="flex items-center bg-blue-50 p-2 rounded">
+                                <a href={url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline flex-1 truncate">
+                                  통장 사본 {index + 1}
+                                </a>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-sm text-gray-400 bg-gray-50 p-2 rounded">제출된 파일 없음</div>
+                        );
+                      })()}
                     </div>
                   </div>
                 </div>

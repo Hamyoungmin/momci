@@ -432,7 +432,8 @@ export default function BrowseBoard() {
       }
       
       // 상세 프로필 모달 외부 클릭 시 모달 닫기
-      if (showProfileModal && !target.closest('.profile-modal')) {
+      // 단, 채팅 확인 모달이 열려있거나 닫히는 중일 때는 프로필 모달을 닫지 않음
+      if (showProfileModal && !target.closest('.profile-modal') && !showChatConfirmModal && !isChatConfirmModalClosing) {
         closeProfileModal();
       }
       
@@ -451,7 +452,7 @@ export default function BrowseBoard() {
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [showCreatePostModal, showProfileModal, showConfirmModal, showChatConfirmModal]);
+  }, [showCreatePostModal, showProfileModal, showConfirmModal, showChatConfirmModal, isChatConfirmModalClosing]);
 
   // 현재 선택된 지역의 치료사 필터링
   const getCurrentTeachers = () => {
@@ -784,7 +785,7 @@ export default function BrowseBoard() {
         specialty: (regData?.specialty as string) || (profileData?.specialties?.[0] as string) || teacher.specialty,
         rating: profileData?.rating || teacher.rating,
         reviewCount: profileData?.reviewCount || teacher.reviewCount,
-        profileImage: profileData?.profileImage || teacher.profileImage,
+        profileImage: (regData?.profilePhoto as string) || profileData?.profileImage || teacher.profileImage,
         // 상세 모달은 educationCareer/therapyActivity/mainSpecialty/hourlyRate/availableDays/availableTime를 사용
         educationCareer: (regData?.educationCareer as string) || (profileData?.education as string) || (teacher.education as string) || '',
         certifications: (typeof regData?.certifications === 'string' ? [regData?.certifications as string] : (profileData?.certifications as string[]) || teacher.certifications || []),
@@ -863,11 +864,16 @@ export default function BrowseBoard() {
 
   // 프로필 끌어올림 (24시간 1회 제한, 본인 또는 관리자만)
   const handleBumpProfile = async () => {
-    if (!currentUser || !userData || !selectedProfile) {
+    // selectedProfile이 없으면 regDetailData 사용
+    const profile = selectedProfile || regDetailData;
+    
+    if (!currentUser || !userData || !profile) {
       alert('로그인이 필요합니다.');
       return;
     }
-    const isOwner = (selectedProfile.authorId || selectedProfile.id) === currentUser.uid;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const profileAny = profile as any;
+    const isOwner = (profileAny.authorId || profileAny.id) === currentUser.uid;
     const isAdmin = userData.userType === 'admin';
     if (!isOwner && !isAdmin) {
       alert('본인 프로필만 끌어올릴 수 있습니다.');
@@ -876,7 +882,7 @@ export default function BrowseBoard() {
     try {
       setIsBumpingProfile(true);
       // 게시글 기반 노출이므로 posts 컬렉션의 문서를 끌어올립니다
-      const postId = selectedProfile.id as string;
+      const postId = profileAny.id as string;
       if (!postId) {
         throw new Error('프로필 문서 ID를 확인할 수 없습니다.');
       }
@@ -998,6 +1004,11 @@ export default function BrowseBoard() {
       setIsChatConfirmModalClosing(false);
       setShowProfileModal(false);
       setIsProfileModalClosing(false);
+      
+      // 위젯의 채팅 목록 닫기 (중복 방지)
+      if (typeof window !== 'undefined' && (window as { closeChatList?: () => void }).closeChatList) {
+        (window as { closeChatList?: () => void }).closeChatList?.();
+      }
       
       setTimeout(() => {
         setShowChat(true);
@@ -2162,10 +2173,14 @@ export default function BrowseBoard() {
               <div className="text-center">
                 <button 
                   onClick={() => {
-                    closeProfileModal();
-                    setShowSafetyModal(true);
+                    if (userData?.userType === 'therapist') {
+                      alert('치료사는 1:1 채팅을 시작할 수 없습니다. 학부모의 채팅 요청을 기다려 주세요.');
+                      return;
+                    }
+                    openChatFlow();
                   }}
-                  className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-4 rounded-lg font-medium transition-colors text-lg w-full max-w-md"
+                  className={`${userData?.userType === 'therapist' ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-600 text-white'} px-8 py-4 rounded-lg font-medium transition-colors text-lg w-full max-w-md`}
+                  disabled={userData?.userType === 'therapist'}
                 >
                   <svg className="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
@@ -2184,6 +2199,9 @@ export default function BrowseBoard() {
           isOpen={showRegDetailModal}
           onClose={() => { setShowRegDetailModal(false); setRegDetailData(null); }}
           data={regDetailData}
+          onBump={openBumpConfirmModal}
+          canBump={!!(currentUser && userData && ((regDetailData.authorId || regDetailData.id) === currentUser.uid || userData.userType === 'admin'))}
+          isBumping={isBumpingProfile}
         />
       )}
 
@@ -2191,12 +2209,16 @@ export default function BrowseBoard() {
 
       {/* 채팅 시작 전 확인 모달 (학부모 전용) */}
       {showChatConfirmModal && (
-        <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50">
-          <div className={`bg-white border-4 border-blue-700 rounded-lg max-w-md w-[95vw] max-h-[90vh] overflow-y-auto shadow-xl chat-confirm-modal ${isChatConfirmModalClosing ? 'animate-slideOut' : 'animate-slideIn'}`}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+          {/* 모달 컨텐츠 */}
+          <div className={`relative bg-white border-4 border-blue-700 rounded-lg max-w-md w-[95vw] max-h-[90vh] overflow-y-auto shadow-xl chat-confirm-modal ${isChatConfirmModalClosing ? 'animate-slideOut' : 'animate-slideIn'}`} onClick={(e) => e.stopPropagation()}>
             {/* 헤더 */}
             <div className="flex justify-end p-4">
               <button
-                onClick={closeChatConfirmModal}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  closeChatConfirmModal();
+                }}
                 className="text-gray-400 hover:text-gray-600 text-2xl"
               >
                 ✕
@@ -2272,13 +2294,19 @@ export default function BrowseBoard() {
               {/* 버튼들 */}
               <div className="flex gap-3">
                 <button
-                  onClick={closeChatConfirmModal}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    closeChatConfirmModal();
+                  }}
                   className="flex-1 px-4 py-3 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition-colors"
                 >
                   취소
                 </button>
                 <button
-                  onClick={handleStartChat}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleStartChat();
+                  }}
                   disabled={isStartingChat}
                   className={`flex-1 px-4 py-3 rounded-lg font-medium transition-colors ${
                     isStartingChat

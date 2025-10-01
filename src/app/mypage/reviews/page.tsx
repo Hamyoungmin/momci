@@ -40,7 +40,7 @@ interface UserDoc {
 // 지원자 후기(therapist-reviews)도 같은 카드에 합쳐서 표시하기 위해 별도 상태로 가져와 병합합니다.
 
 export default function MyReviewsPage() {
-  const { currentUser, loading } = useAuth();
+  const { currentUser, userData, loading } = useAuth();
   const [reviews, setReviews] = useState<ReviewDoc[]>([]);
   const [tokenInfo, setTokenInfo] = useState<{ base: number; bonus: number; total: number }>({ base: 0, bonus: 0, total: 0 });
   const [isLoading, setIsLoading] = useState(true);
@@ -52,6 +52,9 @@ export default function MyReviewsPage() {
   const [writeClosing, setWriteClosing] = useState(false);
   const [writeTarget, setWriteTarget] = useState<{ therapistId: string; therapistName: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  
+  // 치료사 계정 체크
+  const isTherapist = userData?.userType === 'therapist';
 
   useEffect(() => {
     if (!currentUser) return;
@@ -177,6 +180,14 @@ export default function MyReviewsPage() {
   }, [currentUser]);
 
   const openWrite = (therapistId: string) => {
+    // 치료사 계정 체크
+    if (isTherapist) {
+      window.confirm(
+        '⚠️ 치료사 계정은 후기를 작성할 수 없습니다.\n\n후기는 학부모님들만 작성하실 수 있습니다.\n치료사분들은 후기를 받는 입장이십니다.'
+      );
+      return;
+    }
+    
     const name = therapistNameMap[therapistId] || '치료사';
     setWriteTarget({ therapistId, therapistName: name });
     setWriteClosing(false);
@@ -279,14 +290,28 @@ export default function MyReviewsPage() {
                 {completedMatches.map((m) => (
                   <li key={m.id} className="p-4 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="font-medium text-gray-900 cursor-pointer hover:text-blue-600" onClick={() => openWrite(m.therapistId)}>
+                      <div 
+                        className={`font-medium text-gray-900 ${isTherapist ? 'cursor-not-allowed' : 'cursor-pointer hover:text-blue-600'}`}
+                        onClick={() => !isTherapist && openWrite(m.therapistId)}
+                      >
                         {therapistNameMap[m.therapistId] || '치료사'}
                       </div>
                       {activeChatTherapistIds.has(m.therapistId) && (
                         <span className="px-2 py-0.5 text-xs rounded-full bg-blue-50 text-blue-700 border border-blue-200">채팅중</span>
                       )}
                     </div>
-                    <button onClick={() => openWrite(m.therapistId)} className="px-3 py-1.5 text-sm rounded-md bg-blue-600 text-white hover:bg-blue-700">후기 작성</button>
+                    <button 
+                      onClick={() => openWrite(m.therapistId)} 
+                      disabled={isTherapist}
+                      className={`px-3 py-1.5 text-sm rounded-md ${
+                        isTherapist 
+                          ? 'bg-gray-400 text-gray-200 cursor-not-allowed' 
+                          : 'bg-blue-600 text-white hover:bg-blue-700'
+                      }`}
+                      title={isTherapist ? '치료사 계정은 후기를 작성할 수 없습니다' : ''}
+                    >
+                      후기 작성
+                    </button>
                   </li>
                 ))}
               </ul>

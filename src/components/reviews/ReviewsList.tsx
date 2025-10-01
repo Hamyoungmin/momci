@@ -202,7 +202,10 @@ export default function ReviewsList() {
   // 후기 작성 모달 열기/닫기
   const openWriteModal = () => {
     if (currentUserRole === 'therapist') {
-      alert('치료사 계정은 후기를 작성할 수 없습니다.');
+      // 회색 모달 표시
+      window.confirm(
+        '⚠️ 치료사 계정은 후기를 작성할 수 없습니다.\n\n후기는 학부모님들만 작성하실 수 있습니다.\n치료사분들은 후기를 받는 입장이십니다.'
+      );
       return;
     }
     setShowWriteModal(true);
@@ -510,7 +513,13 @@ export default function ReviewsList() {
           <div className="absolute top-20 right-0">
             <button
               onClick={openWriteModal}
-              className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-2xl font-medium transition-colors flex items-center gap-2 shadow-lg"
+              disabled={currentUserRole === 'therapist'}
+              className={`px-6 py-3 rounded-2xl font-medium transition-colors flex items-center gap-2 shadow-lg ${
+                currentUserRole === 'therapist'
+                  ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                  : 'bg-blue-500 hover:bg-blue-600 text-white'
+              }`}
+              title={currentUserRole === 'therapist' ? '치료사 계정은 후기를 작성할 수 없습니다' : ''}
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -535,8 +544,13 @@ export default function ReviewsList() {
             </p>
             <button
               onClick={openWriteModal}
-              className={`px-6 py-3 rounded-lg font-medium transition-colors text-white ${currentUserRole === 'therapist' ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-600'}`}
+              className={`px-6 py-3 rounded-lg font-medium transition-colors ${
+                currentUserRole === 'therapist' 
+                  ? 'bg-gray-400 text-gray-200 cursor-not-allowed' 
+                  : 'bg-blue-500 hover:bg-blue-600 text-white'
+              }`}
               disabled={currentUserRole === 'therapist'}
+              title={currentUserRole === 'therapist' ? '치료사 계정은 후기를 작성할 수 없습니다' : ''}
             >
               후기 작성하기
             </button>
