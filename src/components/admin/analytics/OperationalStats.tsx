@@ -1,5 +1,9 @@
 'use client';
 
+import { useState, useEffect } from 'react';
+import { collection, query, where, onSnapshot, Timestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+
 interface RegionStat {
   name: string;
   count: number;
@@ -23,8 +27,8 @@ interface OperationalStatsProps {
 }
 
 export default function OperationalStats({ period }: OperationalStatsProps) {
-  // 실제 데이터 (Firebase에서 가져올 예정)
-  const memberStats = {
+  // 실제 데이터 (Firebase에서 실시간으로 가져오기)
+  const [memberStats, setMemberStats] = useState({
     totalMembers: 0,
     newMembers: {
       parents: 0,
@@ -36,15 +40,229 @@ export default function OperationalStats({ period }: OperationalStatsProps) {
       teachers: 0
     },
     regions: [] as RegionStat[]
-  };
+  });
 
-  const matchingStats = {
+  const [matchingStats, setMatchingStats] = useState({
     totalMatches: 0,
     successRate: 0,
     avgMatchingTime: 0,
     popularTreatments: [] as TreatmentStat[],
     monthlyTrend: [] as MonthlyTrend[]
-  };
+  });
+
+  useEffect(() => {
+    const unsubscribers: (() => void)[] = [];
+
+    // 기간 계산
+    const getPeriodDate = () => {
+      const now = new Date();
+      switch (period) {
+        case '7d':
+          return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        case '30d':
+          return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        case '90d':
+          return new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+        case '1y':
+          return new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+        default:
+          return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      }
+    };
+
+    const periodStart = getPeriodDate();
+
+    // 1. 회원 통계 (실시간)
+    const usersUnsubscribe = onSnapshot(
+      collection(db, 'users'),
+      (snapshot) => {
+        const allUsers = snapshot.docs;
+        const totalCount = allUsers.length;
+        
+        // 신규 가입자 (선택된 기간)
+        const newUsers = allUsers.filter(doc => {
+          const createdAt = doc.data().createdAt?.toDate();
+          return createdAt && createdAt >= periodStart;
+        });
+        
+        const newParents = newUsers.filter(doc => doc.data().userType === 'parent').length;
+        const newTeachers = newUsers.filter(doc => doc.data().userType === 'therapist').length;
+        
+        // 전체 회원 비율
+        const totalParents = allUsers.filter(doc => doc.data().userType === 'parent').length;
+        const totalTeachers = allUsers.filter(doc => doc.data().userType === 'therapist').length;
+        
+        // 지역별 분포
+        const regionMap = new Map<string, number>();
+        allUsers.forEach(doc => {
+          const region = doc.data().region || '미지정';
+          regionMap.set(region, (regionMap.get(region) || 0) + 1);
+        });
+        
+        const regions = Array.from(regionMap.entries())
+          .map(([name, count]) => ({
+            name,
+            count,
+            percentage: Math.round((count / totalCount) * 100)
+          }))
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 5);
+        
+        setMemberStats({
+          totalMembers: totalCount,
+          newMembers: {
+            parents: newParents,
+            teachers: newTeachers,
+            total: newUsers.length
+          },
+          memberRatio: {
+            parents: totalCount > 0 ? Math.round((totalParents / totalCount) * 100) : 0,
+            teachers: totalCount > 0 ? Math.round((totalTeachers / totalCount) * 100) : 0
+          },
+          regions
+        });
+      }
+    );
+    unsubscribers.push(usersUnsubscribe);
+
+    // 2. 매칭 통계 (실시간)
+    const matchingsQuery = query(
+      collection(db, 'matchings'),
+      where('createdAt', '>=', Timestamp.fromDate(periodStart))
+    );
+
+    const matchingsUnsubscribe = onSnapshot(
+      matchingsQuery,
+      (snapshot) => {
+        const allMatchings = snapshot.docs;
+        const totalMatches = allMatchings.length;
+        const successfulMatches = allMatchings.filter(
+          doc => doc.data().status === 'completed'
+        ).length;
+        
+        // 평균 매칭 소요 시간 계산
+        let totalDays = 0;
+        let completedCount = 0;
+        allMatchings.forEach(doc => {
+          const data = doc.data();
+          if (data.status === 'completed' && data.createdAt && data.completedAt) {
+            const created = data.createdAt.toDate();
+            const completed = data.completedAt.toDate();
+            const days = Math.ceil((completed.getTime() - created.getTime()) / (1000 * 60 * 60 * 24));
+            totalDays += days;
+            completedCount++;
+          }
+        });
+        
+        const avgMatchingTime = completedCount > 0 ? Math.round(totalDays / completedCount) : 0;
+        
+        setMatchingStats(prev => ({
+          ...prev,
+          totalMatches,
+          successRate: totalMatches > 0 ? Math.round((successfulMatches / totalMatches) * 100) : 0,
+          avgMatchingTime
+        }));
+      }
+    );
+    unsubscribers.push(matchingsUnsubscribe);
+
+    // 3. 인기 치료 종목 (실시간)
+    const postsQuery = query(
+      collection(db, 'posts'),
+      where('createdAt', '>=', Timestamp.fromDate(periodStart))
+    );
+
+    const postsUnsubscribe = onSnapshot(
+      postsQuery,
+      (snapshot) => {
+        const treatmentMap = new Map<string, number>();
+        snapshot.docs.forEach(doc => {
+          const treatment = doc.data().treatment || '미지정';
+          treatmentMap.set(treatment, (treatmentMap.get(treatment) || 0) + 1);
+        });
+        
+        const total = snapshot.size;
+        const popularTreatments = Array.from(treatmentMap.entries())
+          .map(([name, count]) => ({
+            name,
+            count,
+            percentage: total > 0 ? Math.round((count / total) * 100) : 0
+          }))
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 5);
+        
+        setMatchingStats(prev => ({
+          ...prev,
+          popularTreatments
+        }));
+      }
+    );
+    unsubscribers.push(postsUnsubscribe);
+
+    // 4. 월별 매칭 추이 (최근 6개월)
+    const generateMonthlyTrend = () => {
+      const months = [];
+      const now = new Date();
+      
+      for (let i = 5; i >= 0; i--) {
+        const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        months.push({
+          month: `${monthDate.getMonth() + 1}월`,
+          date: monthDate
+        });
+      }
+      
+      // 각 월별 매칭 데이터 조회
+      months.forEach(({ month, date }) => {
+        const monthStart = new Date(date);
+        const monthEnd = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+        
+        const monthMatchingsQuery = query(
+          collection(db, 'matchings'),
+          where('createdAt', '>=', Timestamp.fromDate(monthStart)),
+          where('createdAt', '<=', Timestamp.fromDate(monthEnd))
+        );
+        
+        const unsubMonth = onSnapshot(
+          monthMatchingsQuery,
+          (snapshot) => {
+            const matches = snapshot.size;
+            const success = snapshot.docs.filter(
+              doc => doc.data().status === 'completed'
+            ).length;
+            
+            setMatchingStats(prev => {
+              const newTrend = [...prev.monthlyTrend];
+              const existingIndex = newTrend.findIndex(t => t.month === month);
+              
+              if (existingIndex >= 0) {
+                newTrend[existingIndex] = { month, matches, success };
+              } else {
+                newTrend.push({ month, matches, success });
+              }
+              
+              return {
+                ...prev,
+                monthlyTrend: newTrend.sort((a, b) => {
+                  const aMonth = parseInt(a.month);
+                  const bMonth = parseInt(b.month);
+                  return aMonth - bMonth;
+                })
+              };
+            });
+          }
+        );
+        unsubscribers.push(unsubMonth);
+      });
+    };
+    
+    generateMonthlyTrend();
+
+    // 클린업
+    return () => {
+      unsubscribers.forEach(unsub => unsub());
+    };
+  }, [period]);
 
   const getPeriodLabel = (period: string) => {
     switch (period) {

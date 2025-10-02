@@ -39,12 +39,12 @@ interface ChatDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   chatRoom: ChatRoom;
-  onChatAction: (chatRoomId: string, action: 'suspend' | 'resume' | 'end', reason?: string) => void;
+  onChatAction: (chatRoomId: string, action: 'suspend' | 'resume' | 'end' | 'complete', reason?: string) => void;
 }
 
 export default function ChatDetailModal({ isOpen, onClose, chatRoom, onChatAction }: ChatDetailModalProps) {
   const [activeTab, setActiveTab] = useState('messages');
-  const [actionType, setActionType] = useState<'suspend' | 'resume' | 'end' | null>(null);
+  const [actionType, setActionType] = useState<'suspend' | 'resume' | 'end' | 'complete' | null>(null);
   const [actionReason, setActionReason] = useState('');
 
   // 실제 데이터 (Firebase에서 가져올 예정)
@@ -59,7 +59,8 @@ export default function ChatDetailModal({ isOpen, onClose, chatRoom, onChatActio
   ];
 
   const handleAction = () => {
-    if (actionType && actionReason.trim()) {
+    // 매칭완료는 조치 사유 없이도 실행 가능
+    if (actionType && (actionType === 'complete' || actionReason.trim())) {
       onChatAction(chatRoom.id, actionType, actionReason);
     }
   };
@@ -298,6 +299,17 @@ export default function ChatDetailModal({ isOpen, onClose, chatRoom, onChatActio
                         />
                         <span className="ml-2 text-sm text-gray-900">채팅방 종료</span>
                       </label>
+                      <label className="flex items-center">
+                        <input
+                          type="radio"
+                          name="action"
+                          value="complete"
+                          checked={actionType === 'complete'}
+                          onChange={(e) => setActionType(e.target.value as 'complete')}
+                          className="w-4 h-4 text-green-600 border-gray-300 focus:ring-green-500"
+                        />
+                        <span className="ml-2 text-sm text-gray-900">✅ 매칭완료 (학부모-치료사 매칭 성공)</span>
+                      </label>
                       {chatRoom.status === 'suspended' && (
                         <label className="flex items-center">
                           <input
@@ -338,10 +350,14 @@ export default function ChatDetailModal({ isOpen, onClose, chatRoom, onChatActio
 
                   <button
                     onClick={handleAction}
-                    disabled={!actionType || !actionReason.trim()}
-                    className="w-full px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={!actionType || (actionType !== 'complete' && !actionReason.trim())}
+                    className={`w-full px-4 py-2 text-white text-sm font-medium rounded-md disabled:opacity-50 disabled:cursor-not-allowed ${
+                      actionType === 'complete' 
+                        ? 'bg-green-600 hover:bg-green-700' 
+                        : 'bg-red-600 hover:bg-red-700'
+                    }`}
                   >
-                    조치 실행
+                    {actionType === 'complete' ? '✅ 매칭완료 처리' : '조치 실행'}
                   </button>
                 </div>
               </div>

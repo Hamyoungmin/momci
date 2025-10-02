@@ -1,6 +1,6 @@
 import { collection, addDoc, setDoc, doc, getDoc, updateDoc, serverTimestamp, query, where, orderBy, onSnapshot, Unsubscribe, Timestamp, FieldValue } from 'firebase/firestore';
 import { db } from './firebase';
-import { handleFirstResponse, deductInterviewToken } from './interviewTokens';
+import { deductInterviewToken } from './interviewTokens';
 import { notifyFirstResponse, notifyNewMessage } from './notifications';
 
 // 채팅 메시지 타입
@@ -60,30 +60,48 @@ export async function createOrGetChatRoom(
     };
 
     console.log('🔥 새 채팅방 생성 중...', chatRoomData);
-    try {
-      // 최초 생성 시도 (필수 필드 모두 포함)
-      await setDoc(chatDocRef, chatRoomData, { merge: false });
-      console.log('✅ 채팅방 생성 완료:', chatDocRef.id);
-      return chatDocRef.id;
-    } catch (e) {
-      // 이미 존재하거나 업데이트 제약으로 실패한 경우: 업데이트 허용 필드만 병합
-      console.warn('ℹ️ 채팅방 생성 실패 → 업데이트로 재시도:', e);
-      await setDoc(
-        chatDocRef,
-        {
-          // participants/createdAt은 업데이트 규칙상 변경 금지 → 제외
-          lastMessage: '',
+    
+    // 기존 채팅방 확인
+    const existingChat = await getDoc(chatDocRef);
+    
+    if (existingChat.exists()) {
+      console.log('ℹ️ 기존 채팅방 발견:', chatDocRef.id);
+      const existingData = existingChat.data();
+      
+      // closed 상태인 경우에만 active로 재활성화 (새 인터뷰 시작)
+      if (existingData.status === 'closed') {
+        console.log('🔄 closed 채팅방을 active로 재활성화');
+        await updateDoc(chatDocRef, {
+          status: 'active',
           lastMessageTime: serverTimestamp(),
-          status: 'active'
-        },
-        { merge: true }
-      );
-      console.log('✅ 기존 채팅방 업데이트/연결 완료:', chatDocRef.id);
+          interviewTokenUsed: false,
+          firstResponseReceived: false,
+          interviewTokenRefunded: false
+        });
+      } else {
+        console.log('✅ 활성 채팅방 연결:', chatDocRef.id);
+      }
       return chatDocRef.id;
     }
     
+    // 새 채팅방 생성
+    try {
+      console.log('📝 setDoc 시도 중...', { chatRoomId: chatDocRef.id, data: chatRoomData });
+      await setDoc(chatDocRef, chatRoomData, { merge: true });
+      console.log('✅ 새 채팅방 생성 완료:', chatDocRef.id);
+      return chatDocRef.id;
+    } catch (e) {
+      console.error('❌ 채팅방 생성 실패 (setDoc 오류):', e);
+      console.error('❌ 오류 상세:', JSON.stringify(e, null, 2));
+      throw e;
+    }
+    
   } catch (error) {
-    console.error('❌ 채팅방 생성/조회 실패:', error);
+    console.error('❌ 채팅방 생성/조회 실패 (전체 오류):', error);
+    if (error instanceof Error) {
+      console.error('❌ 오류 메시지:', error.message);
+      console.error('❌ 오류 스택:', error.stack);
+    }
     throw new Error('채팅방을 생성할 수 없습니다.');
   }
 }
@@ -129,7 +147,7 @@ export async function sendMessage(
     // 2. messages 서브컬렉션에 메시지 추가
     await addDoc(collection(db, 'chats', chatRoomId, 'messages'), messageData);
 
-    // 3-A. 치료사의 첫 응답인 경우 (이미 학부모 쪽에서 차감되었을 수 있으므로 중복 방지)
+    // 3-A. 치료사의 첫 응답인 경우 (firstResponseReceived 플래그만 업데이트)
     if (senderType === 'therapist') {
       console.log('👨‍⚕️ 치료사 메시지 감지 - 첫 응답 확인 중...');
       
@@ -137,41 +155,35 @@ export async function sendMessage(
       const chatRoomDoc = await getDoc(doc(db, 'chats', chatRoomId));
       if (chatRoomDoc.exists()) {
         const chatData = chatRoomDoc.data() as ChatRoomInfo;
-        // 이미 학부모 첫 메시지로 인터뷰권이 사용되었으면 스킵
-        if (!chatData.interviewTokenUsed) {
-          // 첫 응답 처리 (인터뷰권 차감 포함)
-          const result = await handleFirstResponse(
-            chatRoomId,
-            senderId,
-            chatData.parentId
-          );
+        // 첫 응답이 아직 기록되지 않았으면 기록
+        if (!chatData.firstResponseReceived) {
+          await updateDoc(doc(db, 'chats', chatRoomId), {
+            firstResponseReceived: true,
+            firstResponseAt: serverTimestamp()
+          });
+          console.log('✅ 치료사 첫 응답 기록 완료');
           
-          if (result.tokenDeducted) {
-            console.log('💳 인터뷰권 차감 완료 - 치료사 첫 응답');
-            
-            // 🔔 첫 응답 알림 발송 (학부모에게)
-            try {
-              await notifyFirstResponse(
-                chatData.parentName,
-                senderName,
-                chatRoomId,
-                message.trim()
-              );
-            } catch (notifyError) {
-              console.error('❌ 첫 응답 알림 발송 실패:', notifyError);
-            }
-          } else if (!result.success) {
-            console.error('❌ 첫 응답 처리 실패');
+          // 🔔 첫 응답 알림 발송 (학부모에게)
+          try {
+            await notifyFirstResponse(
+              chatData.parentName,
+              senderName,
+              chatRoomId,
+              message.trim()
+            );
+          } catch (notifyError) {
+            console.error('❌ 첫 응답 알림 발송 실패:', notifyError);
           }
         }
       }
     } else if (senderType === 'parent') {
-      // 3-B. 학부모의 첫 메시지인 경우: 항상 인터뷰권(토큰) 차감
+      // 3-B. 학부모의 첫 메시지인 경우 (백업 차감 로직 - 이미 채팅 시작 시 차감되었어야 함)
       const chatRoomDoc = await getDoc(doc(db, 'chats', chatRoomId));
       if (chatRoomDoc.exists()) {
         const chatData = chatRoomDoc.data() as ChatRoomInfo;
-        // 인터뷰권이 아직 사용되지 않았다면 학부모 쪽에서 차감
+        // 인터뷰권이 아직 사용되지 않았다면 학부모 쪽에서 차감 (방어적 백업)
         if (!chatData.interviewTokenUsed) {
+          console.warn('⚠️ 경고: 채팅 시작 시 차감되지 않음. 백업 차감 실행');
           try {
             const deducted = await deductInterviewToken(
               chatData.parentId,
@@ -186,7 +198,7 @@ export async function sendMessage(
                 firstMessageByParentAt: serverTimestamp(),
                 interviewAccessBy: 'token'
               });
-              console.log('💳 인터뷰권 차감 완료 - 학부모 첫 메시지');
+              console.log('💳 인터뷰권 차감 완료 - 학부모 첫 메시지 (백업)');
             } else {
               console.warn('⚠️ 인터뷰권 차감 실패 또는 잔액 부족');
             }

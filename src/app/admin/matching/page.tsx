@@ -210,6 +210,30 @@ export default function AdminMatchingPage() {
           updatedAt: serverTimestamp()
         });
       }
+      
+      // 해당 학부모의 게시글 상태도 'completed'로 업데이트
+      const postsQuery = query(
+        collection(db, 'posts'),
+        where('authorId', '==', selectedChat.parentId),
+        where('status', 'in', ['matching', 'meeting'])
+      );
+      const postsSnap = await getDocs(postsQuery);
+      
+      for (const postDoc of postsSnap.docs) {
+        await updateDoc(doc(db, 'posts', postDoc.id), {
+          status: 'completed',
+          completedAt: serverTimestamp()
+        });
+        console.log('✅ 게시글 상태 → 매칭완료 (postId:', postDoc.id, ')');
+      }
+      
+      // 채팅방은 active 유지하되 매칭완료 표시만 추가
+      await updateDoc(doc(db, 'chats', selectedChat.id), {
+        matchingCompleted: true,
+        matchingCompletedAt: serverTimestamp()
+      });
+      console.log('✅ 채팅방에 매칭완료 표시 추가 (chatId:', selectedChat.id, ')');
+      
       const key = `${selectedChat.parentId}_${selectedChat.therapistId}`;
       await setDoc(doc(db, 'successful-matches', key), {
         postId: matchingId,
@@ -234,6 +258,40 @@ export default function AdminMatchingPage() {
         status: 'completed',
         updatedAt: serverTimestamp()
       });
+      
+      // 해당 학부모의 게시글 상태도 'completed'로 업데이트
+      const postsQuery = query(
+        collection(db, 'posts'),
+        where('authorId', '==', m.parentId),
+        where('status', 'in', ['matching', 'meeting'])
+      );
+      const postsSnap = await getDocs(postsQuery);
+      
+      for (const postDoc of postsSnap.docs) {
+        await updateDoc(doc(db, 'posts', postDoc.id), {
+          status: 'completed',
+          completedAt: serverTimestamp()
+        });
+        console.log('✅ 게시글 상태 → 매칭완료 (postId:', postDoc.id, ')');
+      }
+      
+      // 해당 학부모와 치료사의 채팅방은 active 유지하되 매칭완료 표시만 추가
+      const chatsQuery = query(
+        collection(db, 'chats'),
+        where('parentId', '==', m.parentId),
+        where('therapistId', '==', m.therapistId),
+        where('status', '==', 'active')
+      );
+      const chatsSnap = await getDocs(chatsQuery);
+      
+      for (const chatDoc of chatsSnap.docs) {
+        await updateDoc(doc(db, 'chats', chatDoc.id), {
+          matchingCompleted: true,
+          matchingCompletedAt: serverTimestamp()
+        });
+        console.log('✅ 채팅방에 매칭완료 표시 추가 (chatId:', chatDoc.id, ')');
+      }
+      
       // 성공 매칭 기록 업서트
       const key = `${m.parentId}_${m.therapistId}`;
       await setDoc(doc(db, 'successful-matches', key), {

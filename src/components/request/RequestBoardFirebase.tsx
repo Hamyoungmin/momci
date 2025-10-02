@@ -288,6 +288,9 @@ export default function RequestBoardFirebase() {
   // 활성 게시글(매칭중/인터뷰중) 존재 여부
   const [hasActivePost, setHasActivePost] = useState(false);
 
+  // 게시글 작성자별 활성 채팅방 수 (실시간 추적)
+  const [activeChatsCount, setActiveChatsCount] = useState<Map<string, number>>(new Map());
+
   // 알림 시스템 초기화
   useEffect(() => {
     const initNotifications = async () => {
@@ -339,6 +342,45 @@ export default function RequestBoardFirebase() {
     return () => unsub();
   }, [currentUser]);
 
+  // 현재 페이지 게시글 작성자들의 활성 채팅방 수 실시간 추적
+  useEffect(() => {
+    if (!postsData.length) return;
+
+    const unsubscribes: (() => void)[] = [];
+    const newActiveChatsCount = new Map<string, number>();
+
+    // 현재 페이지에 표시되는 게시글의 작성자들 추출
+    const indexOfLastPost = currentPage * postsPerPage;
+    const indexOfFirstPost = indexOfLastPost - postsPerPage;
+    const currentPosts = postsData.slice(indexOfFirstPost, indexOfLastPost);
+    const authorIds = new Set(currentPosts.map(post => post.authorId));
+
+    // 각 작성자별로 활성 채팅방 수를 실시간 추적 (매칭완료 제외)
+    authorIds.forEach(authorId => {
+      const q = query(
+        collection(db, 'chats'),
+        where('parentId', '==', authorId),
+        where('status', '==', 'active')
+      );
+
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        // matchingCompleted가 false인 채팅방만 카운트 (인터뷰중)
+        const activeInterviewChats = snapshot.docs.filter(doc => {
+          const data = doc.data();
+          return data.matchingCompleted !== true;
+        }).length;
+        
+        newActiveChatsCount.set(authorId, activeInterviewChats);
+        setActiveChatsCount(new Map(newActiveChatsCount));
+      });
+
+      unsubscribes.push(unsubscribe);
+    });
+
+    return () => {
+      unsubscribes.forEach(unsub => unsub());
+    };
+  }, [postsData, currentPage, postsPerPage]);
 
   // Firebase에서 게시글 데이터 실시간으로 가져오기 (최신순으로 정렬)
   useEffect(() => {
@@ -490,6 +532,8 @@ export default function RequestBoardFirebase() {
     console.log('🔍 실시간 지원자 정보 리스너 설정 - 게시글 ID:', postId);
     
     try {
+      const unsubscribes: Array<() => void> = [];
+      
       // applications 컬렉션에서 해당 게시글의 지원자들 실시간 감지
       const applicationsQuery = query(
         collection(db, 'applications'), 
@@ -503,14 +547,26 @@ export default function RequestBoardFirebase() {
         console.log('📊 감지된 지원서 수:', snapshot.size);
         console.log('📊 빈 결과인가?', snapshot.empty);
         
-        const applicationsList: TherapistApplication[] = [];
+        // 기존 users 리스너들을 모두 해제
+        unsubscribes.forEach(unsub => unsub());
+        unsubscribes.length = 0;
         
-        // 각 지원자의 프로필 정보 가져오기
+        // 지원자가 없으면 빈 배열로 초기화
+        if (snapshot.empty) {
+          setApplications([]);
+          setLoadingApplications(false);
+          return;
+        }
+        
+        // 1단계: 먼저 모든 지원자의 초기 데이터를 로드
+        const initialApplications: TherapistApplication[] = [];
+        
         for (const applicationDoc of snapshot.docs) {
           const applicationData = applicationDoc.data();
+          const applicantId = applicationData.applicantId;
           
-          // 치료사 프로필 정보 가져오기
-          const therapistDoc = await getDoc(doc(db, 'users', applicationData.applicantId));
+          // 치료사 프로필 정보 가져오기 (초기 로드)
+          const therapistDoc = await getDoc(doc(db, 'users', applicantId));
           let therapistProfile = null;
           if (therapistDoc.exists()) {
             therapistProfile = therapistDoc.data();
@@ -522,14 +578,13 @@ export default function RequestBoardFirebase() {
             const regSnap = await getDocs(
               query(
                 collection(db, 'therapist-registrations'),
-                where('userId', '==', applicationData.applicantId),
+                where('userId', '==', applicantId),
                 orderBy('createdAt', 'desc'),
                 limit(1)
               )
             );
             if (!regSnap.empty) {
               const regData = regSnap.docs[0].data();
-              // profilePhoto 필드를 우선적으로 사용
               profilePhoto = regData?.profilePhoto || profilePhoto;
             }
           } catch (e) {
@@ -544,7 +599,7 @@ export default function RequestBoardFirebase() {
             message: applicationData.message,
             status: applicationData.status,
             createdAt: applicationData.createdAt,
-            // 치료사 프로필 정보 (기본값 포함)
+            // 치료사 프로필 정보
             therapistName: therapistProfile?.name || '익명',
             therapistSpecialty: therapistProfile?.specialty || '언어재활사',
             therapistExperience: therapistProfile?.experience || 0,
@@ -560,12 +615,98 @@ export default function RequestBoardFirebase() {
             isVerified: therapistProfile?.isVerified || false,
           };
           
-          applicationsList.push(application);
+          initialApplications.push(application);
         }
         
-        console.log('✅ 실시간 지원자 정보 업데이트:', applicationsList);
-        setApplications(applicationsList);
+        // 초기 데이터 설정
+        setApplications(initialApplications);
         setLoadingApplications(false);
+        console.log('✅ 초기 지원자 정보 로드 완료:', initialApplications);
+        
+        // 2단계: 각 지원자의 프로필 정보를 실시간으로 구독
+        for (const applicationDoc of snapshot.docs) {
+          const applicationData = applicationDoc.data();
+          const applicantId = applicationData.applicantId;
+          
+          // 치료사 users 문서를 실시간으로 구독
+          const userUnsubscribe = onSnapshot(doc(db, 'users', applicantId), async (therapistDoc) => {
+            console.log('🔄 치료사 프로필 업데이트 감지:', applicantId);
+            
+            let therapistProfile = null;
+            if (therapistDoc.exists()) {
+              therapistProfile = therapistDoc.data();
+            }
+            
+            // 치료사 신청서에서 프로필 사진 가져오기
+            let profilePhoto = therapistProfile?.profileImage;
+            try {
+              const regSnap = await getDocs(
+                query(
+                  collection(db, 'therapist-registrations'),
+                  where('userId', '==', applicantId),
+                  orderBy('createdAt', 'desc'),
+                  limit(1)
+                )
+              );
+              if (!regSnap.empty) {
+                const regData = regSnap.docs[0].data();
+                profilePhoto = regData?.profilePhoto || profilePhoto;
+              }
+            } catch (e) {
+              console.warn('프로필 사진 조회 실패(무시 가능):', e);
+            }
+            
+            const application: TherapistApplication = {
+              id: applicationDoc.id,
+              postId: applicationData.postId,
+              applicantId: applicationData.applicantId,
+              postAuthorId: applicationData.postAuthorId,
+              message: applicationData.message,
+              status: applicationData.status,
+              createdAt: applicationData.createdAt,
+              // 치료사 프로필 정보 (실시간 업데이트됨!)
+              therapistName: therapistProfile?.name || '익명',
+              therapistSpecialty: therapistProfile?.specialty || '언어재활사',
+              therapistExperience: therapistProfile?.experience || 0,
+              therapistRating: therapistProfile?.rating || 0,
+              therapistReviewCount: therapistProfile?.reviewCount || 0,
+              therapistProfileImage: profilePhoto,
+              therapistCertifications: therapistProfile?.certifications || [],
+              therapistSpecialtyTags: therapistProfile?.specialtyTags || [],
+              // 인증 상태
+              hasIdVerification: therapistProfile?.hasIdVerification || false,
+              hasCertification: therapistProfile?.hasCertification || false,
+              hasExperienceProof: therapistProfile?.hasExperienceProof || false,
+              isVerified: therapistProfile?.isVerified || false,
+            };
+            
+            console.log('✅ 업데이트된 지원자 정보:', {
+              applicantId,
+              rating: application.therapistRating,
+              reviewCount: application.therapistReviewCount,
+              experience: application.therapistExperience
+            });
+            
+            // 기존 목록에서 같은 applicantId를 찾아 업데이트
+            setApplications(prev => {
+              const filtered = prev.filter(app => app.applicantId !== applicantId);
+              const updated = [...filtered, application];
+              // 생성일 기준 정렬 (최신순)
+              updated.sort((a, b) => {
+                const timeA = typeof a.createdAt === 'object' && 'toDate' in a.createdAt 
+                  ? a.createdAt.toDate().getTime() 
+                  : new Date(a.createdAt).getTime();
+                const timeB = typeof b.createdAt === 'object' && 'toDate' in b.createdAt 
+                  ? b.createdAt.toDate().getTime() 
+                  : new Date(b.createdAt).getTime();
+                return timeB - timeA;
+              });
+              return updated;
+            });
+          });
+          
+          unsubscribes.push(userUnsubscribe);
+        }
       }, (error) => {
         console.error('❌ 실시간 지원자 정보 리스너 오류:', error);
         
@@ -587,7 +728,12 @@ export default function RequestBoardFirebase() {
         setLoadingApplications(false);
       });
       
-      return unsubscribe;
+      unsubscribes.push(unsubscribe);
+      
+      // cleanup: 모든 리스너 해제
+      return () => {
+        unsubscribes.forEach(unsub => unsub());
+      };
       
     } catch (error) {
       console.error('❌ 지원자 정보 리스너 설정 오류:', error);
@@ -778,13 +924,7 @@ export default function RequestBoardFirebase() {
       return;
     }
 
-    // 학부모가 자신의 게시글에서 치료사에게 문의/지원 시도 차단
-    if (userData.userType === 'parent' && selectedProfile && selectedProfile.authorId === currentUser.uid) {
-      alert('본인이 작성한 게시글에서는 치료사에게 지원/문의가 불가합니다. 치료사 지원을 기다려 주세요.');
-      setShowParentChatConfirmModal(false);
-      setCurrentTherapistId(null);
-      return;
-    }
+    // 제한 제거: 학부모가 자신의 게시글에 지원한 치료사와 채팅 가능
 
     // 구독 활성 여부 우선 확인 → 활성 구독이면 토큰 없이 통과
     let hasActiveSubscription = false;
@@ -826,6 +966,131 @@ export default function RequestBoardFirebase() {
       );
 
       console.log('✅ 채팅방 생성 완료:', chatRoomId);
+
+      // 💳 채팅 시작과 동시에 인터뷰권 차감
+      console.log('🔔 인터뷰권 차감 API 호출 시작:', { chatRoomId, parentId: currentUser.uid, therapistId: currentTherapistId });
+      
+      const deductResp = await fetch('/api/interview-tokens/deduct', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          chatRoomId, 
+          parentId: currentUser.uid, 
+          therapistId: currentTherapistId 
+        })
+      });
+
+      console.log('🔔 인터뷰권 차감 API 응답 상태:', deductResp.status, deductResp.ok);
+
+      if (!deductResp.ok) {
+        const errorText = await deductResp.text();
+        console.error('❌ 인터뷰권 차감 실패 응답:', errorText);
+        try {
+          const errorData = JSON.parse(errorText);
+          if (errorData.error === 'NO_TOKENS') {
+            alert('인터뷰권이 부족합니다. 인터뷰권을 구매해주세요.');
+          } else {
+            alert(`인터뷰권 차감에 실패했습니다: ${errorData.error || '알 수 없는 오류'}`);
+          }
+        } catch {
+          alert(`인터뷰권 차감에 실패했습니다: ${errorText}`);
+        }
+        return;
+      }
+
+      const deductData = await deductResp.json();
+      console.log('🔔 인터뷰권 차감 API 응답 데이터:', deductData);
+      
+      if (deductData.alreadyUsed) {
+        console.log('ℹ️ 이미 차감된 채팅방 (재연결)');
+        alert('이미 인터뷰권이 차감된 채팅방입니다.');
+      } else {
+        console.log('✅ 인터뷰권 차감 완료');
+        alert('인터뷰권 1개가 차감되었습니다.');
+      }
+
+      // 학부모의 활성 게시글을 "인터뷰중" 상태로 변경
+      console.log('🔍 게시글 상태 변경 시작 - userType:', userData?.userType);
+      if (userData?.userType === 'parent') {
+        try {
+          console.log('🔍 매칭중인 게시글 검색 중...');
+          const postsQuery = query(
+            collection(db, 'posts'),
+            where('authorId', '==', currentUser.uid),
+            where('status', '==', 'matching'),
+            limit(1)
+          );
+          const postsSnap = await getDocs(postsQuery);
+          
+          console.log('🔍 검색 결과:', {
+            empty: postsSnap.empty,
+            size: postsSnap.size,
+            docs: postsSnap.docs.map(d => ({ id: d.id, status: d.data().status }))
+          });
+          
+          if (!postsSnap.empty) {
+            const postDoc = postsSnap.docs[0];
+            console.log('📝 게시글 상태 업데이트 시도 - postId:', postDoc.id);
+            await updateDoc(doc(db, 'posts', postDoc.id), {
+              status: 'meeting',
+              teacherUserId: currentTherapistId,
+              teacherName: therapistName,
+              interviewStartedAt: serverTimestamp()
+            });
+            console.log('✅ 게시글 상태 → 인터뷰중 (postId:', postDoc.id, ')');
+            
+            // matchings 컬렉션도 업데이트 (관리자 페이지 연동)
+            const matchingsRef = collection(db, 'matchings');
+            const matchingsSnap = await getDocs(
+              query(matchingsRef, where('parentId', '==', currentUser.uid))
+            );
+            
+            let matchingFound = false;
+            for (const matchDoc of matchingsSnap.docs) {
+              const matchData = matchDoc.data();
+              if (matchData.therapistId === currentTherapistId) {
+                await updateDoc(doc(db, 'matchings', matchDoc.id), {
+                  status: 'meeting',
+                  updatedAt: serverTimestamp()
+                });
+                matchingFound = true;
+                console.log('✅ matchings → meeting');
+                break;
+              }
+            }
+            
+            if (!matchingFound) {
+              const { addDoc } = await import('firebase/firestore');
+              await addDoc(matchingsRef, {
+                parentId: currentUser.uid,
+                therapistId: currentTherapistId,
+                status: 'meeting',
+                createdAt: serverTimestamp()
+              });
+              console.log('✅ matchings 새로 생성 → meeting');
+            }
+          } else {
+            console.warn('⚠️ 매칭중인 게시글이 없습니다.');
+          }
+        } catch (error) {
+          console.error('❌ 게시글 상태 변경 실패:', error);
+        }
+      } else {
+        console.log('⚠️ 학부모가 아니므로 게시글 상태 변경 건너뜀');
+      }
+
+      // localStorage에서 숨긴 채팅방 목록에서 제거 (새로 시작하는 경우)
+      if (typeof window !== 'undefined') {
+        const hiddenKey = `hiddenChats_${currentUser.uid}`;
+        const hidden = JSON.parse(localStorage.getItem(hiddenKey) || '[]') as string[];
+        const filtered = hidden.filter((id: string) => id !== chatRoomId);
+        localStorage.setItem(hiddenKey, JSON.stringify(filtered));
+        
+        // 채팅 목록 업데이트 이벤트 발생
+        window.dispatchEvent(new CustomEvent('chatListUpdate', { 
+          detail: { userId: currentUser.uid } 
+        }));
+      }
       
       // 위젯의 채팅 목록 닫기 (중복 방지)
       if (typeof window !== 'undefined' && (window as { closeChatList?: () => void }).closeChatList) {
@@ -844,10 +1109,13 @@ export default function RequestBoardFirebase() {
         console.error('❌ 채팅 요청 알림 발송 실패:', notifyError);
       }
       
-      // TODO: 실제 채팅 컴포넌트 열기
+      // 채팅 시작 알림
       alert(`${therapistName} 치료사와의 1:1 채팅이 시작됩니다!\n치료사가 응답하면 알림을 받으실 수 있습니다.`);
       
-      // 채팅 시작 완료 (인터뷰권 정보는 내부적으로 관리)
+      // 채팅창 열기 (window.openChatById 사용)
+      if (typeof window !== 'undefined' && (window as { openChatById?: (id: string) => void }).openChatById) {
+        (window as { openChatById?: (id: string) => void }).openChatById?.(chatRoomId);
+      }
 
     } catch (error) {
       console.error('❌ 채팅 시작 실패:', error);
@@ -1766,36 +2034,32 @@ export default function RequestBoardFirebase() {
                           <div className="col-span-1 text-center">
                             {(() => {
                               const status = post.status || 'matching';
+                              
+                              // 실시간 활성 채팅방 수를 기반으로 상태 결정
+                              const activeChats = activeChatsCount.get(post.authorId) || 0;
                               let statusInfo;
                               
-                              switch(status) {
-                                case 'matching':
-                                  statusInfo = {
-                                    text: '매칭중',
-                                    bgColor: 'bg-orange-100',
-                                    textColor: 'text-orange-700'
-                                  };
-                                  break;
-                                case 'meeting':
-                                  statusInfo = {
-                                    text: '인터뷰중',
-                                    bgColor: 'bg-yellow-100', 
-                                    textColor: 'text-yellow-700'
-                                  };
-                                  break;
-                                case 'completed':
-                                  statusInfo = {
-                                    text: '매칭완료',
-                                    bgColor: 'bg-green-100',
-                                    textColor: 'text-green-700'
-                                  };
-                                  break;
-                                default:
-                                  statusInfo = {
-                                    text: '매칭중',
-                                    bgColor: 'bg-orange-100',
-                                    textColor: 'text-orange-700'
-                                  };
+                              if (status === 'completed') {
+                                // 매칭완료 상태는 그대로 유지
+                                statusInfo = {
+                                  text: '매칭완료',
+                                  bgColor: 'bg-green-100',
+                                  textColor: 'text-green-700'
+                                };
+                              } else if (activeChats > 0) {
+                                // 활성 채팅방이 있으면 인터뷰중
+                                statusInfo = {
+                                  text: '인터뷰중',
+                                  bgColor: 'bg-yellow-100', 
+                                  textColor: 'text-yellow-700'
+                                };
+                              } else {
+                                // 활성 채팅방이 없으면 매칭중
+                                statusInfo = {
+                                  text: '매칭중',
+                                  bgColor: 'bg-orange-100',
+                                  textColor: 'text-orange-700'
+                                };
                               }
                               
                               return (

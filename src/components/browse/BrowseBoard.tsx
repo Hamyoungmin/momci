@@ -1061,6 +1061,131 @@ export default function BrowseBoard() {
         therapistName
       );
 
+      // 💳 채팅 시작과 동시에 인터뷰권 차감
+      console.log('🔔 인터뷰권 차감 API 호출 시작:', { roomId, parentId: currentUser.uid, therapistId });
+      
+      const deductResp = await fetch('/api/interview-tokens/deduct', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          chatRoomId: roomId, 
+          parentId: currentUser.uid, 
+          therapistId 
+        })
+      });
+
+      console.log('🔔 인터뷰권 차감 API 응답 상태:', deductResp.status, deductResp.ok);
+
+      if (!deductResp.ok) {
+        const errorText = await deductResp.text();
+        console.error('❌ 인터뷰권 차감 실패 응답:', errorText);
+        try {
+          const errorData = JSON.parse(errorText);
+          if (errorData.error === 'NO_TOKENS') {
+            alert('인터뷰권이 부족합니다. 인터뷰권을 구매해주세요.');
+          } else {
+            alert(`인터뷰권 차감에 실패했습니다: ${errorData.error || '알 수 없는 오류'}`);
+          }
+        } catch {
+          alert(`인터뷰권 차감에 실패했습니다: ${errorText}`);
+        }
+        return;
+      }
+
+      const deductData = await deductResp.json();
+      console.log('🔔 인터뷰권 차감 API 응답 데이터:', deductData);
+      
+      if (deductData.alreadyUsed) {
+        console.log('ℹ️ 이미 차감된 채팅방 (재연결)');
+        alert('이미 인터뷰권이 차감된 채팅방입니다.');
+      } else {
+        console.log('✅ 인터뷰권 차감 완료');
+        alert('인터뷰권 1개가 차감되었습니다.');
+      }
+
+      // 학부모의 활성 게시글을 "인터뷰중" 상태로 변경
+      console.log('🔍 게시글 상태 변경 시작 - userType:', userData?.userType);
+      if (userData?.userType === 'parent') {
+        try {
+          console.log('🔍 매칭중인 게시글 검색 중...');
+          const postsQuery = query(
+            collection(db, 'posts'),
+            where('authorId', '==', currentUser.uid),
+            where('status', '==', 'matching'),
+            limit(1)
+          );
+          const postsSnap = await getDocs(postsQuery);
+          
+          console.log('🔍 검색 결과:', {
+            empty: postsSnap.empty,
+            size: postsSnap.size,
+            docs: postsSnap.docs.map(d => ({ id: d.id, status: d.data().status }))
+          });
+          
+          if (!postsSnap.empty) {
+            const postDoc = postsSnap.docs[0];
+            console.log('📝 게시글 상태 업데이트 시도 - postId:', postDoc.id);
+            await updateDoc(doc(db, 'posts', postDoc.id), {
+              status: 'meeting',
+              teacherUserId: therapistId,
+              teacherName: therapistName,
+              interviewStartedAt: serverTimestamp()
+            });
+            console.log('✅ 게시글 상태 → 인터뷰중 (postId:', postDoc.id, ')');
+            
+            // matchings 컬렉션도 업데이트 (관리자 페이지 연동)
+            const matchingsRef = collection(db, 'matchings');
+            const matchingsSnap = await getDocs(
+              query(matchingsRef, where('parentId', '==', currentUser.uid))
+            );
+            
+            let matchingFound = false;
+            for (const matchDoc of matchingsSnap.docs) {
+              const matchData = matchDoc.data();
+              if (matchData.therapistId === therapistId) {
+                await updateDoc(doc(db, 'matchings', matchDoc.id), {
+                  status: 'meeting',
+                  updatedAt: serverTimestamp()
+                });
+                matchingFound = true;
+                console.log('✅ matchings → meeting');
+                break;
+              }
+            }
+            
+            if (!matchingFound) {
+              const { addDoc } = await import('firebase/firestore');
+              await addDoc(matchingsRef, {
+                parentId: currentUser.uid,
+                therapistId: therapistId,
+                status: 'meeting',
+                createdAt: serverTimestamp()
+              });
+              console.log('✅ matchings 새로 생성 → meeting');
+            }
+          } else {
+            console.warn('⚠️ 매칭중인 게시글이 없습니다.');
+          }
+        } catch (error) {
+          console.error('❌ 게시글 상태 변경 실패:', error);
+        }
+      } else {
+        console.log('⚠️ 학부모가 아니므로 게시글 상태 변경 건너뜀');
+      }
+
+      // localStorage에서 숨긴 채팅방 목록에서 제거 (새로 시작하는 경우)
+      if (typeof window !== 'undefined') {
+        const hiddenKey = `hiddenChats_${currentUser.uid}`;
+        const hidden = JSON.parse(localStorage.getItem(hiddenKey) || '[]') as string[];
+        const filtered = hidden.filter((id: string) => id !== roomId);
+        localStorage.setItem(hiddenKey, JSON.stringify(filtered));
+        
+        // 채팅 목록 업데이트 이벤트 발생
+        window.dispatchEvent(new CustomEvent('chatListUpdate', { 
+          detail: { userId: currentUser.uid } 
+        }));
+      }
+
       // 채팅 상태 설정
       setChatRoomId(roomId);
       setChatOtherUserId(therapistId);
@@ -1077,6 +1202,9 @@ export default function BrowseBoard() {
       if (typeof window !== 'undefined' && (window as { closeChatList?: () => void }).closeChatList) {
         (window as { closeChatList?: () => void }).closeChatList?.();
       }
+      
+      // 채팅 시작 알림
+      alert(`${therapistName} 치료사와의 1:1 채팅이 시작됩니다!\n치료사가 응답하면 알림을 받으실 수 있습니다.`);
       
       setTimeout(() => {
         setShowChat(true);

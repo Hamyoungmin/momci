@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { collection, query, orderBy, onSnapshot, Timestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import InquiryStatusCards from './InquiryStatusCards';
 import InquiryTable from './InquiryTable';
 import InquiryDetailModal from './InquiryDetailModal';
@@ -40,14 +42,78 @@ export default function InquiryManagement() {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
   
-  // Firebase에서 실제 데이터 가져오기
-  const [inquiries] = useState<Inquiry[]>([]);
-  // const [loading, setLoading] = useState(true);
+  // Firebase에서 실시간 데이터 가져오기
+  const [inquiries, setInquiries] = useState<Inquiry[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // TODO: Firebase에서 실제 문의 데이터 가져오기
-    // setInquiries(inquiriesData);
-    // setLoading(false);
+    // Firebase에서 실시간으로 문의 데이터 가져오기
+    const inquiriesRef = collection(db, 'inquiries');
+    const q = query(inquiriesRef, orderBy('createdAt', 'desc'));
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const inquiriesData: Inquiry[] = [];
+        
+        snapshot.forEach((doc) => {
+          const data = doc.data();
+          
+          // Timestamp를 문자열로 변환
+          const createdAt = data.createdAt instanceof Timestamp 
+            ? data.createdAt.toDate().toISOString() 
+            : data.createdAt;
+          
+          const updatedAt = data.updatedAt instanceof Timestamp 
+            ? data.updatedAt.toDate().toISOString() 
+            : data.updatedAt || createdAt;
+          
+          const answeredAt = data.answeredAt instanceof Timestamp 
+            ? data.answeredAt.toDate().toISOString() 
+            : data.answeredAt;
+
+          // 답변까지 걸린 시간 계산 (시간 단위)
+          let responseTime: number | undefined;
+          if (answeredAt && createdAt) {
+            const created = new Date(createdAt).getTime();
+            const answered = new Date(answeredAt).getTime();
+            responseTime = Math.round((answered - created) / (1000 * 60 * 60));
+          }
+          
+          inquiriesData.push({
+            id: doc.id,
+            userId: data.userId || '',
+            userName: data.userName || '알 수 없음',
+            userType: data.userType || 'parent',
+            userEmail: data.userEmail || '',
+            category: data.category || 'other',
+            title: data.title || '',
+            content: data.content || '',
+            status: data.status || 'pending',
+            priority: data.priority || 'medium',
+            createdAt,
+            updatedAt,
+            assignedTo: data.assignedTo,
+            answer: data.answer,
+            answeredBy: data.answeredBy,
+            answeredAt,
+            attachments: data.attachments || [],
+            tags: data.tags || [],
+            responseTime,
+          });
+        });
+        
+        setInquiries(inquiriesData);
+        setLoading(false);
+      },
+      (error) => {
+        console.error('문의 데이터 가져오기 오류:', error);
+        setLoading(false);
+      }
+    );
+
+    // 컴포넌트 언마운트 시 구독 해제
+    return () => unsubscribe();
   }, []);
 
   const handleInquirySelect = (inquiry: Inquiry) => {
@@ -83,6 +149,18 @@ export default function InquiryManagement() {
 
   const pendingInquiries = inquiries.filter(i => i.status === 'pending');
   const urgentInquiries = inquiries.filter(i => i.priority === 'urgent');
+
+  // 로딩 중 표시
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">문의 데이터를 불러오는 중...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">

@@ -544,19 +544,35 @@ function QuickEditModal({ data, onClose, onSave, isEditing }: { data: any; onClo
   );
 }
 
-// 비디오 플레이어 컴포넌트 (모든 비디오 포맷 지원)
+// 비디오 플레이어 컴포넌트 (Storage 영상 재생)
 function VideoPlayer({ url, index }: { url: string; index: number }) {
   const [hasError, setHasError] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [videoInfo, setVideoInfo] = useState<string>('');
+
+  const handleLoadedMetadata = (e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
+    const video = e.currentTarget;
+    console.log('=== 비디오 정보 ===');
+    console.log('URL:', url);
+    console.log('비디오 너비:', video.videoWidth);
+    console.log('비디오 높이:', video.videoHeight);
+    console.log('재생 시간:', video.duration);
+    
+    if (video.videoWidth === 0 || video.videoHeight === 0) {
+      setVideoInfo('⚠️ 비디오 화면이 없습니다 (오디오만 포함)');
+      console.warn('비디오에 화면이 없습니다. 코덱 문제일 수 있습니다.');
+    } else {
+      setVideoInfo(`✅ ${video.videoWidth}x${video.videoHeight}`);
+    }
+  };
 
   const handleError = (e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
     const video = e.currentTarget;
     const error = video.error;
     
-    console.error('=== 비디오 재생 오류 상세 정보 ===');
-    console.error('비디오 URL:', url);
-    console.error('에러 코드:', error?.code);
-    console.error('에러 메시지:', error?.message);
+    console.error('=== 비디오 재생 오류 ===');
+    console.error('URL:', url);
+    console.error('에러 코드:', error?.code, '에러 메시지:', error?.message);
     
     let msg = '영상을 재생할 수 없습니다. ';
     
@@ -569,10 +585,10 @@ function VideoPlayer({ url, index }: { url: string; index: number }) {
           msg += '네트워크 오류가 발생했습니다.';
           break;
         case 3: // MEDIA_ERR_DECODE
-          msg += '비디오 디코딩에 실패했습니다. 파일이 손상되었거나 지원되지 않는 코덱입니다.';
+          msg += '비디오 코덱이 지원되지 않습니다. (H.265/HEVC는 대부분의 브라우저에서 재생 불가)';
           break;
         case 4: // MEDIA_ERR_SRC_NOT_SUPPORTED
-          msg += '비디오 형식이 지원되지 않습니다. MP4(H.264) 형식으로 변환해주세요.';
+          msg += '이 브라우저에서 지원하지 않는 비디오 형식입니다.';
           break;
         default:
           msg += '알 수 없는 오류가 발생했습니다.';
@@ -583,29 +599,33 @@ function VideoPlayer({ url, index }: { url: string; index: number }) {
     setErrorMessage(msg);
   };
 
-  const handleCanPlay = () => {
-    console.log('✅ 비디오 재생 가능:', url);
-    setHasError(false);
-  };
-
   return (
     <div className="bg-gray-100 rounded-lg overflow-hidden">
+      {videoInfo && (
+        <div className="bg-blue-50 border-b border-blue-200 px-3 py-2 text-xs text-gray-600">
+          {videoInfo}
+        </div>
+      )}
       <div className="relative">
         {hasError ? (
           <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
             <div className="text-red-600 text-4xl mb-3">⚠️</div>
             <p className="text-red-700 font-semibold mb-2">영상 재생 오류</p>
             <p className="text-sm text-red-600 mb-4">{errorMessage}</p>
-            <p className="text-xs text-gray-600">
-              💡 해결방법:<br/>
-              • 파일을 MP4 형식으로 변환 후 다시 업로드<br/>
-              • 무료 변환 도구: HandBrake, CloudConvert 등
-            </p>
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-left text-xs mb-4">
+              <p className="font-semibold text-yellow-800 mb-2">💡 해결 방법:</p>
+              <ul className="list-disc list-inside text-yellow-700 space-y-1">
+                <li>스마트폰으로 촬영한 영상 → <strong>설정에서 H.264 코덱 사용</strong></li>
+                <li>iPhone HEVC 영상 → <strong>설정 &gt; 카메라 &gt; 형식 &gt; 호환성 우선</strong></li>
+                <li>기존 파일 → <strong>HandBrake 또는 VLC로 H.264/AAC로 변환</strong></li>
+                <li>온라인 변환: <strong>CloudConvert.com (무료)</strong></li>
+              </ul>
+            </div>
             <a 
               href={url} 
               target="_blank" 
               rel="noopener noreferrer"
-              className="inline-block mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700"
+              className="inline-block px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700"
             >
               원본 파일 다운로드
             </a>
@@ -615,23 +635,18 @@ function VideoPlayer({ url, index }: { url: string; index: number }) {
             controls 
             playsInline
             preload="metadata"
-            crossOrigin="anonymous"
-            controlsList="nodownload"
-            className="w-full h-auto rounded-lg bg-black" 
-            style={{ maxHeight: '500px', minHeight: '250px' }}
+            className="w-full rounded-lg bg-black" 
+            style={{ minHeight: '600px', maxHeight: '800px', height: 'auto' }}
             onError={handleError}
-            onCanPlay={handleCanPlay}
-            onLoadedMetadata={() => console.log('비디오 메타데이터 로드 완료:', url)}
+            onLoadedMetadata={handleLoadedMetadata}
           >
             <source src={url} type="video/mp4" />
             <source src={url} type="video/webm" />
-            <source src={url} type="video/ogg" />
             <source src={url} type="video/quicktime" />
-            <source src={url} type="video/x-m4v" />
             <source src={url} />
             <p className="p-8 text-center text-white">
               귀하의 브라우저는 비디오 태그를 지원하지 않습니다.<br/>
-              <a href={url} className="text-blue-400 underline">여기</a>를 클릭하여 비디오를 다운로드하세요.
+              <a href={url} className="text-blue-400 underline" target="_blank" rel="noopener noreferrer">여기</a>를 클릭하여 비디오를 다운로드하세요.
             </p>
           </video>
         )}

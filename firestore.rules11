@@ -1,0 +1,250 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ========================================
+    // 헬퍼 함수들
+    // ========================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+        (request.auth.token.email == 'dudals7334@naver.com' ||
+         request.auth.token.email == 'everystars@naver.com');
+    }
+    
+    // ========================================
+    // 1. users 컬렉션 (사용자 프로필, 인터뷰권)
+    // ========================================
+    match /users/{userId} {
+      // 읽기: 모든 인증된 사용자 (프로필 조회 위해)
+      allow read: if isAuthenticated();
+      
+      // 생성: 본인만
+      allow create: if isOwner(userId);
+      
+      // 수정: 본인만 (기본 정보), 관리자는 모든 필드
+      // 인터뷰권 차감/환불은 API에서만
+      allow update: if isOwner(userId) || isAdmin();
+      
+      // 삭제: 관리자만
+      allow delete: if isAdmin();
+    }
+    
+    // ========================================
+    // 2. chats 컬렉션 (채팅방)
+    // ========================================
+    match /chats/{chatId} {
+      // 읽기: 참여자만
+      allow read: if isAuthenticated() && 
+        (resource.data.parentId == request.auth.uid || 
+         resource.data.therapistId == request.auth.uid ||
+         isAdmin());
+      
+      // 생성: 학부모 또는 치료사
+      allow create: if isAuthenticated() &&
+        (request.resource.data.parentId == request.auth.uid || 
+         request.resource.data.therapistId == request.auth.uid);
+      
+      // 수정: 참여자 (상태 변경 등), 관리자
+      allow update: if isAuthenticated() &&
+        (resource.data.parentId == request.auth.uid || 
+         resource.data.therapistId == request.auth.uid ||
+         isAdmin());
+      
+      // 삭제: 관리자만
+      allow delete: if isAdmin();
+      
+      // ========================================
+      // 2-1. messages 서브컬렉션 (채팅 메시지)
+      // ========================================
+      match /messages/{messageId} {
+        // 읽기: 채팅방 참여자만
+        allow read: if isAuthenticated() &&
+          (get(/databases/$(database)/documents/chats/$(chatId)).data.parentId == request.auth.uid ||
+           get(/databases/$(database)/documents/chats/$(chatId)).data.therapistId == request.auth.uid ||
+           isAdmin());
+        
+        // 생성: 채팅방 참여자만
+        allow create: if isAuthenticated() &&
+          (get(/databases/$(database)/documents/chats/$(chatId)).data.parentId == request.auth.uid ||
+           get(/databases/$(database)/documents/chats/$(chatId)).data.therapistId == request.auth.uid);
+        
+        // 수정/삭제: 없음 (메시지는 삭제 불가)
+      }
+    }
+    
+    // ========================================
+    // 3. posts 컬렉션 (게시글)
+    // ========================================
+    match /posts/{postId} {
+      // 읽기: 모든 사용자
+      allow read: if true;
+      
+      // 생성: 인증된 사용자
+      // - 학부모: type = 'request'
+      // - 치료사: type = 'teacher-offer'
+      allow create: if isAuthenticated() &&
+        request.resource.data.authorId == request.auth.uid;
+      
+      // 수정: 작성자 또는 관리자
+      allow update: if isAuthenticated() &&
+        (resource.data.authorId == request.auth.uid || isAdmin());
+      
+      // 삭제: 작성자 또는 관리자
+      allow delete: if isAuthenticated() &&
+        (resource.data.authorId == request.auth.uid || isAdmin());
+    }
+    
+    // ========================================
+    // 4. applications 컬렉션 (게시글 지원)
+    // ========================================
+    match /applications/{applicationId} {
+      // 읽기: 지원자, 게시글 작성자, 관리자
+      allow read: if isAuthenticated() &&
+        (resource.data.applicantId == request.auth.uid ||
+         resource.data.postAuthorId == request.auth.uid ||
+         isAdmin());
+      
+      // 생성: 치료사만
+      allow create: if isAuthenticated() &&
+        request.resource.data.applicantId == request.auth.uid;
+      
+      // 수정: 지원자 또는 게시글 작성자 (상태 변경)
+      allow update: if isAuthenticated() &&
+        (resource.data.applicantId == request.auth.uid ||
+         resource.data.postAuthorId == request.auth.uid ||
+         isAdmin());
+      
+      // 삭제: 관리자만
+      allow delete: if isAdmin();
+    }
+    
+    // ========================================
+    // 5. matchings 컬렉션 (매칭 정보)
+    // ========================================
+    match /matchings/{matchingId} {
+      // 읽기: 참여자 또는 관리자
+      allow read: if isAuthenticated() &&
+        (resource.data.parentId == request.auth.uid ||
+         resource.data.therapistId == request.auth.uid ||
+         isAdmin());
+      
+      // 생성: 참여자 또는 관리자
+      allow create: if isAuthenticated() &&
+        (request.resource.data.parentId == request.auth.uid ||
+         request.resource.data.therapistId == request.auth.uid ||
+         isAdmin());
+      
+      // 수정: 참여자 또는 관리자
+      allow update: if isAuthenticated() &&
+        (resource.data.parentId == request.auth.uid ||
+         resource.data.therapistId == request.auth.uid ||
+         isAdmin());
+      
+      // 삭제: 관리자만
+      allow delete: if isAdmin();
+    }
+    
+    // ========================================
+    // 6. successful-matches 컬렉션 (성공 매칭 기록)
+    // ========================================
+    match /successful-matches/{matchId} {
+      // 읽기: 참여자 또는 관리자
+      allow read: if isAuthenticated() &&
+        (resource.data.parentId == request.auth.uid ||
+         resource.data.therapistId == request.auth.uid ||
+         isAdmin());
+      
+      // 생성: 관리자만
+      allow create: if isAdmin();
+      
+      // 수정/삭제: 관리자만
+      allow update, delete: if isAdmin();
+    }
+    
+    // ========================================
+    // 7. reviews 컬렉션 (후기)
+    // ========================================
+    match /reviews/{reviewId} {
+      // 읽기: 모든 사용자
+      allow read: if true;
+      
+      // 생성: 인증된 사용자
+      allow create: if isAuthenticated() &&
+        request.resource.data.userId == request.auth.uid;
+      
+      // 수정: 작성자만
+      allow update: if isAuthenticated() &&
+        resource.data.userId == request.auth.uid;
+      
+      // 삭제: 작성자 또는 관리자
+      allow delete: if isAuthenticated() &&
+        (resource.data.userId == request.auth.uid || isAdmin());
+    }
+    
+    // ========================================
+    // 8. therapistProfiles 컬렉션 (치료사 프로필)
+    // ========================================
+    match /therapistProfiles/{profileId} {
+      // 읽기: 모든 사용자
+      allow read: if true;
+      
+      // 생성: 치료사 본인만
+      allow create: if isAuthenticated() &&
+        request.resource.data.userId == request.auth.uid;
+      
+      // 수정: 본인 또는 관리자
+      allow update: if isAuthenticated() &&
+        (resource.data.userId == request.auth.uid || isAdmin());
+      
+      // 삭제: 관리자만
+      allow delete: if isAdmin();
+    }
+    
+    // ========================================
+    // 9. user-subscription-status 컬렉션 (구독 상태)
+    // ========================================
+    match /user-subscription-status/{userId} {
+      // 읽기: 본인 또는 관리자
+      allow read: if isOwner(userId) || isAdmin();
+      
+      // 생성/수정: 관리자만 (결제 시스템)
+      allow create, update: if isAdmin();
+      
+      // 삭제: 없음 (상태는 보존)
+    }
+    
+    // ========================================
+    // 10. 기타 필요한 컬렉션들
+    // ========================================
+    
+    // FAQs (자주 묻는 질문)
+    match /faqs/{faqId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // Notices (공지사항)
+    match /notices/{noticeId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // Reports (신고)
+    match /reports/{reportId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin();
+    }
+  }
+}
+

@@ -18,7 +18,7 @@ interface OneOnOneChatProps {
   otherUserId: string;
   otherUserName: string;
   otherUserType: 'parent' | 'therapist';
-  onClose: () => void;
+  onClose: (shouldRemoveFromList?: boolean) => void;
   isMinimized?: boolean;
   onToggleMinimize?: () => void;
   position?: 'fixed' | 'anchored';
@@ -45,6 +45,8 @@ export default function OneOnOneChat({
   const [hasTherapistResponded, setHasTherapistResponded] = useState<boolean | null>(null);
   const [isClosing, setIsClosing] = useState(false);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [matchingCompleted, setMatchingCompleted] = useState(false);
+  const [therapistPhone, setTherapistPhone] = useState<string | null>(null);
 
   // 채팅 메시지 실시간 조회
   useEffect(() => {
@@ -65,6 +67,35 @@ export default function OneOnOneChat({
       unsubscribe();
     };
   }, [chatRoomId, currentUser]);
+
+  // 매칭완료 상태 확인 및 치료사 전화번호 가져오기
+  useEffect(() => {
+    if (!chatRoomId) return;
+
+    const checkMatchingStatus = async () => {
+      try {
+        const chatDoc = await getDoc(doc(db, 'chats', chatRoomId));
+        if (chatDoc.exists()) {
+          const chatData = chatDoc.data();
+          const isCompleted = chatData.matchingCompleted === true;
+          setMatchingCompleted(isCompleted);
+
+          // 매칭완료 상태이고 학부모이면 치료사 전화번호 가져오기
+          if (isCompleted && userData?.userType === 'parent' && chatData.therapistId) {
+            const therapistDoc = await getDoc(doc(db, 'users', chatData.therapistId));
+            if (therapistDoc.exists()) {
+              const therapistData = therapistDoc.data();
+              setTherapistPhone(therapistData.phone || therapistData.phoneNumber || null);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('매칭 상태 확인 실패:', error);
+      }
+    };
+
+    checkMatchingStatus();
+  }, [chatRoomId, userData]);
 
   // 스크롤을 맨 아래로 이동
   const scrollToBottom = () => {
@@ -182,22 +213,16 @@ export default function OneOnOneChat({
             <button
               onClick={async () => {
                 try {
-                  // 최소화에서도 동일 모달을 띄우기 위해 응답 여부를 먼저 판단
                   const snap = await getDoc(doc(db, 'chats', chatRoomId));
                   const data = snap.data() as { firstResponseReceived?: boolean } | undefined;
-                  const respondedFromDoc = data?.firstResponseReceived === true;
-                  const respondedFromMessages = messages.some((m) => m.senderType === 'therapist');
-                  const responded = respondedFromDoc || respondedFromMessages;
+                  // firstResponseReceived 필드만 신뢰 (채팅방 재활성화 시 false로 리셋됨)
+                  const responded = data?.firstResponseReceived === true;
                   setHasTherapistResponded(responded);
-                } catch {
-                  const respondedFromMessages = messages.some((m) => m.senderType === 'therapist');
-                  setHasTherapistResponded(respondedFromMessages ? true : null);
-                }
-                // 환불이 필요한 경우(미응답)만 모달 표시, 응답이 있었으면 즉시 닫기
-                if (hasTherapistResponded === false) {
                   setShowLeaveConfirm(true);
-                } else {
-                  onClose();
+                } catch {
+                  // 오류 시 안전하게 false로 설정
+                  setHasTherapistResponded(false);
+                  setShowLeaveConfirm(true);
                 }
               }}
               className="text-gray-400 hover:text-gray-600 text-lg"
@@ -241,18 +266,15 @@ export default function OneOnOneChat({
               try {
                 const snap = await getDoc(doc(db, 'chats', chatRoomId));
                 const data = snap.data() as { firstResponseReceived?: boolean } | undefined;
-                const respondedFromDoc = data?.firstResponseReceived === true;
-                const respondedFromMessages = messages.some(
-                  (m) => m.senderType === 'therapist'
-                );
-                setHasTherapistResponded(respondedFromDoc || respondedFromMessages);
+                // firstResponseReceived 필드만 신뢰 (채팅방 재활성화 시 false로 리셋됨)
+                const responded = data?.firstResponseReceived === true;
+                setHasTherapistResponded(responded);
+                setShowLeaveConfirm(true);
               } catch {
-                const respondedFromMessages = messages.some(
-                  (m) => m.senderType === 'therapist'
-                );
-                setHasTherapistResponded(respondedFromMessages ? true : null);
+                // 오류 시 안전하게 false로 설정
+                setHasTherapistResponded(false);
+                setShowLeaveConfirm(true);
               }
-              setShowLeaveConfirm(true);
             }}
             className="text-gray-400 hover:text-gray-600 text-lg"
           >
@@ -263,21 +285,41 @@ export default function OneOnOneChat({
 
       {/* 안내 배너 영역 */}
       <div className="border-b">
-        {/* 인터뷰 안내 (노란 배너) */}
-        <div className="px-4 py-3 bg-yellow-50">
-          <div className="flex items-start gap-2">
-            <span className="w-5 h-5 rounded-full bg-yellow-400 flex items-center justify-center text-white text-xs mt-0.5" aria-hidden="true">💡</span>
-            <div className="flex-1">
-              <p className="text-xs font-semibold mb-1" style={{color:'#7a5b00'}}>인터뷰 후 수업을 결정하셨나요?</p>
-              <p className="text-[11px] text-gray-800">
-                매칭 확정을 위해 대표번호(<span className="font-medium">010-1234-5678</span>)로 문자(SNS)를 보내주세요.
-              </p>
-              <p className="text-[11px] text-gray-800">
-                <span className="font-extrabold">문자 예시:</span> 선생님 이름: 김00 / 아동 이름: 박 00(24.03.03) / 주 1회 / 25.08.04, 월 오후 1시 첫 수업
-              </p>
+        {/* 매칭완료 배너 (초록색) */}
+        {matchingCompleted && therapistPhone && (
+          <div className="px-4 py-3 bg-green-50 border-b border-green-200">
+            <div className="flex items-start gap-2">
+              <span className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center text-white text-xs mt-0.5" aria-hidden="true">✅</span>
+              <div className="flex-1">
+                <p className="text-xs font-semibold mb-1 text-green-800">매칭이 완료되었습니다!</p>
+                <p className="text-[11px] text-green-700 font-medium">
+                  치료사 연락처: <span className="font-bold text-green-900">{therapistPhone}</span>
+                </p>
+                <p className="text-[11px] text-green-600 mt-1">
+                  이제 치료사님과 직접 연락하여 수업 일정을 조율하실 수 있습니다.
+                </p>
+              </div>
             </div>
           </div>
-        </div>
+        )}
+        
+        {/* 인터뷰 안내 (노란 배너) - 매칭완료 전에만 표시 */}
+        {!matchingCompleted && (
+          <div className="px-4 py-3 bg-yellow-50">
+            <div className="flex items-start gap-2">
+              <span className="w-5 h-5 rounded-full bg-yellow-400 flex items-center justify-center text-white text-xs mt-0.5" aria-hidden="true">💡</span>
+              <div className="flex-1">
+                <p className="text-xs font-semibold mb-1" style={{color:'#7a5b00'}}>인터뷰 후 수업을 결정하셨나요?</p>
+                <p className="text-[11px] text-gray-800">
+                  매칭 확정을 위해 대표번호(<span className="font-medium">010-1234-5678</span>)로 문자(SNS)를 보내주세요.
+                </p>
+                <p className="text-[11px] text-gray-800">
+                  <span className="font-extrabold">문자 예시:</span> 선생님 이름: 김00 / 아동 이름: 박 00(24.03.03) / 주 1회 / 25.08.04, 월 오후 1시 첫 수업
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
         {/* 안전 안내는 입력창 위로 이동 */}
       </div>
 
@@ -441,25 +483,123 @@ export default function OneOnOneChat({
               <button
                 onClick={async () => {
                   const isParent = userData?.userType === 'parent';
-                  if (hasTherapistResponded === false && isParent && currentUser) {
+                  
+                  // 환불 가능 여부와 상관없이 채팅방 상태를 'closed'로 변경
+                  if (isParent && currentUser) {
                     try {
                       setIsClosing(true);
-                      const ok = await handleChatCancellation(chatRoomId, currentUser.uid, '사용자 종료');
-                      if (!ok) {
-                        setToast({ type: 'error', message: '종료/환불 처리에 실패했습니다. 잠시 후 다시 시도해주세요.' });
-                        setTimeout(() => setToast(null), 3000);
-                        return;
+                      
+                      if (hasTherapistResponded === false) {
+                        // 치료사 미응답: 환불 처리 (status도 closed로 변경됨)
+                        const ok = await handleChatCancellation(chatRoomId, currentUser.uid, '사용자 종료');
+                        if (!ok) {
+                          setToast({ type: 'error', message: '종료/환불 처리에 실패했습니다. 잠시 후 다시 시도해주세요.' });
+                          setTimeout(() => setToast(null), 3000);
+                          setIsClosing(false);
+                          return;
+                        }
+                        
+                        // 학부모의 게시글 상태 업데이트: 다른 활성 채팅방이 있는지 확인
+                        try {
+                          const { collection, query, where, getDocs, updateDoc, doc } = await import('firebase/firestore');
+                          // 현재 학부모의 모든 채팅방 조회
+                          const chatsQuery = query(
+                            collection(db, 'chats'),
+                            where('parentId', '==', currentUser.uid),
+                            where('status', '==', 'active')
+                          );
+                          const activeChatsSnap = await getDocs(chatsQuery);
+                          
+                          console.log('🔍 활성 채팅방 수:', activeChatsSnap.size);
+                          
+                          // 활성 채팅방이 없으면 게시글 상태를 'matching'으로 변경
+                          if (activeChatsSnap.empty) {
+                            const postsQuery = query(
+                              collection(db, 'posts'),
+                              where('authorId', '==', currentUser.uid),
+                              where('status', '==', 'meeting')
+                            );
+                            const postsSnap = await getDocs(postsQuery);
+                            
+                            for (const postDoc of postsSnap.docs) {
+                              await updateDoc(doc(db, 'posts', postDoc.id), {
+                                status: 'matching'
+                              });
+                              console.log('✅ 게시글 상태 → 매칭중 (postId:', postDoc.id, ')');
+                            }
+                          } else {
+                            console.log('ℹ️ 다른 활성 채팅방이 있어 게시글 상태 유지');
+                          }
+                        } catch (error) {
+                          console.error('❌ 게시글 상태 업데이트 실패:', error);
+                        }
+                      } else {
+                        // 치료사 응답 있음: 환불 불가, 단순 상태만 closed로 변경
+                        const { updateDoc, collection, query, where, getDocs } = await import('firebase/firestore');
+                        await updateDoc(doc(db, 'chats', chatRoomId), {
+                          status: 'closed',
+                          closedAt: new Date(),
+                          closedBy: currentUser.uid
+                        });
+                        console.log('✅ 채팅방 상태 → closed (환불 없음)');
+                        
+                        // 학부모의 게시글 상태 업데이트: 다른 활성 채팅방이 있는지 확인
+                        try {
+                          // 현재 학부모의 모든 채팅방 조회
+                          const chatsQuery = query(
+                            collection(db, 'chats'),
+                            where('parentId', '==', currentUser.uid),
+                            where('status', '==', 'active')
+                          );
+                          const activeChatsSnap = await getDocs(chatsQuery);
+                          
+                          console.log('🔍 활성 채팅방 수:', activeChatsSnap.size);
+                          
+                          // 활성 채팅방이 없으면 게시글 상태를 'matching'으로 변경
+                          if (activeChatsSnap.empty) {
+                            const postsQuery = query(
+                              collection(db, 'posts'),
+                              where('authorId', '==', currentUser.uid),
+                              where('status', '==', 'meeting')
+                            );
+                            const postsSnap = await getDocs(postsQuery);
+                            
+                            for (const postDoc of postsSnap.docs) {
+                              await updateDoc(doc(db, 'posts', postDoc.id), {
+                                status: 'matching'
+                              });
+                              console.log('✅ 게시글 상태 → 매칭중 (postId:', postDoc.id, ')');
+                            }
+                          } else {
+                            console.log('ℹ️ 다른 활성 채팅방이 있어 게시글 상태 유지');
+                          }
+                        } catch (error) {
+                          console.error('❌ 게시글 상태 업데이트 실패:', error);
+                        }
                       }
                     } catch (e) {
-                      console.error('채팅 종료/환불 처리 실패:', e);
+                      console.error('채팅 종료 처리 실패:', e);
                       setToast({ type: 'error', message: '네트워크 오류로 실패했습니다.' });
                       setTimeout(() => setToast(null), 3000);
+                      setIsClosing(false);
                       return;
                     } finally {
                       setIsClosing(false);
                     }
                   }
-                  onClose();
+                  
+                  // localStorage에 숨긴 채팅방 ID 저장
+                  if (typeof window !== 'undefined' && currentUser) {
+                    const hiddenKey = `hiddenChats_${currentUser.uid}`;
+                    const hidden = JSON.parse(localStorage.getItem(hiddenKey) || '[]');
+                    if (!hidden.includes(chatRoomId)) {
+                      hidden.push(chatRoomId);
+                      localStorage.setItem(hiddenKey, JSON.stringify(hidden));
+                    }
+                  }
+                  
+                  // 환불 여부와 관계없이 무조건 채팅 목록에서 제거
+                  onClose(true);
                 }}
                 disabled={isClosing}
                 className={`px-4 py-2 rounded text-white ${isClosing ? 'bg-blue-300 cursor-not-allowed' : 'bg-blue-600'}`}
