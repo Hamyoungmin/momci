@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { collection, query, orderBy, onSnapshot, Timestamp, limit as firestoreLimit, getDocs, doc, getDoc, updateDoc, where } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import ChatStatusCards from './ChatStatusCards';
 import ChatRoomList from './ChatRoomList';
 import ChatDetailModal from './ChatDetailModal';
@@ -35,23 +37,119 @@ export default function ChatManagement() {
   const [riskFilter, setRiskFilter] = useState('all');
 
   const [chatRooms, setChatRooms] = useState<ChatRoom[]>([]);
-  // const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchChatRooms = async () => {
-      try {
-        // setLoading(true);
-        // TODO: Firebase에서 실제 채팅방 데이터 조회
-        // const chatRoomsData = await getChatRooms();
-        setChatRooms([]);
-      } catch (error) {
-        console.error('채팅방 데이터 로딩 실패:', error);
-      } finally {
-        // setLoading(false);
-      }
-    };
+    // Firebase에서 실시간으로 채팅방 데이터 가져오기
+    const chatsRef = collection(db, 'chats');
+    const q = query(chatsRef, orderBy('lastMessageTime', 'desc'));
 
-    fetchChatRooms();
+    const unsubscribe = onSnapshot(
+      q,
+      async (snapshot) => {
+        const chatRoomsData: ChatRoom[] = [];
+        
+        for (const doc of snapshot.docs) {
+          const data = doc.data();
+          
+          // Timestamp를 문자열로 변환
+          const createdAt = data.createdAt instanceof Timestamp 
+            ? data.createdAt.toDate().toISOString() 
+            : data.createdAt;
+          
+          const lastMessageTime = data.lastMessageTime instanceof Timestamp 
+            ? data.lastMessageTime.toDate().toISOString() 
+            : data.lastMessageTime || createdAt;
+
+          // 채팅방의 메시지 개수 가져오기
+          let messageCount = 0;
+          try {
+            const messagesRef = collection(db, 'chats', doc.id, 'messages');
+            const messagesSnapshot = await getDocs(messagesRef);
+            messageCount = messagesSnapshot.size;
+          } catch (error) {
+            console.error('메시지 개수 가져오기 오류:', error);
+          }
+
+          // 마지막 메시지 가져오기
+          let lastMessage: ChatRoom['lastMessage'] | undefined;
+          try {
+            const messagesRef = collection(db, 'chats', doc.id, 'messages');
+            const lastMessageQuery = query(messagesRef, orderBy('timestamp', 'desc'), firestoreLimit(1));
+            const lastMessageSnapshot = await getDocs(lastMessageQuery);
+            
+            if (!lastMessageSnapshot.empty) {
+              const lastMessageDoc = lastMessageSnapshot.docs[0];
+              const lastMessageData = lastMessageDoc.data();
+              
+              const lastMessageTimestamp = lastMessageData.timestamp instanceof Timestamp
+                ? lastMessageData.timestamp.toDate().toISOString()
+                : lastMessageData.timestamp;
+              
+              lastMessage = {
+                senderId: lastMessageData.senderId || '',
+                senderName: lastMessageData.senderName || '알 수 없음',
+                content: lastMessageData.message || '',
+                timestamp: lastMessageTimestamp,
+              };
+            }
+          } catch (error) {
+            console.error('마지막 메시지 가져오기 오류:', error);
+          }
+
+          // 의심스러운 활동 감지 (전화번호, 계좌번호 패턴 등)
+          const suspiciousPatterns = [
+            /\d{3}-?\d{3,4}-?\d{4}/, // 전화번호
+            /010|011|016|017|018|019/, // 전화번호 키워드
+            /계좌|입금|송금|이체/, // 금융 키워드
+            /직거래|외부|카톡|카카오톡|라인|텔레그램/i, // 직거래 키워드
+          ];
+          
+          const lastMessageContent = lastMessage?.content || '';
+          const suspiciousActivity = suspiciousPatterns.some(pattern => 
+            pattern.test(lastMessageContent)
+          );
+          
+          const directTradeDetected = /직거래|외부|카톡|전화|번호|계좌/i.test(lastMessageContent);
+          
+          // 위험도 계산
+          let riskLevel: 'low' | 'medium' | 'high' = 'low';
+          if (directTradeDetected) {
+            riskLevel = 'high';
+          } else if (suspiciousActivity) {
+            riskLevel = 'medium';
+          }
+          
+          chatRoomsData.push({
+            id: doc.id,
+            matchingId: data.matchingId || 'N/A',
+            parentId: data.parentId || '',
+            parentName: data.parentName || '알 수 없음',
+            teacherId: data.therapistId || data.teacherId || '',
+            teacherName: data.therapistName || data.teacherName || '알 수 없음',
+            startDate: createdAt,
+            lastMessageDate: lastMessageTime,
+            messageCount,
+            status: data.status === 'suspended' ? 'suspended' : 
+                    data.status === 'ended' ? 'ended' : 'active',
+            suspiciousActivity,
+            directTradeDetected,
+            riskLevel,
+            lastMessage,
+          });
+        }
+        
+        setChatRooms(chatRoomsData);
+        setLoading(false);
+      },
+      (error) => {
+        console.error('채팅방 데이터 가져오기 오류:', error);
+        setLoading(false);
+      }
+    );
+
+    // 컴포넌트 언마운트 시 구독 해제
+    return () => unsubscribe();
   }, []);
 
   const handleChatRoomSelect = (chatRoom: ChatRoom) => {
@@ -64,9 +162,101 @@ export default function ChatManagement() {
     setSelectedChatRoom(null);
   };
 
-  const handleChatAction = (chatRoomId: string, action: 'suspend' | 'resume' | 'end', reason?: string) => {
-    // 실제 구현 시 API 호출
+  const handleChatAction = async (chatRoomId: string, action: 'suspend' | 'resume' | 'end' | 'complete', reason?: string) => {
     console.log('Chat action:', { chatRoomId, action, reason });
+    
+    if (action === 'complete') {
+      console.log('🔥🔥🔥 매칭완료 시작!!! chatRoomId:', chatRoomId);
+      try {
+        // 1. 채팅방 데이터 가져오기
+        const chatRef = doc(db, 'chats', chatRoomId);
+        const chatSnap = await getDoc(chatRef);
+        
+        if (!chatSnap.exists()) {
+          alert('❌ 채팅방을 찾을 수 없습니다.');
+          return;
+        }
+        
+        const chatData = chatSnap.data();
+        const parentId = chatData.parentId;
+        const therapistId = chatData.therapistId;
+        
+        console.log('👤 학부모 ID:', parentId, '치료사 ID:', therapistId);
+        
+        // 2. 채팅방 상태 업데이트
+        await updateDoc(chatRef, {
+          matchingCompleted: true,
+          completedAt: new Date(),
+          status: 'completed'
+        });
+        console.log('✅ 채팅방 completed로 변경 완료');
+        
+        // 3. 학부모 게시글 completed로 변경
+        const postsRef = collection(db, 'posts');
+        const postsSnap = await getDocs(query(postsRef, where('authorId', '==', parentId)));
+        
+        for (const postDoc of postsSnap.docs) {
+          const postData = postDoc.data();
+          if (postData.status === 'meeting') {
+            await updateDoc(doc(db, 'posts', postDoc.id), {
+              status: 'completed',
+              completedAt: new Date()
+            });
+            console.log(`✅ 게시글 ${postDoc.id} → completed`);
+          }
+        }
+        
+        // 4. matchings 컬렉션 업데이트 (관리자 페이지 연동)
+        const matchingsRef = collection(db, 'matchings');
+        const matchingsSnap = await getDocs(
+          query(matchingsRef, where('parentId', '==', parentId))
+        );
+        
+        let matchingFound = false;
+        for (const matchDoc of matchingsSnap.docs) {
+          const matchData = matchDoc.data();
+          if (matchData.therapistId === therapistId && matchData.status !== 'completed') {
+            await updateDoc(doc(db, 'matchings', matchDoc.id), {
+              status: 'completed',
+              updatedAt: new Date()
+            });
+            matchingFound = true;
+            console.log(`✅ matchings ${matchDoc.id} → completed`);
+          }
+        }
+        
+        // matchings가 없으면 새로 생성
+        if (!matchingFound) {
+          const { addDoc, serverTimestamp } = await import('firebase/firestore');
+          await addDoc(matchingsRef, {
+            parentId: parentId,
+            therapistId: therapistId,
+            status: 'completed',
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+          });
+          console.log('✅ matchings 새로 생성 → completed');
+        }
+        
+        // 5. successful-matches 기록
+        const { setDoc } = await import('firebase/firestore');
+        const key = `${parentId}_${therapistId}`;
+        await setDoc(doc(db, 'successful-matches', key), {
+          postId: chatRoomId,
+          parentId: parentId,
+          therapistId: therapistId,
+          matchedAt: new Date(),
+          status: 'completed'
+        }, { merge: true });
+        console.log('✅ successful-matches 기록 완료');
+        
+        alert('✅ 매칭이 완료되었습니다!');
+      } catch (error) {
+        console.error('❌ 매칭완료 처리 실패:', error);
+        alert('❌ 매칭완료 처리에 실패했습니다: ' + error);
+      }
+    }
+    
     handleCloseModal();
   };
 
@@ -78,6 +268,18 @@ export default function ChatManagement() {
 
   const suspiciousRooms = chatRooms.filter(room => room.suspiciousActivity);
   const directTradeRooms = chatRooms.filter(room => room.directTradeDetected);
+
+  // 로딩 중 표시
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">채팅방 데이터를 불러오는 중...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">

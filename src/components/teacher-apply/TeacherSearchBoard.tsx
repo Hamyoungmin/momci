@@ -357,39 +357,13 @@ export default function TeacherSearchBoard() {
       reader.readAsDataURL(file);
   };
 
-  // 서버 측에서 자동 변환하므로 원본 파일을 그대로 반환
-  // Firebase Functions가 업로드 후 자동으로 웹 호환 MP4로 변환합니다
-  const convertVideoToWebFormat = async (file: File): Promise<File> => {
-    console.log(`📤 비디오 업로드 준비: ${file.name}`);
-    console.log('💡 서버에서 자동으로 웹 호환 형식으로 변환됩니다');
-    return file; // 원본 파일을 그대로 반환
-  };
-
+  // 일반 파일 업로드 핸들러
   const handleFileUpload = (
     e: React.ChangeEvent<HTMLInputElement>, 
     setFiles: React.Dispatch<React.SetStateAction<File[]>>
   ) => {
     const files = Array.from(e.target.files || []);
     setFiles(prev => [...prev, ...files]);
-  };
-  
-  // 비디오 파일 업로드 핸들러 (자동 변환 포함)
-  const handleVideoUpload = async (
-    e: React.ChangeEvent<HTMLInputElement>,
-    setFiles: React.Dispatch<React.SetStateAction<File[]>>
-  ) => {
-    const files = Array.from(e.target.files || []);
-    
-    if (files.length === 0) return;
-    
-    // 각 비디오 파일을 웹 호환 형식으로 변환
-    const convertedFiles: File[] = [];
-    for (const file of files) {
-      const converted = await convertVideoToWebFormat(file);
-      convertedFiles.push(converted);
-    }
-    
-    setFiles(prev => [...prev, ...convertedFiles]);
   };
 
   const handleSingleFileUpload = (
@@ -534,10 +508,25 @@ export default function TeacherSearchBoard() {
         const careerUrls = careerFiles.length > 0 ? await uploadFileArray(careerFiles, 'career') : existingCareerUrls;
         
         // 각 파일 타입을 별도로 업로드
+        console.log('📊 파일 업로드 준비:');
+        console.log('  - licenseFiles:', licenseFiles.length);
+        console.log('  - educationFiles:', educationFiles.length);
+        console.log('  - experienceFiles:', experienceFiles.length);
+        console.log('  - certificateFiles (비디오):', certificateFiles.length);
+        
         const licenseUrls = licenseFiles.length > 0 ? await uploadFileArray(licenseFiles, 'license') : existingLicenseUrls;
         const crimeCheckUrls = educationFiles.length > 0 ? await uploadFileArray(educationFiles, 'crimeCheck') : existingCrimeCheckUrls;
         const additionalUrls = experienceFiles.length > 0 ? await uploadFileArray(experienceFiles, 'additional') : existingAdditionalUrls;
-        const introVideoUrls = certificateFiles.length > 0 ? await uploadFileArray(certificateFiles, 'introVideo') : existingIntroVideoUrls;
+        
+        let introVideoUrls: string[];
+        if (certificateFiles.length > 0) {
+          console.log('🎬 비디오 파일 업로드 시작:', certificateFiles.length, '개');
+          introVideoUrls = await uploadFileArray(certificateFiles, 'introVideo');
+          console.log('✅ 비디오 업로드 완료:', introVideoUrls);
+        } else {
+          console.log('⚠️ certificateFiles가 비어있어서 비디오 업로드 스킵');
+          introVideoUrls = existingIntroVideoUrls;
+        }
         
         let bankbookUrl: string | null = null;
         if (bankBookFile) {
@@ -1974,21 +1963,28 @@ export default function TeacherSearchBoard() {
                   {/* (선택) 1분 자기소개 영상 */}
                   <div className="mb-4">
                     <label className="block text-sm font-medium text-gray-700 mb-2">(선택) 1분 자기소개 영상</label>
-                    <div className="mb-3 bg-blue-50 border border-blue-200 rounded-lg p-3">
-                      <p className="text-sm text-blue-700">💡 <strong>서버에서 자동 변환</strong></p>
-                      <p className="text-xs text-blue-600 mt-1">업로드 후 1-2분 내에 웹 호환 형식(MP4)으로 자동 변환됩니다.</p>
+                    
+                    {/* 중요 안내 */}
+                    <div className="mb-3 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                      <p className="text-sm font-semibold text-yellow-800 mb-1">⚠️ 중요: 호환되는 형식으로 업로드하세요</p>
+                      <ul className="text-xs text-yellow-700 space-y-1 list-disc list-inside">
+                        <li><strong>추천 형식:</strong> MP4 (H.264 코덱)</li>
+                        <li><strong>스마트폰 촬영:</strong> 설정에서 H.264 사용 또는 &quot;호환성 우선&quot; 선택</li>
+                        <li><strong>iPhone:</strong> 설정 &gt; 카메라 &gt; 형식 &gt; &quot;호환성 우선&quot;</li>
+                        <li><strong>HEVC/H.265는 대부분의 브라우저에서 재생 불가</strong></li>
+                      </ul>
                     </div>
+
                     <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center relative cursor-pointer hover:border-blue-300 transition-colors">
                       <input
                         type="file"
                         multiple
-                        accept="video/*"
-                        onChange={(e) => handleVideoUpload(e, setCertificateFiles)}
+                        accept="video/mp4,video/quicktime,video/webm"
+                        onChange={(e) => handleFileUpload(e, setCertificateFiles)}
                         className="absolute inset-0 opacity-0 cursor-pointer"
                       />
                       <p className="text-base text-gray-500">영상 파일을 여기에 드래그하거나 클릭하여 업로드하세요.</p>
-                      <p className="text-xs text-gray-400 mt-1">어떤 형식이든 업로드 후 자동으로 변환됩니다 ✨</p>
-                      <p className="text-xs text-green-600 mt-2">📱 휴대폰/카메라로 찍은 영상도 OK!</p>
+                      <p className="text-xs text-green-600 mt-1">✅ MP4, MOV, WebM 형식 권장</p>
                     </div>
                     {/* 기존 파일 표시 */}
                     {existingIntroVideoUrls.length > 0 && certificateFiles.length === 0 && (

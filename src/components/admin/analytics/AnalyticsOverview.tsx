@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { collection, query, where, onSnapshot, Timestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import OperationalStats from './OperationalStats';
 import UserBehaviorAnalytics from './UserBehaviorAnalytics';
 import RevenueAnalytics from './RevenueAnalytics';
@@ -33,7 +35,7 @@ export default function AnalyticsOverview() {
   const [activeTab, setActiveTab] = useState('operational');
   
   // Firebase에서 실제 데이터 가져오기
-  const [overviewStats] = useState<OverviewStats>({
+  const [overviewStats, setOverviewStats] = useState<OverviewStats>({
     totalMembers: 0,
     memberGrowth: '0%',
     monthlyMatches: 0,
@@ -43,7 +45,7 @@ export default function AnalyticsOverview() {
     avgResponseTime: '0시간',
     slaStatus: '대기 중'
   });
-  const [realTimeData] = useState<RealTimeData>({
+  const [realTimeData, setRealTimeData] = useState<RealTimeData>({
     newSignups: 0,
     matchRequests: 0,
     inquiries: 0,
@@ -53,13 +55,196 @@ export default function AnalyticsOverview() {
     processedReports: 0,
     answeredInquiries: 0
   });
-  const [, setLoading] = useState(true);
 
   useEffect(() => {
-    // TODO: Firebase에서 실제 분석 데이터 가져오기
-    // setOverviewStats({ ... });
-    // setRealTimeData({ ... });
-    setLoading(false);
+    const unsubscribers: (() => void)[] = [];
+
+    // 실시간 데이터 수집
+    const fetchRealTimeData = async () => {
+      try {
+        // 1. 총 회원 수 (실시간)
+        const usersUnsubscribe = onSnapshot(
+          collection(db, 'users'),
+          (snapshot) => {
+            const totalCount = snapshot.size;
+            const parents = snapshot.docs.filter(doc => doc.data().userType === 'parent').length;
+            const teachers = snapshot.docs.filter(doc => doc.data().userType === 'therapist').length;
+            
+            setOverviewStats(prev => ({
+              ...prev,
+              totalMembers: totalCount
+            }));
+
+            setRealTimeData(prev => ({
+              ...prev,
+              activeParents: parents,
+              activeTeachers: teachers
+            }));
+          }
+        );
+        unsubscribers.push(usersUnsubscribe);
+
+        // 2. 이번 달 매칭 수 (실시간)
+        const startOfMonth = new Date();
+        startOfMonth.setDate(1);
+        startOfMonth.setHours(0, 0, 0, 0);
+
+        const matchingsQuery = query(
+          collection(db, 'matchings'),
+          where('createdAt', '>=', Timestamp.fromDate(startOfMonth))
+        );
+
+        const matchingsUnsubscribe = onSnapshot(
+          matchingsQuery,
+          (snapshot) => {
+            const totalMatches = snapshot.size;
+            const successfulMatches = snapshot.docs.filter(
+              doc => doc.data().status === 'completed'
+            ).length;
+            
+            setOverviewStats(prev => ({
+              ...prev,
+              monthlyMatches: totalMatches,
+              matchSuccessRate: totalMatches > 0 ? Math.round((successfulMatches / totalMatches) * 100) : 0
+            }));
+          }
+        );
+        unsubscribers.push(matchingsUnsubscribe);
+
+        // 3. 이번 달 매출 (실시간)
+        const paymentsQuery = query(
+          collection(db, 'payments'),
+          where('createdAt', '>=', Timestamp.fromDate(startOfMonth)),
+          where('type', 'in', ['subscription', 'addon_token'])
+        );
+
+        const paymentsUnsubscribe = onSnapshot(
+          paymentsQuery,
+          (snapshot) => {
+            const totalRevenue = snapshot.docs.reduce((sum, doc) => {
+              return sum + (doc.data().amount || 0);
+            }, 0);
+            
+            setOverviewStats(prev => ({
+              ...prev,
+              monthlyRevenue: `₩${totalRevenue.toLocaleString()}`
+            }));
+          }
+        );
+        unsubscribers.push(paymentsUnsubscribe);
+
+        // 4. 지난 1시간 신규 가입 (실시간)
+        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+        const recentUsersQuery = query(
+          collection(db, 'users'),
+          where('createdAt', '>=', Timestamp.fromDate(oneHourAgo))
+        );
+
+        const recentUsersUnsubscribe = onSnapshot(
+          recentUsersQuery,
+          (snapshot) => {
+            setRealTimeData(prev => ({
+              ...prev,
+              newSignups: snapshot.size
+            }));
+          }
+        );
+        unsubscribers.push(recentUsersUnsubscribe);
+
+        // 5. 활성 사용자 (실시간)
+        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+        const activeUsersQuery = query(
+          collection(db, 'userSessions'),
+          where('lastActivity', '>=', Timestamp.fromDate(fiveMinutesAgo)),
+          where('isActive', '==', true)
+        );
+
+        const activeUsersUnsubscribe = onSnapshot(
+          activeUsersQuery,
+          (snapshot) => {
+            setRealTimeData(prev => ({
+              ...prev,
+              activeUsers: snapshot.size
+            }));
+          }
+        );
+        unsubscribers.push(activeUsersUnsubscribe);
+
+        // 6. 오늘 매칭 요청 (실시간)
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+
+        const todayPostsQuery = query(
+          collection(db, 'posts'),
+          where('createdAt', '>=', Timestamp.fromDate(todayStart)),
+          where('status', '==', 'active')
+        );
+
+        const todayPostsUnsubscribe = onSnapshot(
+          todayPostsQuery,
+          (snapshot) => {
+            setRealTimeData(prev => ({
+              ...prev,
+              matchRequests: snapshot.size
+            }));
+          }
+        );
+        unsubscribers.push(todayPostsUnsubscribe);
+
+        // 7. 오늘 문의 접수 (실시간)
+        const todayInquiriesQuery = query(
+          collection(db, 'inquiries'),
+          where('createdAt', '>=', Timestamp.fromDate(todayStart))
+        );
+
+        const todayInquiriesUnsubscribe = onSnapshot(
+          todayInquiriesQuery,
+          (snapshot) => {
+            const total = snapshot.size;
+            const answered = snapshot.docs.filter(
+              doc => doc.data().status === 'resolved'
+            ).length;
+            
+            setRealTimeData(prev => ({
+              ...prev,
+              inquiries: total,
+              answeredInquiries: answered
+            }));
+          }
+        );
+        unsubscribers.push(todayInquiriesUnsubscribe);
+
+        // 8. 오늘 처리된 신고 (실시간)
+        const todayReportsQuery = query(
+          collection(db, 'reports'),
+          where('createdAt', '>=', Timestamp.fromDate(todayStart))
+        );
+
+        const todayReportsUnsubscribe = onSnapshot(
+          todayReportsQuery,
+          (snapshot) => {
+            const processed = snapshot.docs.filter(
+              doc => doc.data().status !== 'pending'
+            ).length;
+            
+            setRealTimeData(prev => ({
+              ...prev,
+              processedReports: processed
+            }));
+          }
+        );
+        unsubscribers.push(todayReportsUnsubscribe);
+      } catch (error) {
+        console.error('통계 데이터 로딩 실패:', error);
+      }
+    };
+
+    fetchRealTimeData();
+
+    // 클린업
+    return () => {
+      unsubscribers.forEach(unsub => unsub());
+    };
   }, [selectedPeriod]);
 
   const tabs = [

@@ -1,5 +1,9 @@
 'use client';
 
+import { useState, useEffect } from 'react';
+import { collection, query, where, onSnapshot, Timestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+
 interface PaymentMethod {
   method: string;
   percentage: number;
@@ -25,8 +29,8 @@ interface RevenueAnalyticsProps {
 }
 
 export default function RevenueAnalytics({ period }: RevenueAnalyticsProps) {
-  // 실제 데이터 (Firebase에서 가져올 예정)
-  const revenueStats = {
+  // 실제 데이터 (Firebase에서 실시간으로 가져오기)
+  const [revenueStats, setRevenueStats] = useState({
     totalRevenue: 0,
     monthlyGrowth: 0,
     subscriptionRevenue: {
@@ -36,9 +40,9 @@ export default function RevenueAnalytics({ period }: RevenueAnalyticsProps) {
     },
     commissionRevenue: 0,
     monthlyTrend: [] as MonthlyRevenueTrend[]
-  };
+  });
 
-  const subscriptionStats = {
+  const [subscriptionStats, setSubscriptionStats] = useState({
     activeSubscriptions: 0,
     newSubscriptions: 0,
     canceledSubscriptions: 0,
@@ -46,21 +50,225 @@ export default function RevenueAnalytics({ period }: RevenueAnalyticsProps) {
     avgRevenuePerUser: 0,
     lifetimeValue: 0,
     paymentMethods: [] as PaymentMethod[]
-  };
+  });
 
   const commissionStats = {
     totalTransactions: 0,
-    avgCommissionRate: 0,
+    avgCommissionRate: 15, // 기본 수수료율 15%
     avgTransactionValue: 0,
     topPerformers: [] as Performer[]
   };
 
-  const projections = {
+  const [projections, setProjections] = useState({
     nextMonth: 0,
     nextQuarter: 0,
     yearEnd: 0,
     growthFactor: 0
-  };
+  });
+
+  useEffect(() => {
+    const unsubscribers: (() => void)[] = [];
+
+    // 기간 계산
+    const getPeriodDate = () => {
+      const now = new Date();
+      switch (period) {
+        case '7d':
+          return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        case '30d':
+          return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        case '90d':
+          return new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+        case '1y':
+          return new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+        default:
+          return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      }
+    };
+
+    const periodStart = getPeriodDate();
+
+    // 1. 전체 매출 통계 (실시간)
+    const paymentsQuery = query(
+      collection(db, 'payments'),
+      where('createdAt', '>=', Timestamp.fromDate(periodStart))
+    );
+
+    const paymentsUnsubscribe = onSnapshot(
+      paymentsQuery,
+      (snapshot) => {
+        let totalRevenue = 0;
+        let parentSubs = 0;
+        let teacherSubs = 0;
+        let commissionRevenue = 0;
+
+        snapshot.docs.forEach(doc => {
+          const data = doc.data();
+          const amount = data.amount || 0;
+          totalRevenue += amount;
+
+          if (data.type === 'subscription' || data.type === 'addon_token') {
+            if (data.subscriptionType === 'parent') {
+              parentSubs += amount;
+            } else if (data.subscriptionType === 'therapist' || data.subscriptionType === 'teacher') {
+              teacherSubs += amount;
+            }
+          } else if (data.type === 'lesson') {
+            // 수업료의 15% 수수료
+            commissionRevenue += amount * 0.15;
+          }
+        });
+
+        setRevenueStats(prev => ({
+          ...prev,
+          totalRevenue,
+          subscriptionRevenue: {
+            parents: parentSubs,
+            teachers: teacherSubs,
+            total: parentSubs + teacherSubs
+          },
+          commissionRevenue
+        }));
+      }
+    );
+    unsubscribers.push(paymentsUnsubscribe);
+
+    // 2. 구독 통계 (실시간)
+    const subscriptionsQuery = query(
+      collection(db, 'user-subscriptions'),
+      where('purchaseDate', '>=', Timestamp.fromDate(periodStart))
+    );
+
+    const subscriptionsUnsubscribe = onSnapshot(
+      subscriptionsQuery,
+      (snapshot) => {
+        const allSubs = snapshot.docs;
+        const active = allSubs.filter(doc => doc.data().status === 'active').length;
+        const newSubs = allSubs.length;
+        const canceled = allSubs.filter(doc => doc.data().status === 'cancelled').length;
+        
+        const totalAmount = allSubs.reduce((sum, doc) => sum + (doc.data().amount || 0), 0);
+        const avgRevenuePerUser = newSubs > 0 ? Math.round(totalAmount / newSubs) : 0;
+        
+        // 이탈률 계산 (해지 / 전체)
+        const churnRate = newSubs > 0 ? Math.round((canceled / newSubs) * 100 * 10) / 10 : 0;
+        
+        // 생애가치 계산 (평균 구독료 / 이탈률, 단순화)
+        const lifetimeValue = churnRate > 0 ? Math.round(avgRevenuePerUser / (churnRate / 100)) : avgRevenuePerUser * 10;
+
+        setSubscriptionStats(prev => ({
+          ...prev,
+          activeSubscriptions: active,
+          newSubscriptions: newSubs,
+          canceledSubscriptions: canceled,
+          churnRate,
+          avgRevenuePerUser,
+          lifetimeValue
+        }));
+      }
+    );
+    unsubscribers.push(subscriptionsUnsubscribe);
+
+    // 3. 월별 매출 추이 (최근 6개월)
+    const generateMonthlyRevenueTrend = () => {
+      const months = [];
+      const now = new Date();
+      
+      for (let i = 5; i >= 0; i--) {
+        const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        months.push({
+          month: `${monthDate.getMonth() + 1}월`,
+          date: monthDate
+        });
+      }
+      
+      // 각 월별 매출 데이터 조회
+      months.forEach(({ month, date }) => {
+        const monthStart = new Date(date);
+        const monthEnd = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+        
+        const monthPaymentsQuery = query(
+          collection(db, 'payments'),
+          where('createdAt', '>=', Timestamp.fromDate(monthStart)),
+          where('createdAt', '<=', Timestamp.fromDate(monthEnd))
+        );
+        
+        const unsubMonth = onSnapshot(
+          monthPaymentsQuery,
+          (snapshot) => {
+            let subscription = 0;
+            let commission = 0;
+            
+            snapshot.docs.forEach(doc => {
+              const data = doc.data();
+              const amount = data.amount || 0;
+              
+              if (data.type === 'subscription' || data.type === 'addon_token') {
+                subscription += amount;
+              } else if (data.type === 'lesson') {
+                commission += amount * 0.15;
+              }
+            });
+            
+            const total = subscription + commission;
+            
+            setRevenueStats(prev => {
+              const newTrend = [...prev.monthlyTrend];
+              const existingIndex = newTrend.findIndex(t => t.month === month);
+              
+              if (existingIndex >= 0) {
+                newTrend[existingIndex] = { month, total, subscription, commission };
+              } else {
+                newTrend.push({ month, total, subscription, commission });
+              }
+              
+              return {
+                ...prev,
+                monthlyTrend: newTrend.sort((a, b) => {
+                  const aMonth = parseInt(a.month);
+                  const bMonth = parseInt(b.month);
+                  return aMonth - bMonth;
+                })
+              };
+            });
+          }
+        );
+        unsubscribers.push(unsubMonth);
+      });
+    };
+    
+    generateMonthlyRevenueTrend();
+
+    // 4. 매출 예측 (단순 선형 추정)
+    setTimeout(() => {
+      setRevenueStats(current => {
+        const recentMonths = current.monthlyTrend.slice(-3);
+        if (recentMonths.length >= 2) {
+          const avgGrowth = recentMonths.reduce((sum, m, i) => {
+            if (i === 0) return 0;
+            const growth = ((m.total - recentMonths[i - 1].total) / recentMonths[i - 1].total) * 100;
+            return sum + growth;
+          }, 0) / (recentMonths.length - 1);
+          
+          const lastMonthRevenue = recentMonths[recentMonths.length - 1]?.total || 0;
+          const growthFactor = Math.round(avgGrowth * 10) / 10;
+          
+          setProjections({
+            nextMonth: Math.round(lastMonthRevenue * (1 + avgGrowth / 100)),
+            nextQuarter: Math.round(lastMonthRevenue * 3 * (1 + avgGrowth / 100)),
+            yearEnd: Math.round(lastMonthRevenue * 12 * (1 + avgGrowth / 100)),
+            growthFactor
+          });
+        }
+        return current;
+      });
+    }, 1000);
+
+    // 클린업
+    return () => {
+      unsubscribers.forEach(unsub => unsub());
+    };
+  }, [period]);
 
   const getPeriodLabel = (period: string) => {
     switch (period) {

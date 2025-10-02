@@ -39,30 +39,54 @@ export default function ChatListPopup({ onClose, initialChatId }: ChatListPopupP
       where('status', '==', 'active')
     );
 
-    const un = onSnapshot(q, (snap) => {
-      const rooms: ChatRoom[] = snap.docs.map((d) => {
-        const data = d.data() as Record<string, unknown>;
-        return {
-          id: d.id,
-          lastMessage: (data.lastMessage as string) || '메시지가 없습니다',
-          lastMessageTime: data.lastMessageTime as Timestamp | undefined,
-          // any 사용 제거: 안전한 접근으로 대체
-          otherParticipantName: (data && typeof data === 'object' && 'therapistName' in data && typeof (data as { therapistName?: unknown }).therapistName === 'string')
-            ? (data as { therapistName?: string }).therapistName
-            : (data && typeof data === 'object' && 'parentName' in data && typeof (data as { parentName?: unknown }).parentName === 'string')
-              ? (data as { parentName?: string }).parentName
-              : '상대방'
-        };
-      });
+    const updateChatList = (snap: { docs: Array<{ id: string; data: () => unknown }> }) => {
+      // localStorage에서 숨긴 채팅방 목록 가져오기
+      const hiddenKey = `hiddenChats_${currentUser.uid}`;
+      const hiddenChats = JSON.parse(localStorage.getItem(hiddenKey) || '[]') as string[];
+      
+      const rooms: ChatRoom[] = snap.docs
+        .filter((d) => !hiddenChats.includes(d.id)) // 숨긴 채팅방 제외
+        .map((d) => {
+          const data = d.data() as Record<string, unknown>;
+          return {
+            id: d.id,
+            lastMessage: (data.lastMessage as string) || '메시지가 없습니다',
+            lastMessageTime: data.lastMessageTime as Timestamp | undefined,
+            // any 사용 제거: 안전한 접근으로 대체
+            otherParticipantName: (data && typeof data === 'object' && 'therapistName' in data && typeof (data as { therapistName?: unknown }).therapistName === 'string')
+              ? (data as { therapistName?: string }).therapistName
+              : (data && typeof data === 'object' && 'parentName' in data && typeof (data as { parentName?: unknown }).parentName === 'string')
+                ? (data as { parentName?: string }).parentName
+                : '상대방'
+          };
+        });
       rooms.sort((a, b) => {
         const ta = a.lastMessageTime?.toDate().getTime() ?? 0;
         const tb = b.lastMessageTime?.toDate().getTime() ?? 0;
         return tb - ta;
       });
       setChats(rooms);
-    });
+    };
 
-    return () => un();
+    const un = onSnapshot(q, updateChatList);
+
+    // localStorage 변경 감지 (새 채팅 시작 시)
+    const handleStorageChange = (e: CustomEvent) => {
+      if (e.detail?.userId === currentUser.uid) {
+        // Firestore 스냅샷 데이터를 다시 가져와 업데이트
+        const unsubscribe = onSnapshot(q, (snap) => {
+          updateChatList(snap);
+          unsubscribe();
+        });
+      }
+    };
+
+    window.addEventListener('chatListUpdate', handleStorageChange as EventListener);
+
+    return () => {
+      un();
+      window.removeEventListener('chatListUpdate', handleStorageChange as EventListener);
+    };
   }, [currentUser]);
 
   const openInlineChat = (id: string, name?: string) => {
@@ -168,10 +192,14 @@ export default function ChatListPopup({ onClose, initialChatId }: ChatListPopupP
               otherUserId={''}
               otherUserName={selected.name}
               otherUserType={'therapist'}
-              onClose={() => {
+              onClose={(shouldRemoveFromList) => {
                 setShowPanel(false);
                 setIsFloating(false);
-                onClose();
+                // 환불된 경우 즉시 로컬 상태에서 제거
+                if (shouldRemoveFromList) {
+                  setChats((prev) => prev.filter((c) => c.id !== selected.id));
+                }
+                setSelected(null);
               }}
               position={'anchored'}
             />
