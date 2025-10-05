@@ -11,9 +11,9 @@ export interface SiteStatistics {
 
 // 통계 데이터 기본값
 const DEFAULT_STATS: SiteStatistics = {
-  totalMatches: 100, // 100건부터 시작
-  totalTeachers: 40, // 40명으로 설정
-  parentSatisfaction: 98, // 98% 유지
+  totalMatches: 1275,
+  totalTeachers: 3026,
+  parentSatisfaction: 98,
   lastUpdated: new Date().toISOString()
 };
 

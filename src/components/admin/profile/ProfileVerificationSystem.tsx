@@ -165,7 +165,8 @@ export default function ProfileVerificationSystem() {
         await updateDoc(userRef, {
           profileStatus: newStatus,
           profileReviewedAt: serverTimestamp(),
-          profileReviewerId: currentUser?.uid || null
+          profileReviewerId: currentUser?.uid || null,
+          isVerified: false, // ✅ 승인 시점에는 모든별 인증 없음 (조건 충족 시 자동 부여)
         }).catch((e) => { console.error('[권한체크] users update 실패:', target.teacherId, e); throw e; });
 
         // Firestore: therapistProfiles 업서트/상태 갱신
@@ -189,6 +190,7 @@ export default function ProfileVerificationSystem() {
             philosophy: target.teachingPhilosophy || regData.teachingPhilosophy || '',
             status: 'approved',
             isPublished: regData.isPublished === true ? true : false, // 최초 승인 시 기본 false, 기존값 유지
+            isVerified: false, // ✅ 승인 시점에는 모든별 인증 없음 (조건 충족 시 자동 부여)
             createdAt: regData.createdAt || serverTimestamp(),
             updatedAt: serverTimestamp(),
           }, { merge: true }).catch((e) => { console.error('[권한체크] therapistProfiles upsert 실패:', target.teacherId, e); throw e; });

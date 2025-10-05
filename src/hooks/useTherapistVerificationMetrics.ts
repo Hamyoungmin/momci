@@ -118,22 +118,45 @@ export function useTherapistVerificationMetrics(userId: string | undefined) {
 /**
  * 조건 충족 시 자동 인증 부여 시도
  * 규칙: users 문서에 isVerified/certificationBadge/verifiedAt, therapistProfiles에도 isVerified 반영
+ * ✅ 조건 검증: 매칭 3회 이상 AND 후기 2개 이상 AND 평균 별점 4.5 이상
  */
 export async function tryAutoVerifyTherapist(userId: string) {
   try {
-    // users 문서 업데이트 (보안 규칙에서 허용 조건 확인)
+    // ✅ 1. 먼저 실제 조건을 충족하는지 검증
+    const userDoc = await getDocs(query(collection(db, 'users'), where('uid', '==', userId), limit(1)));
+    if (userDoc.empty) {
+      console.warn('❌ 사용자를 찾을 수 없습니다.');
+      return;
+    }
+    
+    const userData = userDoc.docs[0].data();
+    const totalMatches = userData?.totalMatches || 0;
+    const reviewCount = userData?.reviewCount || 0;
+    const rating = userData?.rating || 0;
+    
+    // ✅ 조건 미충족 시 중단
+    if (totalMatches < 3 || reviewCount < 2 || rating < 4.5) {
+      console.log(`❌ 자동 인증 조건 미충족: 매칭 ${totalMatches}/3, 후기 ${reviewCount}/2, 별점 ${rating}/4.5`);
+      return;
+    }
+    
+    console.log(`✅ 자동 인증 조건 충족! 매칭 ${totalMatches}, 후기 ${reviewCount}, 별점 ${rating}`);
+    
+    // ✅ 2. 조건 충족 시에만 users 문서 업데이트
     await updateDoc(doc(db, 'users', userId), {
       isVerified: true,
       certificationBadge: 'certified',
       verifiedAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
+    
+    console.log('✅ users 컬렉션 인증 완료');
   } catch (e) {
-    console.warn('users 자동 인증 반영 실패(규칙 조건 미충족 가능):', e);
+    console.warn('users 자동 인증 반영 실패:', e);
   }
 
   try {
-    // therapistProfiles 대표 문서에도 반영
+    // ✅ 3. therapistProfiles 대표 문서에도 반영
     const profilesQ = query(
       collection(db, 'therapistProfiles'),
       where('userId', '==', userId),
@@ -145,6 +168,7 @@ export async function tryAutoVerifyTherapist(userId: string) {
         isVerified: true,
         verifiedAt: serverTimestamp(),
       });
+      console.log('✅ therapistProfiles 컬렉션 인증 완료');
     }
   } catch (e) {
     console.warn('therapistProfiles 자동 인증 반영 실패:', e);

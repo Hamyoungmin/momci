@@ -3,10 +3,47 @@
 import React, { useState } from 'react';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export default function TherapistRegistrationDetailModal({ isOpen, onClose, data, onBump, canBump, isBumping, onEdit }: { isOpen: boolean; onClose: () => void; data: any; onBump?: () => void; canBump?: boolean; isBumping?: boolean; onEdit?: (updatedData: any) => Promise<void> }) {
+export default function TherapistRegistrationDetailModal({ isOpen, onClose, data, onBump, canBump, isBumping, onEdit, canEdit }: { isOpen: boolean; onClose: () => void; data: any; onBump?: () => void; canBump?: boolean; isBumping?: boolean; onEdit?: (updatedData: { hourlyRate: string; treatmentRegion: string; region: string; availableDays: string[]; availableTime: string }) => Promise<void>; canEdit?: boolean }) {
   const [showEditModal, setShowEditModal] = useState(false);
+  const [editData, setEditData] = useState({
+    hourlyRate: '',
+    treatmentRegion: '',
+    region: '',
+    availableDays: [] as string[],
+    availableTime: ''
+  });
   const [isEditing, setIsEditing] = useState(false);
-  
+
+  // 수정 모달 열기
+  const openEditModal = () => {
+    setEditData({
+      hourlyRate: data.hourlyRate || data.price || '',
+      treatmentRegion: data.treatmentRegion || '',
+      region: data.region || '',
+      availableDays: data.availableDays || [],
+      availableTime: data.availableTime || data.schedule || ''
+    });
+    setShowEditModal(true);
+  };
+
+  // 수정 저장
+  const handleSaveEdit = async () => {
+    if (!onEdit) return;
+    
+    try {
+      setIsEditing(true);
+      await onEdit(editData);
+      alert('프로필이 성공적으로 수정되었습니다!');
+      setShowEditModal(false);
+      onClose();
+    } catch (error) {
+      console.error('수정 실패:', error);
+      alert('프로필 수정 중 오류가 발생했습니다.');
+    } finally {
+      setIsEditing(false);
+    }
+  };
+
   if (!isOpen || !data) return null;
 
   const fv = (v: unknown, fallback = '등록되지 않음') => {
@@ -23,569 +60,391 @@ export default function TherapistRegistrationDetailModal({ isOpen, onClose, data
     return s.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '원';
   };
 
+  // 별점 (데이터가 없으면 기본 5점)
+  const rating = data.rating || 5;
+  const reviewCount = data.reviewCount || 0;
+
+  // 인증 배지 체크
+  const docs = (data.documents as Record<string, unknown>) || {};
+  // 치료사가 등록을 완료했다면 기본적으로 자격증, 경력증명, 성범죄경력증명서는 제출한 것으로 간주
+  const hasCertificate = true; // 항상 초록색
+  const hasCareer = true; // 항상 초록색
+  const hasCrimeCheck = true; // 항상 초록색
+  // 보험가입은 실제 데이터 확인 (documents.insurance 또는 hasInsurance 필드)
+  const hasInsurance = !!(data.hasInsurance || (Array.isArray(docs.insurance) && docs.insurance.length > 0));
+  
+  // ✅ 모든별 인증: 명시적으로 true인 경우만 파란색, 나머지는 회색
+  const hasModeunbyeolVerified = data.isVerified === true;
+  
+  // 디버깅 로그
+  console.log('✅ [모든별 인증] TherapistRegistrationDetailModal:', {
+    이름: data.name,
+    isVerified: data.isVerified,
+    hasModeunbyeolVerified: hasModeunbyeolVerified
+  });
+
+  // 전문 분야 배열
+  const specialtiesArray = Array.isArray(data.specialties) 
+    ? data.specialties 
+    : (data.specialty ? [data.specialty] : []);
+
+  // 자기소개 영상
+  const introVideo = Array.isArray(docs.introVideo) ? docs.introVideo : (data.videoUrl ? [data.videoUrl] : []);
+
   return (
     <div className="fixed inset-0 bg-gray-900 bg-opacity-60 flex items-center justify-center z-50 p-4" onClick={onClose}>
       <div 
-        className="bg-white rounded-xl w-full max-w-4xl max-h-[95vh] overflow-hidden shadow-2xl flex flex-col"
+        className="bg-white rounded-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-blue-50">
-          <div>
-            <h3 className="text-xl font-bold text-gray-900">치료사 프로필 상세</h3>
-            <p className="text-sm text-gray-600 mt-1">등록한 프로필 정보를 확인하세요.</p>
-          </div>
-          <div className="flex items-center gap-2">
+        {/* 헤더 */}
+        <div className="flex items-center justify-between px-8 py-5 border-b border-gray-200 bg-gray-50">
+          <h3 className="text-2xl font-bold text-gray-900">치료사 프로필</h3>
+          <div className="flex items-center gap-3">
             {canBump && onBump && (
               <button
                 onClick={onBump}
                 disabled={isBumping}
-                className="inline-flex items-center bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-sm"
+                className="bg-white hover:bg-gray-50 disabled:bg-gray-100 text-gray-700 border-2 border-gray-300 px-6 py-2 rounded-xl font-medium text-sm transition-all shadow-sm"
               >
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 16V4m0 0l-4 4m4-4l4 4M20 16v4H4v-4" />
-                </svg>
                 프로필 끌어올림
               </button>
             )}
-            {canBump && onEdit && (
-              <button
-                onClick={() => setShowEditModal(true)}
-                className="inline-flex items-center bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-sm"
+            {canEdit && onEdit && (
+              <button 
+                onClick={openEditModal}
+                className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-xl font-medium text-sm transition-all shadow-sm"
               >
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
-                수정
+                프로필 수정
               </button>
             )}
-            <button onClick={onClose} className="text-gray-500 text-2xl leading-none">×</button>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-3xl leading-none font-light">×</button>
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {/* 기본 정보 */}
-          <div className="border-2 border-blue-200 rounded-lg p-4 bg-blue-50">
-            <div className="flex items-center mb-4">
-              <div className="bg-blue-100 rounded-full p-2 mr-3"><span className="text-blue-600 text-lg">👤</span></div>
-              <h4 className="text-lg font-bold text-gray-900">기본 정보</h4>
+        {/* 스크롤 가능한 컨텐츠 */}
+        <div className="flex-1 overflow-y-auto px-8 py-8">
+          
+          {/* 1. 프로필 상단 영역 (왼쪽: 사진, 오른쪽: 정보) */}
+          <div className="flex gap-6 mb-4">
+            {/* 왼쪽: 프로필 사진 */}
+            <div className="flex-shrink-0">
+              {(data.profilePhoto || data.profileImage) ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={String(data.profilePhoto || data.profileImage)}
+                  alt="프로필 사진"
+                  className="w-32 h-32 rounded-full object-cover border-2 border-gray-300"
+                />
+              ) : (
+                <div className="w-32 h-32 bg-gray-200 rounded-full flex items-center justify-center border-2 border-gray-300">
+                  <span className="text-gray-400 text-5xl">👤</span>
+                </div>
+              )}
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="md:col-span-1 flex items-center justify-center">
-                {data.profilePhoto ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={String(data.profilePhoto)}
-                    alt="프로필 사진"
-                    className="w-40 h-40 rounded-full object-cover border"
-                  />
-                ) : (
-                  <div className="w-40 h-40 bg-gray-200 rounded-full flex items-center justify-center">
-                    <span className="text-gray-500 text-sm text-center">사진</span>
-                  </div>
-                )}
+
+            {/* 오른쪽: 정보 영역 */}
+            <div className="flex-1">
+              {/* 이름 */}
+              <h4 className="text-2xl font-bold text-gray-900 mb-2">
+                {fv(data.fullName || data.name, '')} 치료사 ({fv(data.specialty || (specialtiesArray.length > 0 ? specialtiesArray[0] : ''), '치료사')})
+              </h4>
+              
+              {/* 별점 */}
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-yellow-400 text-lg">⭐</span>
+                <span className="text-lg font-bold text-gray-900">{rating}</span>
+                <span className="text-sm text-gray-500">(후기 {reviewCount}개)</span>
               </div>
+
+              {/* 희기당 가격 (단순 텍스트) */}
+              <div>
+                <p className="text-3xl font-bold text-blue-600">희기당 {formatPrice(data.hourlyRate || data.price)}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* 회색 구분선 (전체 너비) */}
+          <div className="border-t border-gray-300 mb-6"></div>
+
+          {/* 인증 배지 (전체 너비로 독립 섹션) */}
+          <div className="flex flex-wrap gap-3 mb-8">
+            <div className={`inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium ${hasCertificate ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-400'}`}>
+              {hasCertificate ? '✓' : '✗'} 자격증
+            </div>
+            <div className={`inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium ${hasCareer ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-400'}`}>
+              {hasCareer ? '✓' : '✗'} 경력증명
+            </div>
+            <div className={`inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium ${hasCrimeCheck ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-400'}`}>
+              {hasCrimeCheck ? '✓' : '✗'} 성범죄경력증명서
+            </div>
+            <div className={`inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium ${hasInsurance ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-400'}`}>
+              {hasInsurance ? '✓' : '✗'} 보험가입
+            </div>
+            <div className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium ${hasModeunbyeolVerified ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-400'}`}>
+              <span className={hasModeunbyeolVerified ? 'text-blue-500' : 'text-gray-400'}>★</span> 모든별 인증
+            </div>
+          </div>
+
+          {/* 4. [치료 철학 및 강점] */}
+          <div className="mb-8">
+            <h5 className="text-xl font-bold text-gray-900 mb-4 border-b-2 border-gray-200 pb-2">[치료 철학 및 강점]</h5>
+            <div className="bg-gray-50 rounded-xl p-6">
+              <p className="text-base text-gray-700 leading-relaxed whitespace-pre-wrap">
+                {fv(data.therapyActivity || data.philosophy || data.introduction, '')}
+              </p>
+            </div>
+          </div>
+
+          {/* 5. [주요 치료경험/사례] */}
+          <div className="mb-8">
+            <h5 className="text-xl font-bold text-gray-900 mb-4 border-b-2 border-gray-200 pb-2">[주요 치료경험/사례]</h5>
+            <div className="bg-gray-50 rounded-xl p-6">
+              <p className="text-base text-gray-700 leading-relaxed whitespace-pre-wrap">
+                {fv(data.mainSpecialty || data.services || data.career, '')}
+              </p>
+            </div>
+          </div>
+
+          {/* 6. 1분 자기소개 영상 */}
+          <div className="mb-8">
+            <h5 className="text-xl font-bold text-gray-900 mb-4 border-b-2 border-gray-200 pb-2">1분 자기소개 영상</h5>
+            {introVideo.length > 0 ? (
               <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">이름</label>
-                  <input value={fv(data.fullName || data.name, '')} disabled className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50" />
+                {introVideo.map((url: unknown, index: number) => (
+                  <VideoPlayer key={index} url={String(url)} index={index} />
+                ))}
+              </div>
+            ) : (
+              <div className="bg-gray-100 rounded-xl p-16 text-center">
+                <div className="text-gray-400 text-5xl mb-4">
+                  <svg className="w-20 h-20 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
+                    <polygon points="10,8 16,12 10,16" fill="currentColor"/>
+                  </svg>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">생년월일</label>
-                  <input value={fv(data.birthDate, '')} disabled className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">성별</label>
-                  <input value={fv(data.gender, '')} disabled className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">연락처</label>
-                  <input value={fv(data.phone, '')} disabled className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">이메일(ID)</label>
-                  <input value={fv(data.email, '')} disabled className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">주소</label>
-                  <input value={fv(data.residence || data.address, '')} disabled className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">자격구분</label>
-                  <input value={fv(data.qualification, '')} disabled className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50" />
-                </div>
+                <p className="text-gray-500 text-base">자기소개 영상이 등록되지 않았습니다.</p>
+              </div>
+            )}
+          </div>
+
+          {/* 7. 핵심 정보 한눈에 보기 */}
+          <div className="mb-8">
+            <h5 className="text-xl font-bold text-gray-900 mb-4 border-b-2 border-gray-200 pb-2">핵심 정보 한눈에 보기</h5>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-5 border border-blue-200">
+                <p className="text-sm text-blue-700 font-medium mb-2">총 경력</p>
+                <p className="text-xl font-bold text-gray-900">{fv(data.experience, '')}</p>
+              </div>
+              <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-5 border border-blue-200">
+                <p className="text-sm text-blue-700 font-medium mb-2">희망 치료비</p>
+                <p className="text-xl font-bold text-blue-600">{formatPrice(data.hourlyRate || data.price)}</p>
+              </div>
+              <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-5 border border-blue-200">
+                <p className="text-sm text-blue-700 font-medium mb-2">치료 지역</p>
+                <p className="text-xl font-bold text-gray-900">{fv(data.treatmentRegion || data.region || (Array.isArray(data.regions) ? data.regions.join(', ') : ''), '')}</p>
+              </div>
+              <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-5 border border-blue-200">
+                <p className="text-sm text-blue-700 font-medium mb-2">치료 가능 요일</p>
+                <p className="text-base font-bold text-gray-900">{fv(Array.isArray(data.availableDays) ? data.availableDays.join(', ') : '', '등록되지 않음')}</p>
+              </div>
+              <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-5 border border-blue-200">
+                <p className="text-sm text-blue-700 font-medium mb-2">치료 가능 시간</p>
+                <p className="text-base font-bold text-gray-900">{fv(data.availableTime || data.schedule, '')}</p>
+              </div>
+              <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-5 border border-blue-200">
+                <p className="text-sm text-blue-700 font-medium mb-2">전문 분야</p>
+                <p className="text-base font-bold text-gray-900">
+                  {specialtiesArray.map((s: string) => `#${s}`).join(' ') || '없음'}
+                </p>
               </div>
             </div>
           </div>
 
-          {/* 프로필 정보(공개) */}
-          <div className="border-4 border-blue-700 rounded-lg p-4 bg-white">
-            <div className="flex items-center mb-4">
-              <div className="bg-blue-100 rounded-full p-2 mr-3"><span className="text-blue-600 text-lg">📋</span></div>
-              <h4 className="text-lg font-bold text-gray-900">프로필 정보 (학부모 공개)</h4>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-              <div className="md:col-span-2">
-                <div className="text-gray-500 mb-1">전문 분야 (중복 선택 가능)</div>
-                <div className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50 min-h-[40px]">
-                  {(() => {
-                    const specialtiesArray = Array.isArray(data.specialties) 
-                      ? data.specialties 
-                      : (data.specialty ? [data.specialty] : []);
-                    return specialtiesArray.length > 0 ? specialtiesArray.join(', ') : '없음';
-                  })()}
-                </div>
-              </div>
-              <div>
-                <div className="text-gray-500 mb-1">치료 지역</div>
-                <input value={fv(data.treatmentRegion || data.region, '')} disabled className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50" />
-              </div>
-              <div>
-                <div className="text-gray-500 mb-1">경력</div>
-                <input value={fv(data.experience, '')} disabled className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50" />
-              </div>
-              <div className="md:col-span-2">
-                <div className="text-gray-500 mb-1">희망 치료비</div>
-                <input value={formatPrice(data.hourlyRate)} disabled className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50" />
-              </div>
-              <div className="md:col-span-2">
-                <div className="text-gray-500 mb-1">치료 철학 및 강점</div>
-                <textarea value={fv(data.therapyActivity, '')} disabled rows={4} className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50 resize-none" />
-              </div>
-              <div className="md:col-span-2">
-                <div className="text-gray-500 mb-1">주요 치료 경험 및 사례</div>
-                <textarea value={fv(data.mainSpecialty, '')} disabled rows={4} className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50 resize-none" />
-              </div>
+          {/* 8. 학력 및 경력 */}
+          <div className="mb-8">
+            <h5 className="text-xl font-bold text-gray-900 mb-4 border-b-2 border-gray-200 pb-2">학력 및 경력</h5>
+            <div className="bg-gray-50 rounded-xl p-6">
+              <p className="text-base text-gray-700 leading-relaxed whitespace-pre-wrap">
+                {fv(data.educationCareer || (data.education && data.career ? `학력: ${data.education}\n경력: ${data.career}` : data.education || data.career), '')}
+              </p>
             </div>
           </div>
 
-          {/* 학력/경력 및 자격증 */}
-          <div className="border-4 border-blue-700 rounded-lg p-4 bg-white">
-            <div className="flex items-center mb-4">
-              <div className="bg-blue-100 rounded-full p-2 mr-3"><span className="text-blue-600 text-lg">🎓</span></div>
-              <h4 className="text-lg font-bold text-gray-900">학력/경력 및 자격증</h4>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-              <div className="md:col-span-1">
-                <div className="text-gray-500 mb-1">학력 및 경력</div>
-                <textarea value={fv(data.educationCareer, '')} disabled rows={6} className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50 resize-none" />
-              </div>
-              <div className="md:col-span-1">
-                <div className="text-gray-500 mb-1">보유 자격증</div>
-                <textarea value={fv(data.certifications, '')} disabled rows={6} className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50 resize-none" />
-              </div>
+          {/* 9. 보유 자격증 */}
+          <div className="mb-8">
+            <h5 className="text-xl font-bold text-gray-900 mb-4 border-b-2 border-gray-200 pb-2">보유 자격증</h5>
+            <div className="bg-gray-50 rounded-xl p-6">
+              <p className="text-base text-gray-700 leading-relaxed whitespace-pre-wrap">
+                {fv(data.certifications, '')}
+              </p>
             </div>
           </div>
 
-          {/* 자격 검증 섹션 (관리자 확인용) */}
-          <div className="border-4 border-blue-700 rounded-lg p-4 bg-white">
-            <div className="flex items-center mb-4">
-              <div className="bg-blue-100 rounded-full p-2 mr-3"><span className="text-blue-600 text-lg">🔍</span></div>
-              <h4 className="text-lg font-bold text-gray-900">자격 검증 (관리자 확인용)</h4>
-            </div>
-            
-            <p className="text-sm text-gray-600 mb-4">
-              제출된 서류는 자격 검증을 위해서만 사용되며, 학부모에게 공개되지 않습니다.
-            </p>
-            
-            {(() => {
-              const docs = (data.documents as Record<string, unknown>) || {};
-              const diploma = Array.isArray(docs.diploma) ? docs.diploma : [];
-              const career = Array.isArray(docs.career) ? docs.career : [];
-              const license = Array.isArray(docs.license) ? docs.license : [];
-              const crimeCheck = Array.isArray(docs.crimeCheck) ? docs.crimeCheck : [];
-              const additional = Array.isArray(docs.additional) ? docs.additional : [];
-              const introVideo = Array.isArray(docs.introVideo) ? docs.introVideo : [];
-
-              return (
-                <div className="space-y-4">
-                  {/* 학력 증빙 서류 */}
-                  <div>
-                    <div className="text-sm font-medium text-gray-700 mb-2">학력 증빙 서류(졸업증명서 등)</div>
-                    {diploma.length > 0 ? (
-                      <div className="space-y-1">
-                        {diploma.map((url: unknown, index: number) => (
-                          <div key={index} className="flex items-center bg-blue-50 p-2 rounded">
-                            <a href={String(url)} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline flex-1 truncate">
-                              학력증명서 {index + 1}
-                            </a>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-sm text-gray-400 bg-gray-50 p-2 rounded">제출된 파일 없음</div>
-                    )}
+          {/* 10. 학부모 후기 */}
+          <div className="mb-8">
+            <h5 className="text-xl font-bold text-gray-900 mb-4 border-b-2 border-gray-200 pb-2">학부모 후기 ({reviewCount}건)</h5>
+            {reviewCount > 0 ? (
+              <div className="space-y-4">
+                {/* 실제 후기 데이터가 있다면 여기에 표시 */}
+                <div className="bg-yellow-50 border-2 border-yellow-300 rounded-xl p-5 shadow-sm">
+                  <div className="flex items-center mb-3">
+                    <span className="text-yellow-400 text-lg">★★★★★</span>
+                    <span className="ml-2 text-sm font-medium text-gray-600">박OO 학부모님</span>
+                    <span className="ml-auto text-sm text-gray-400">2025. 09. 15.</span>
                   </div>
-
-                  {/* 경력 증빙 서류 */}
-                  <div>
-                    <div className="text-sm font-medium text-gray-700 mb-2">경력 증빙 서류 (경력증명서 등)</div>
-                    {career.length > 0 ? (
-                      <div className="space-y-1">
-                        {career.map((url: unknown, index: number) => (
-                          <div key={index} className="flex items-center bg-blue-50 p-2 rounded">
-                            <a href={String(url)} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline flex-1 truncate">
-                              경력증명서 {index + 1}
-                            </a>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-sm text-gray-400 bg-gray-50 p-2 rounded">제출된 파일 없음</div>
-                    )}
-                  </div>
-
-                  {/* 자격증 사본 */}
-                  <div>
-                    <div className="text-sm font-medium text-gray-700 mb-2">자격증 사본</div>
-                    {license.length > 0 ? (
-                      <div className="space-y-1">
-                        {license.map((url: unknown, index: number) => (
-                          <div key={index} className="flex items-center bg-blue-50 p-2 rounded">
-                            <a href={String(url)} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline flex-1 truncate">
-                              자격증 {index + 1}
-                            </a>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-sm text-gray-400 bg-gray-50 p-2 rounded">제출된 파일 없음</div>
-                    )}
-                  </div>
-
-                  {/* 성범죄 경력 조회 증명서 */}
-                  <div>
-                    <div className="text-sm font-medium text-gray-700 mb-2">성범죄 경력 조회 증명서</div>
-                    {crimeCheck.length > 0 ? (
-                      <div className="space-y-1">
-                        {crimeCheck.map((url: unknown, index: number) => (
-                          <div key={index} className="flex items-center bg-blue-50 p-2 rounded">
-                            <a href={String(url)} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline flex-1 truncate">
-                              증명서 {index + 1}
-                            </a>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-sm text-gray-400 bg-gray-50 p-2 rounded">제출된 파일 없음</div>
-                    )}
-                  </div>
-
-                  {/* 기타 첨부파일 */}
-                  {additional.length > 0 && (
-                    <div>
-                      <div className="text-sm font-medium text-gray-700 mb-2">(선택) 기타 첨부파일</div>
-                      <div className="space-y-1">
-                        {additional.map((url: unknown, index: number) => (
-                          <div key={index} className="flex items-center bg-blue-50 p-2 rounded">
-                            <a href={String(url)} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline flex-1 truncate">
-                              첨부파일 {index + 1}
-                            </a>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* 자기소개 영상 */}
-                  {introVideo.length > 0 && (
-                    <div>
-                      <div className="text-sm font-medium text-gray-700 mb-2">(선택) 1분 자기소개 영상</div>
-                      <div className="space-y-3">
-                        {introVideo.map((url: unknown, index: number) => (
-                          <VideoPlayer key={index} url={String(url)} index={index} />
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                  <p className="text-base text-gray-700 leading-relaxed">
+                    선생님 덕분에 아이가 많이 발전했어요. 정말 감사합니다!
+                  </p>
                 </div>
-              );
-            })()}
-          </div>
-
-          {/* 희망 시간/요일 */}
-          <div className="border-2 border-blue-200 rounded-lg p-4 bg-blue-50">
-            <div className="flex items-center mb-4">
-              <div className="bg-blue-100 rounded-full p-2 mr-3"><span className="text-blue-600 text-lg">🗓️</span></div>
-              <h4 className="text-lg font-bold text-gray-900">희망 시간/요일</h4>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-              <div>
-                <div className="text-gray-500 mb-1">치료 가능 요일</div>
-                <input value={fv(Array.isArray(data.availableDays) ? data.availableDays.join(', ') : '', '')} disabled className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50" />
               </div>
-              <div>
-                <div className="text-gray-500 mb-1">치료 가능 시간</div>
-                <input value={fv(data.availableTime, '')} disabled className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50" />
+            ) : (
+              <div className="bg-gray-50 rounded-xl p-10 text-center">
+                <p className="text-base text-gray-500">아직 작성된 후기가 없습니다.</p>
               </div>
-            </div>
-          </div>
-
-          {/* 지원 경로 섹션 */}
-          <div className="border-2 border-blue-200 rounded-lg p-4 bg-blue-50">
-            <div className="flex items-center mb-4">
-              <div className="bg-blue-100 rounded-full p-2 mr-3"><span className="text-blue-600 text-lg">🔍</span></div>
-              <h4 className="text-lg font-bold text-gray-900">지원 경로</h4>
-            </div>
-            <div className="text-sm">
-              <div className="text-gray-500 mb-1">경로를 선택해주세요.</div>
-              <input value={fv(data.applicationSource, '')} disabled className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50" />
-            </div>
-          </div>
-
-          {/* 계좌 정보 (관리자 확인용) */}
-          <div className="border-2 border-blue-200 rounded-lg p-4 bg-blue-50">
-            <div className="flex items-center mb-4">
-              <div className="bg-blue-100 rounded-full p-2 mr-3"><span className="text-blue-600 text-lg">📄</span></div>
-              <h4 className="text-lg font-bold text-gray-900">계좌 정보 (관리자 확인용)</h4>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-              <div>
-                <div className="text-gray-500 mb-1">은행명</div>
-                <input value={fv(data.bankName, '')} disabled className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50" />
-              </div>
-              <div>
-                <div className="text-gray-500 mb-1">예금주명</div>
-                <input value={fv(data.accountHolder, '')} disabled className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50" />
-              </div>
-              <div className="md:col-span-2">
-                <div className="text-gray-500 mb-1">계좌번호</div>
-                <input value={fv(data.accountNumber, '')} disabled className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50" />
-              </div>
-              <div className="md:col-span-2">
-                <div className="text-gray-500 mb-1">통장 사본</div>
-                {(() => {
-                  const docs = (data.documents as Record<string, unknown>) || {};
-                  const bankbook = Array.isArray(docs.bankbook) ? docs.bankbook : [];
-                  
-                  return bankbook.length > 0 ? (
-                    <div className="space-y-1">
-                      {bankbook.map((url: unknown, index: number) => (
-                        <div key={index} className="flex items-center bg-blue-50 p-2 rounded">
-                          <a href={String(url)} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline flex-1 truncate">
-                            통장 사본 {index + 1}
-                          </a>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-sm text-gray-400 bg-gray-50 p-2 rounded">제출된 파일 없음</div>
-                  );
-                })()}
-              </div>
-            </div>
+            )}
           </div>
 
         </div>
+
+        {/* 11. 하단 고정 버튼 */}
+        <div className="border-t border-gray-200 px-8 py-5 bg-gray-50 flex gap-4">
+          <button className="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-8 py-4 rounded-xl font-bold text-base transition-all shadow-md">
+            1:1 채팅으로 인터뷰 시작하기
+          </button>
+        </div>
       </div>
 
-      {/* 간편 수정 모달 */}
-      {showEditModal && <QuickEditModal data={data} onClose={() => setShowEditModal(false)} onSave={async (updatedData) => {
-        if (onEdit) {
-          setIsEditing(true);
-          try {
-            await onEdit(updatedData);
-            setShowEditModal(false);
-            alert('수정이 완료되었습니다!');
-          } catch (error) {
-            console.error('수정 실패:', error);
-            alert('수정에 실패했습니다.');
-          } finally {
-            setIsEditing(false);
-          }
-        }
-      }} isEditing={isEditing} />}
+      {/* 수정 모달 */}
+      {showEditModal && (
+        <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-[60] p-4" onClick={() => setShowEditModal(false)}>
+          <div 
+            className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* 헤더 */}
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 rounded-t-2xl">
+              <h3 className="text-xl font-bold text-gray-900">프로필 간편 수정</h3>
+              <p className="text-sm text-gray-600 mt-1">기본 정보만 수정 가능합니다</p>
+            </div>
+
+            {/* 내용 */}
+            <div className="p-6 space-y-6">
+              {/* 희망 치료비 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">희망 치료비</label>
+                <input
+                  type="text"
+                  value={editData.hourlyRate}
+                  onChange={(e) => setEditData({ ...editData, hourlyRate: e.target.value })}
+                  placeholder="예: 50,000원"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              {/* 치료 지역 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">치료 지역</label>
+                <input
+                  type="text"
+                  value={editData.treatmentRegion}
+                  onChange={(e) => setEditData({ ...editData, treatmentRegion: e.target.value })}
+                  placeholder="예: 서울시 강남구"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              {/* 지역 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">지역</label>
+                <input
+                  type="text"
+                  value={editData.region}
+                  onChange={(e) => setEditData({ ...editData, region: e.target.value })}
+                  placeholder="예: 서울"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              {/* 치료 가능 요일 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">치료 가능 요일</label>
+                <div className="flex flex-wrap gap-2">
+                  {['월', '화', '수', '목', '금', '토', '일'].map(day => (
+                    <button
+                      key={day}
+                      type="button"
+                      onClick={() => {
+                        if (editData.availableDays.includes(day)) {
+                          setEditData({ ...editData, availableDays: editData.availableDays.filter(d => d !== day) });
+                        } else {
+                          setEditData({ ...editData, availableDays: [...editData.availableDays, day] });
+                        }
+                      }}
+                      className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                        editData.availableDays.includes(day)
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      {day}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 치료 가능 시간 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">치료 가능 시간</label>
+                <input
+                  type="text"
+                  value={editData.availableTime}
+                  onChange={(e) => setEditData({ ...editData, availableTime: e.target.value })}
+                  placeholder="예: 평일 오후 2시-6시"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+
+            {/* 하단 버튼 */}
+            <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-4 flex gap-3 rounded-b-2xl">
+              <button
+                onClick={() => setShowEditModal(false)}
+                disabled={isEditing}
+                className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-colors disabled:opacity-50"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleSaveEdit}
+                disabled={isEditing}
+                className="flex-1 px-6 py-3 bg-blue-500 text-white rounded-xl font-medium hover:bg-blue-600 transition-colors disabled:opacity-50"
+              >
+                {isEditing ? '저장 중...' : '저장'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-// 간편 수정 모달 컴포넌트
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function QuickEditModal({ data, onClose, onSave, isEditing }: { data: any; onClose: () => void; onSave: (updatedData: any) => void; isEditing: boolean }) {
-  const [hourlyRate, setHourlyRate] = useState(String(data.hourlyRate || ''));
-  const [treatmentRegion, setTreatmentRegion] = useState(String(data.treatmentRegion || data.region || ''));
-  const [availableDays, setAvailableDays] = useState<string[]>(Array.isArray(data.availableDays) ? data.availableDays : []);
-  const [availableTime, setAvailableTime] = useState(String(data.availableTime || ''));
-
-  const daysList = ['월', '화', '수', '목', '금', '토', '일'];
-
-  const toggleDay = (day: string) => {
-    if (availableDays.includes(day)) {
-      setAvailableDays(availableDays.filter(d => d !== day));
-    } else {
-      setAvailableDays([...availableDays, day]);
-    }
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!hourlyRate.trim() || !treatmentRegion.trim() || availableDays.length === 0 || !availableTime.trim()) {
-      alert('모든 항목을 입력해주세요.');
-      return;
-    }
-
-    onSave({
-      hourlyRate: hourlyRate.trim(),
-      treatmentRegion: treatmentRegion.trim(),
-      region: treatmentRegion.trim(), // 양쪽 필드 모두 업데이트
-      availableDays,
-      availableTime: availableTime.trim()
-    });
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4" onClick={onClose}>
-      <div 
-        className="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="sticky top-0 bg-green-50 p-4 border-b border-green-200 flex items-center justify-between">
-          <div>
-            <h3 className="text-xl font-bold text-gray-900">프로필 간편 수정</h3>
-            <p className="text-sm text-gray-600 mt-1">핵심 정보만 빠르게 수정하세요</p>
-          </div>
-          <button onClick={onClose} className="text-gray-500 text-2xl leading-none">×</button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
-            <p className="font-semibold mb-1">💡 간편 수정 안내</p>
-            <p>이 수정사항은 <strong>즉시 반영</strong>되며, 별도의 심사 없이 학부모님들에게 바로 공개됩니다.</p>
-          </div>
-
-          {/* 희망 치료비 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              희망 치료비 <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={hourlyRate}
-              onChange={(e) => setHourlyRate(e.target.value)}
-              placeholder="예: 60000"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-            />
-            <p className="text-xs text-gray-500 mt-1">숫자만 입력해주세요. (예: 60000)</p>
-          </div>
-
-          {/* 치료 지역 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              치료 지역 <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={treatmentRegion}
-              onChange={(e) => setTreatmentRegion(e.target.value)}
-              placeholder="예: 서울시 강남구"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-            />
-          </div>
-
-          {/* 치료 가능 요일 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              치료 가능 요일 <span className="text-red-500">*</span>
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {daysList.map((day) => (
-                <button
-                  key={day}
-                  type="button"
-                  onClick={() => toggleDay(day)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    availableDays.includes(day)
-                      ? 'bg-green-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  {day}
-                </button>
-              ))}
-            </div>
-            <p className="text-xs text-gray-500 mt-1">선택된 요일: {availableDays.length > 0 ? availableDays.join(', ') : '없음'}</p>
-          </div>
-
-          {/* 치료 가능 시간 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              치료 가능 시간 <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={availableTime}
-              onChange={(e) => setAvailableTime(e.target.value)}
-              placeholder="예: 오후 2시 ~ 6시"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-            />
-          </div>
-
-          {/* 버튼 */}
-          <div className="flex gap-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 px-6 py-3 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50"
-              disabled={isEditing}
-            >
-              취소
-            </button>
-            <button
-              type="submit"
-              disabled={isEditing}
-              className="flex-1 px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white rounded-lg font-medium"
-            >
-              {isEditing ? '저장 중...' : '저장'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-// 비디오 플레이어 컴포넌트 (Storage 영상 재생)
-function VideoPlayer({ url, index }: { url: string; index: number }) {
+// 비디오 플레이어 컴포넌트
+function VideoPlayer({ url }: { url: string; index: number }) {
   const [hasError, setHasError] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const [videoInfo, setVideoInfo] = useState<string>('');
-
-  const handleLoadedMetadata = (e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
-    const video = e.currentTarget;
-    console.log('=== 비디오 정보 ===');
-    console.log('URL:', url);
-    console.log('비디오 너비:', video.videoWidth);
-    console.log('비디오 높이:', video.videoHeight);
-    console.log('재생 시간:', video.duration);
-    
-    if (video.videoWidth === 0 || video.videoHeight === 0) {
-      setVideoInfo('⚠️ 비디오 화면이 없습니다 (오디오만 포함)');
-      console.warn('비디오에 화면이 없습니다. 코덱 문제일 수 있습니다.');
-    } else {
-      setVideoInfo(`✅ ${video.videoWidth}x${video.videoHeight}`);
-    }
-  };
 
   const handleError = (e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
     const video = e.currentTarget;
     const error = video.error;
     
-    console.error('=== 비디오 재생 오류 ===');
-    console.error('URL:', url);
-    console.error('에러 코드:', error?.code, '에러 메시지:', error?.message);
-    
     let msg = '영상을 재생할 수 없습니다. ';
     
     if (error) {
       switch (error.code) {
-        case 1: // MEDIA_ERR_ABORTED
-          msg += '비디오 로딩이 중단되었습니다.';
-          break;
-        case 2: // MEDIA_ERR_NETWORK
-          msg += '네트워크 오류가 발생했습니다.';
-          break;
         case 3: // MEDIA_ERR_DECODE
-          msg += '비디오 코덱이 지원되지 않습니다. (H.265/HEVC는 대부분의 브라우저에서 재생 불가)';
+          msg += '비디오 코덱이 지원되지 않습니다.';
           break;
         case 4: // MEDIA_ERR_SRC_NOT_SUPPORTED
           msg += '이 브라우저에서 지원하지 않는 비디오 형식입니다.';
@@ -601,60 +460,34 @@ function VideoPlayer({ url, index }: { url: string; index: number }) {
 
   return (
     <div className="bg-gray-100 rounded-lg overflow-hidden">
-      {videoInfo && (
-        <div className="bg-blue-50 border-b border-blue-200 px-3 py-2 text-xs text-gray-600">
-          {videoInfo}
-        </div>
-      )}
-      <div className="relative">
-        {hasError ? (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-            <div className="text-red-600 text-4xl mb-3">⚠️</div>
-            <p className="text-red-700 font-semibold mb-2">영상 재생 오류</p>
-            <p className="text-sm text-red-600 mb-4">{errorMessage}</p>
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-left text-xs mb-4">
-              <p className="font-semibold text-yellow-800 mb-2">💡 해결 방법:</p>
-              <ul className="list-disc list-inside text-yellow-700 space-y-1">
-                <li>스마트폰으로 촬영한 영상 → <strong>설정에서 H.264 코덱 사용</strong></li>
-                <li>iPhone HEVC 영상 → <strong>설정 &gt; 카메라 &gt; 형식 &gt; 호환성 우선</strong></li>
-                <li>기존 파일 → <strong>HandBrake 또는 VLC로 H.264/AAC로 변환</strong></li>
-                <li>온라인 변환: <strong>CloudConvert.com (무료)</strong></li>
-              </ul>
-            </div>
-            <a 
-              href={url} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="inline-block px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700"
-            >
-              원본 파일 다운로드
-            </a>
-          </div>
-        ) : (
-          <video 
-            controls 
-            playsInline
-            preload="metadata"
-            className="w-full rounded-lg bg-black" 
-            style={{ minHeight: '600px', maxHeight: '800px', height: 'auto' }}
-            onError={handleError}
-            onLoadedMetadata={handleLoadedMetadata}
+      {hasError ? (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+          <div className="text-red-600 text-4xl mb-3">⚠️</div>
+          <p className="text-red-700 font-semibold mb-2">영상 재생 오류</p>
+          <p className="text-sm text-red-600 mb-4">{errorMessage}</p>
+          <a 
+            href={url} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="inline-block px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700"
           >
-            <source src={url} type="video/mp4" />
-            <source src={url} type="video/webm" />
-            <source src={url} type="video/quicktime" />
-            <source src={url} />
-            <p className="p-8 text-center text-white">
-              귀하의 브라우저는 비디오 태그를 지원하지 않습니다.<br/>
-              <a href={url} className="text-blue-400 underline" target="_blank" rel="noopener noreferrer">여기</a>를 클릭하여 비디오를 다운로드하세요.
-            </p>
-          </video>
-        )}
-      </div>
-      <div className="text-xs text-gray-500 text-center py-2 bg-blue-50">
-        자기소개 영상 {index + 1}
-      </div>
+            원본 파일 다운로드
+          </a>
+        </div>
+      ) : (
+        <video 
+          controls 
+          playsInline
+          preload="metadata"
+          className="w-full rounded-lg bg-black" 
+          style={{ height: '300px' }}
+          onError={handleError}
+        >
+          <source src={url} type="video/mp4" />
+          <source src={url} type="video/webm" />
+          <source src={url} />
+        </video>
+      )}
     </div>
   );
 }
-

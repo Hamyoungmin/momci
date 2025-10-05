@@ -20,6 +20,7 @@ export default function SignupForm() {
     // 약관 동의
     agreeTerms: false,
     agreePrivacy: false,
+    agreeLocation: false,
     agreeMarketing: false
   });
 
@@ -93,6 +94,10 @@ export default function SignupForm() {
       newErrors.agreePrivacy = '개인정보처리방침에 동의해주세요.';
     }
 
+    if (!formData.agreeLocation) {
+      newErrors.agreeLocation = '위치기반서비스 이용약관에 동의해주세요.';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -134,6 +139,7 @@ export default function SignupForm() {
         userType: userType,
         agreeTerms: formData.agreeTerms,
         agreePrivacy: formData.agreePrivacy,
+        agreeLocation: formData.agreeLocation,
         agreeMarketing: formData.agreeMarketing
       });
       
@@ -370,6 +376,32 @@ export default function SignupForm() {
       </div>
 
       <div className="space-y-4">
+        {/* 전체 약관 동의 */}
+        <div className="flex items-start pb-4 border-b border-gray-200">
+          <input
+            id="agreeAll"
+            name="agreeAll"
+            type="checkbox"
+            checked={formData.agreeTerms && formData.agreePrivacy && formData.agreeLocation && formData.agreeMarketing}
+            onChange={(e) => {
+              const checked = e.target.checked;
+              setFormData(prev => ({
+                ...prev,
+                agreeTerms: checked,
+                agreePrivacy: checked,
+                agreeLocation: checked,
+                agreeMarketing: checked
+              }));
+            }}
+            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mt-1"
+          />
+          <div className="ml-3">
+            <label htmlFor="agreeAll" className="text-sm font-medium text-gray-900">
+              전체 약관에 모두 동의합니다.
+            </label>
+          </div>
+        </div>
+
         {/* 이용약관 동의 */}
         <div className="flex items-start">
           <input
@@ -413,6 +445,28 @@ export default function SignupForm() {
           </div>
         </div>
         {errors.agreePrivacy && <p className="text-sm text-red-600 ml-7">{errors.agreePrivacy}</p>}
+
+        {/* 위치기반서비스 이용약관 동의 */}
+        <div className="flex items-start">
+          <input
+            id="agreeLocation"
+            name="agreeLocation"
+            type="checkbox"
+            checked={formData.agreeLocation}
+            onChange={handleChange}
+            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mt-1"
+          />
+          <div className="ml-3">
+            <label htmlFor="agreeLocation" className="text-sm font-medium text-gray-900">
+              [필수] 위치기반서비스 이용약관 동의
+            </label>
+            <p className="text-xs text-gray-600 mt-1">
+              위치기반서비스 제공을 위한 동의입니다.{' '}
+              <Link href="/location-terms" className="text-blue-600 hover:text-blue-500">자세히 보기</Link>
+            </p>
+          </div>
+        </div>
+        {errors.agreeLocation && <p className="text-sm text-red-600 ml-7">{errors.agreeLocation}</p>}
 
         {/* 마케팅 정보 수신 동의 */}
         <div className="flex items-start">

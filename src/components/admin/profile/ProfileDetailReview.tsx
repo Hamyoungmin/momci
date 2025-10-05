@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { doc, onSnapshot, getDoc } from 'firebase/firestore';
+import { doc, onSnapshot, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 interface ProfileSubmission {
@@ -48,6 +48,8 @@ export default function ProfileDetailReview({ isOpen, onClose, profile, onAction
   const [feed, setFeed] = useState<Record<string, unknown> | null>(null);
   const [user, setUser] = useState<Record<string, unknown> | null>(null);
   const [tprofile, setTprofile] = useState<Record<string, unknown> | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
     if (!isOpen || !profile?.id) return;
@@ -176,11 +178,22 @@ export default function ProfileDetailReview({ isOpen, onClose, profile, onAction
               <h3 className="text-lg font-medium text-gray-900">프로필 상세 검토</h3>
               <p className="text-sm text-gray-600">{profile.teacherName}님의 프로필</p>
             </div>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setShowEditModal(true)}
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md text-sm font-medium flex items-center space-x-1"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                <span>수정</span>
+              </button>
+              <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
           </div>
 
           {/* 탭 네비게이션 */}
@@ -505,6 +518,402 @@ export default function ProfileDetailReview({ isOpen, onClose, profile, onAction
                 {submitting ? '처리 중...' : '처리 완료'}
               </button>
             )}
+          </div>
+        </div>
+      </div>
+
+      {/* 수정 모달 */}
+      {showEditModal && reg && (
+        <AdminProfileEditModal
+          isOpen={showEditModal}
+          onClose={() => setShowEditModal(false)}
+          profileId={profile.id}
+          teacherId={profile.teacherId}
+          data={reg}
+          onSuccess={() => {
+            setShowEditModal(false);
+            alert('프로필이 성공적으로 수정되었습니다.');
+          }}
+          isEditing={isEditing}
+          setIsEditing={setIsEditing}
+        />
+      )}
+    </div>
+  );
+}
+
+// 관리자용 프로필 수정 모달
+interface AdminProfileEditModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  profileId: string;
+  teacherId: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  data: any;
+  onSuccess: () => void;
+  isEditing: boolean;
+  setIsEditing: (value: boolean) => void;
+}
+
+function AdminProfileEditModal({ isOpen, onClose, profileId, teacherId, data, onSuccess, isEditing, setIsEditing }: AdminProfileEditModalProps) {
+  const [formData, setFormData] = useState({
+    name: data?.name || '',
+    birthDate: data?.birthDate || '',
+    gender: data?.gender || '',
+    phone: data?.phone || '',
+    email: data?.email || '',
+    address: data?.address || '',
+    specialties: Array.isArray(data?.specialties) ? data.specialties[0] : (data?.specialty || ''),
+    region: data?.region || '',
+    experience: data?.experience || '',
+    hourlyRate: data?.hourlyRate || '',
+    therapyActivity: data?.therapyActivity || '',
+    mainSpecialty: data?.mainSpecialty || '',
+    educationCareer: data?.educationCareer || '',
+    certifications: data?.certifications || '',
+    availableDays: Array.isArray(data?.availableDays) ? data.availableDays : [],
+    availableTime: data?.availableTime || '',
+    bankName: data?.bankName || '',
+    accountHolder: data?.accountHolder || '',
+    accountNumber: data?.accountNumber || ''
+  });
+
+  const daysList = ['월', '화', '수', '목', '금', '토', '일'];
+
+  const toggleDay = (day: string) => {
+    if (formData.availableDays.includes(day)) {
+      setFormData({ ...formData, availableDays: formData.availableDays.filter((d: string) => d !== day) });
+    } else {
+      setFormData({ ...formData, availableDays: [...formData.availableDays, day] });
+    }
+  };
+
+  const handleSave = async () => {
+    try {
+      setIsEditing(true);
+      
+      // therapist-registrations 업데이트
+      const regRef = doc(db, 'therapist-registrations', profileId);
+      await updateDoc(regRef, {
+        name: formData.name,
+        birthDate: formData.birthDate,
+        gender: formData.gender,
+        phone: formData.phone,
+        email: formData.email,
+        address: formData.address,
+        specialties: [formData.specialties],
+        specialty: formData.specialties,
+        region: formData.region,
+        experience: formData.experience,
+        hourlyRate: formData.hourlyRate,
+        therapyActivity: formData.therapyActivity,
+        mainSpecialty: formData.mainSpecialty,
+        educationCareer: formData.educationCareer,
+        certifications: formData.certifications,
+        availableDays: formData.availableDays,
+        availableTime: formData.availableTime,
+        bankName: formData.bankName,
+        accountHolder: formData.accountHolder,
+        accountNumber: formData.accountNumber,
+        updatedAt: serverTimestamp()
+      });
+
+      // therapist-registrations-feed 업데이트
+      const feedRef = doc(db, 'therapist-registrations-feed', profileId);
+      await updateDoc(feedRef, {
+        name: formData.name,
+        gender: formData.gender,
+        region: formData.region,
+        specialty: formData.specialties,
+        experience: formData.experience,
+        hourlyRate: formData.hourlyRate,
+        therapyActivity: formData.therapyActivity,
+        mainSpecialty: formData.mainSpecialty,
+        educationCareer: formData.educationCareer,
+        certifications: formData.certifications,
+        availableDays: formData.availableDays,
+        availableTime: formData.availableTime,
+        updatedAt: serverTimestamp()
+      }).catch(() => {});
+
+      // users 업데이트
+      const userRef = doc(db, 'users', teacherId);
+      await updateDoc(userRef, {
+        name: formData.name,
+        phone: formData.phone,
+        email: formData.email,
+        updatedAt: serverTimestamp()
+      }).catch(() => {});
+
+      onSuccess();
+    } catch (error) {
+      console.error('프로필 수정 실패:', error);
+      alert('프로필 수정에 실패했습니다. 다시 시도해주세요.');
+    } finally {
+      setIsEditing(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[60] overflow-y-auto">
+      <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+        <div className="fixed inset-0 transition-opacity bg-gray-900 bg-opacity-75" onClick={onClose}></div>
+
+        <div className="inline-block w-full max-w-4xl p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-lg relative z-50">
+          {/* 헤더 */}
+          <div className="flex items-center justify-between pb-4 border-b border-gray-200 bg-green-50 -m-6 mb-6 p-6">
+            <div>
+              <h3 className="text-xl font-bold text-gray-900">프로필 수정</h3>
+              <p className="text-sm text-gray-600 mt-1">치료사 정보를 수정합니다</p>
+            </div>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <div className="max-h-[70vh] overflow-y-auto space-y-6">
+            {/* 기본 정보 */}
+            <div className="border-2 border-blue-200 rounded-lg p-4 bg-blue-50">
+              <h4 className="text-base font-bold text-gray-900 mb-4">기본 정보</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">이름 <span className="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">생년월일</label>
+                  <input
+                    type="text"
+                    value={formData.birthDate}
+                    onChange={(e) => setFormData({ ...formData, birthDate: e.target.value })}
+                    placeholder="YYYY-MM-DD"
+                    className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">성별</label>
+                  <select
+                    value={formData.gender}
+                    onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  >
+                    <option value="">선택</option>
+                    <option value="남성">남성</option>
+                    <option value="여성">여성</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">연락처 <span className="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">이메일</label>
+                  <input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">주소</label>
+                  <input
+                    type="text"
+                    value={formData.address}
+                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* 프로필 정보 */}
+            <div className="border-4 border-blue-700 rounded-lg p-4 bg-white">
+              <h4 className="text-base font-bold text-gray-900 mb-4">프로필 정보</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">전문 분야 <span className="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    value={formData.specialties}
+                    onChange={(e) => setFormData({ ...formData, specialties: e.target.value })}
+                    placeholder="예: 언어치료사"
+                    className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">치료 지역 <span className="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    value={formData.region}
+                    onChange={(e) => setFormData({ ...formData, region: e.target.value })}
+                    placeholder="예: 서울시 강남구"
+                    className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">경력 <span className="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    value={formData.experience}
+                    onChange={(e) => setFormData({ ...formData, experience: e.target.value })}
+                    placeholder="예: 5년"
+                    className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">희망 치료비 <span className="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    value={formData.hourlyRate}
+                    onChange={(e) => setFormData({ ...formData, hourlyRate: e.target.value })}
+                    placeholder="예: 60000"
+                    className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">치료 철학 및 강점</label>
+                  <textarea
+                    rows={4}
+                    value={formData.therapyActivity}
+                    onChange={(e) => setFormData({ ...formData, therapyActivity: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-green-500 resize-none"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">주요 치료 경험 및 사례</label>
+                  <textarea
+                    rows={4}
+                    value={formData.mainSpecialty}
+                    onChange={(e) => setFormData({ ...formData, mainSpecialty: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-green-500 resize-none"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* 학력/경력 및 자격증 */}
+            <div className="border-4 border-blue-700 rounded-lg p-4 bg-white">
+              <h4 className="text-base font-bold text-gray-900 mb-4">학력/경력 및 자격증</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">학력 및 경력</label>
+                  <textarea
+                    rows={6}
+                    value={formData.educationCareer}
+                    onChange={(e) => setFormData({ ...formData, educationCareer: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-green-500 resize-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">보유 자격증</label>
+                  <textarea
+                    rows={6}
+                    value={formData.certifications}
+                    onChange={(e) => setFormData({ ...formData, certifications: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-green-500 resize-none"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* 희망 시간/요일 & 계좌 */}
+            <div className="border-2 border-blue-200 rounded-lg p-4 bg-blue-50">
+              <h4 className="text-base font-bold text-gray-900 mb-4">희망 시간/요일 & 계좌</h4>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">치료 가능 요일 <span className="text-red-500">*</span></label>
+                  <div className="flex flex-wrap gap-2">
+                    {daysList.map((day) => (
+                      <button
+                        key={day}
+                        type="button"
+                        onClick={() => toggleDay(day)}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          formData.availableDays.includes(day)
+                            ? 'bg-green-600 text-white'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                      >
+                        {day}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">선택된 요일: {formData.availableDays.length > 0 ? formData.availableDays.join(', ') : '없음'}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">치료 가능 시간 <span className="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    value={formData.availableTime}
+                    onChange={(e) => setFormData({ ...formData, availableTime: e.target.value })}
+                    placeholder="예: 오후 2시 ~ 6시"
+                    className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">은행명</label>
+                    <input
+                      type="text"
+                      value={formData.bankName}
+                      onChange={(e) => setFormData({ ...formData, bankName: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">예금주명</label>
+                    <input
+                      type="text"
+                      value={formData.accountHolder}
+                      onChange={(e) => setFormData({ ...formData, accountHolder: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">계좌번호</label>
+                    <input
+                      type="text"
+                      value={formData.accountNumber}
+                      onChange={(e) => setFormData({ ...formData, accountNumber: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 푸터 */}
+          <div className="mt-6 pt-4 border-t border-gray-200 flex justify-between">
+            <button
+              onClick={onClose}
+              disabled={isEditing}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 disabled:opacity-50"
+            >
+              취소
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={isEditing || !formData.name || !formData.phone}
+              className="px-6 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isEditing ? '저장 중...' : '저장'}
+            </button>
           </div>
         </div>
       </div>

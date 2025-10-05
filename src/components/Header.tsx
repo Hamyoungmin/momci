@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function Header() {
@@ -16,6 +16,26 @@ export default function Header() {
   const [isMobileMatchingOpen, setIsMobileMatchingOpen] = useState(false);
   const [isMobileRegisterOpen, setIsMobileRegisterOpen] = useState(false);
   const [isMobileSupportOpen, setIsMobileSupportOpen] = useState(false);
+
+  // 프로필 드롭다운 메뉴 ref
+  const userDropdownRef = useRef<HTMLDivElement>(null);
+
+  // 바깥 클릭 감지
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (userDropdownRef.current && !userDropdownRef.current.contains(event.target as Node)) {
+        setIsUserDropdownOpen(false);
+      }
+    };
+
+    if (isUserDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isUserDropdownOpen]);
 
   const handleLogout = async () => {
     try {
@@ -208,7 +228,7 @@ export default function Header() {
           <div className="hidden md:flex items-center space-x-4">
             {currentUser ? (
               // 로그인된 경우
-              <div className="relative">
+              <div className="relative" ref={userDropdownRef}>
                 <button
                   onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
                   className="flex items-center space-x-2 text-gray-700 hover:text-blue-500 px-4 py-2 rounded-2xl text-base font-medium transition-colors"

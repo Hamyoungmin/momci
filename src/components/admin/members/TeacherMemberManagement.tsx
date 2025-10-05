@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import SearchFilters from './SearchFilters';
 import MemberTable, { TableRow } from './MemberTable';
 import MemberDetailModal from './MemberDetailModal';
-import { collection, onSnapshot, query, where, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, doc, updateDoc, serverTimestamp, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 interface TeacherMember {
@@ -35,21 +35,52 @@ export default function TeacherMemberManagement() {
   // 모든별 인증 상태 토글 함수
   const toggleVerification = async (memberId: string, currentStatus: boolean) => {
     try {
+      const newStatus = !currentStatus;
+      
+      // 1. users 컬렉션 업데이트
       const userRef = doc(db, 'users', memberId);
       await updateDoc(userRef, {
-        isVerified: !currentStatus,
-        verifiedAt: !currentStatus ? serverTimestamp() : null,
+        isVerified: newStatus,
+        verifiedAt: newStatus ? serverTimestamp() : null,
       });
+      
+      // 2. therapistProfiles 컬렉션 업데이트
+      const profilesQuery = query(
+        collection(db, 'therapistProfiles'),
+        where('userId', '==', memberId)
+      );
+      const profilesSnapshot = await getDocs(profilesQuery);
+      
+      for (const profileDoc of profilesSnapshot.docs) {
+        await updateDoc(doc(db, 'therapistProfiles', profileDoc.id), {
+          isVerified: newStatus,
+          verifiedAt: newStatus ? serverTimestamp() : null,
+        });
+      }
+      
+      // 3. therapist-registrations-feed 컬렉션 업데이트 (선생님 둘러보기용)
+      const feedQuery = query(
+        collection(db, 'therapist-registrations-feed'),
+        where('userId', '==', memberId)
+      );
+      const feedSnapshot = await getDocs(feedQuery);
+      
+      for (const feedDoc of feedSnapshot.docs) {
+        await updateDoc(doc(db, 'therapist-registrations-feed', feedDoc.id), {
+          isVerified: newStatus,
+          verifiedAt: newStatus ? serverTimestamp() : null,
+        });
+      }
       
       // 로컬 상태 업데이트
       setMembers(prev => prev.map(member => 
         member.id === memberId 
-          ? { ...member, isVerified: !currentStatus }
+          ? { ...member, isVerified: newStatus }
           : member
       ));
       
-      console.log(`사용자 ${memberId}의 모든별 인증 상태를 ${!currentStatus ? '활성화' : '비활성화'}했습니다.`);
-      alert(`모든별 인증이 ${!currentStatus ? '부여' : '제거'}되었습니다.`);
+      console.log(`사용자 ${memberId}의 모든별 인증 상태를 ${newStatus ? '활성화' : '비활성화'}했습니다.`);
+      alert(`모든별 인증이 ${newStatus ? '부여' : '제거'}되었습니다.\n\n변경사항이 선생님 둘러보기 페이지에도 즉시 반영됩니다.`);
       
     } catch (error) {
       console.error('모든별 인증 상태 업데이트 실패:', error);

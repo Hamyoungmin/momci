@@ -8,7 +8,7 @@ import { db, auth } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
 import { startChatWithTherapist } from '@/lib/chat';
-import OneOnOneChat from '@/components/chat/OneOnOneChat';
+// import OneOnOneChat from '@/components/chat/OneOnOneChat';
 import TherapistRegistrationDetailModal from '@/components/browse/TherapistRegistrationDetailModal';
 
 // 치료사 타입 정의
@@ -49,6 +49,7 @@ interface Teacher {
   hasCertification?: boolean;
   hasExperienceProof?: boolean;
   hasIdVerification?: boolean;
+  hasInsurance?: boolean; // 보험가입 여부
 }
 
 export default function BrowseBoard() {
@@ -56,13 +57,16 @@ export default function BrowseBoard() {
   const sub = useSubscriptionStatus(currentUser?.uid);
   
   // 이름에서 성만 추출하는 함수
+  // 이름을 마스킹하는 함수: (성)0(마지막글자) 형식
   const getLastName = (fullName: string | undefined): string => {
     if (!fullName) return '익명';
-    // 한글 이름인 경우 첫 글자가 성
-    return fullName.charAt(0);
+    if (fullName.length === 1) return fullName; // 1글자면 그대로
+    if (fullName.length === 2) return fullName.charAt(0) + '0' + fullName.charAt(1); // 2글자: 첫+0+마지막
+    // 3글자 이상: 첫글자 + 0 + 마지막글자
+    return fullName.charAt(0) + '0' + fullName.charAt(fullName.length - 1);
   };
   const [selectedSidebarItem, setSelectedSidebarItem] = useState('전체');
-  const [selectedTab, setSelectedTab] = useState('서울');
+  const [selectedTab, setSelectedTab] = useState('전체');
   const [selectedLocation, setSelectedLocation] = useState('희망지역을 선택하세요');
   const [selectedTime, setSelectedTime] = useState('희망시간을 입력하세요');
   const [selectedTreatment, setSelectedTreatment] = useState('희망치료를 선택하세요');
@@ -81,7 +85,6 @@ export default function BrowseBoard() {
   // 상세 프로필 모달 상태
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [selectedProfile, setSelectedProfile] = useState<Teacher | null>(null);
-  const [isProfileModalClosing, setIsProfileModalClosing] = useState(false);
   const [isBumpingProfile, setIsBumpingProfile] = useState(false);
   const [showRegDetailModal, setShowRegDetailModal] = useState(false);
   const [regDetailData, setRegDetailData] = useState<Record<string, unknown> | null>(null);
@@ -102,12 +105,12 @@ export default function BrowseBoard() {
   const [showChatConfirmModal, setShowChatConfirmModal] = useState(false);
   const [isChatConfirmModalClosing, setIsChatConfirmModalClosing] = useState(false);
   
-  // 1:1 채팅 상태
-  const [showChat, setShowChat] = useState(false);
-  const [chatRoomId, setChatRoomId] = useState('');
-  const [chatOtherUserId, setChatOtherUserId] = useState('');
-  const [chatOtherUserName, setChatOtherUserName] = useState('');
-  const [chatOtherUserType, setChatOtherUserType] = useState<'parent' | 'therapist'>('therapist');
+  // 1:1 채팅 상태 - 현재 채팅 위젯 사용으로 비활성화
+  // const [showChat, setShowChat] = useState(false);
+  // const [chatRoomId, setChatRoomId] = useState('');
+  // const [chatOtherUserId, setChatOtherUserId] = useState('');
+  // const [chatOtherUserName, setChatOtherUserName] = useState('');
+  // const [chatOtherUserType, setChatOtherUserType] = useState<'parent' | 'therapist'>('therapist');
   const [isStartingChat, setIsStartingChat] = useState(false);
 
   // 사용자 권한/구독 체크
@@ -261,6 +264,7 @@ export default function BrowseBoard() {
             hasCertification: false,
             hasExperienceProof: false,
             hasIdVerification: false,
+            hasInsurance: false,
           };
 
           // authorId가 있는 경우에만 실제 데이터 가져오기
@@ -286,12 +290,18 @@ export default function BrowseBoard() {
                 teacher.userEmail = userData.email;
                 teacher.userPhone = userData.phone;
                 teacher.videoUrl = userData.videoUrl || teacher.videoUrl; // 자기소개 영상
-                // 인증 상태는 users 컬렉션에서 가져올 수도 있음
-                teacher.isVerified = userData.isVerified || teacher.isVerified;
-                teacher.hasCertification = userData.hasCertification || teacher.hasCertification;
-                teacher.hasExperienceProof = userData.hasExperienceProof || teacher.hasExperienceProof;
-                teacher.hasIdVerification = userData.hasIdVerification || teacher.hasIdVerification;
-                console.log('✅ 사용자 기본 정보 적용:', userData.name);
+                
+                // ✅ 모든별 인증은 users 컬렉션의 isVerified만 사용 (명시적으로 true인 경우만)
+                teacher.isVerified = userData.isVerified === true;
+                
+                console.log('✅ [모든별 인증] users 컬렉션 기준:', {
+                  이름: userData.name,
+                  'isVerified (users)': userData.isVerified,
+                  '최종 teacher.isVerified': teacher.isVerified
+                });
+                if (userData.hasCertification === true) teacher.hasCertification = true;
+                if (userData.hasExperienceProof === true) teacher.hasExperienceProof = true;
+                if (userData.hasIdVerification === true) teacher.hasIdVerification = true;
               }
 
               // 2. 치료사 프로필 정보 가져오기
@@ -347,11 +357,13 @@ export default function BrowseBoard() {
                 teacher.schedule = profileData?.schedule || teacher.schedule;
                 teacher.videoUrl = profileData?.videoUrl || ''; // 자기소개 영상 URL
                 
-                // 인증 상태 업데이트 - 실제 프로필 데이터 기반 + 자동 인증(isVerified)
-                teacher.isVerified = !!profileData?.isVerified; // 모든별 인증
+                // ⚠️ therapistProfiles의 isVerified는 무시합니다! (users 컬렉션 기준)
+                // teacher.isVerified는 이미 users 컬렉션에서 설정되었으므로 여기서 덮어쓰지 않습니다.
+                
                 teacher.hasCertification = profileData?.hasCertification || (profileData?.certifications && profileData.certifications.length > 0) || false;
                 teacher.hasExperienceProof = profileData?.hasExperienceProof || !!profileData?.career;
                 teacher.hasIdVerification = profileData?.hasIdVerification || !!profileData?.status;
+                teacher.hasInsurance = (profileData as { hasInsurance?: boolean })?.hasInsurance === true; // 보험가입 여부 - 명시적으로 true인 경우만
               }
 
               // 3. 실제 후기 수와 평균 별점 계산
@@ -643,6 +655,9 @@ export default function BrowseBoard() {
         details: timeDetails,
         additionalInfo,
         type: 'teacher-offer' as const,
+        availableDays: (regData as Record<string, unknown>)?.availableDays || [], // ✅ 치료 가능 요일 추가
+        availableTime: timeDetails, // ✅ 치료 가능 시간 (details와 동일)
+        treatmentRegion: (regData as Record<string, unknown>)?.treatmentRegion || region, // ✅ 치료 지역
       };
 
       if (existingSnap.empty) {
@@ -731,6 +746,7 @@ export default function BrowseBoard() {
         certifications?: string[];
         schedule?: string;
         status?: string;
+        isVerified?: boolean;
       } | null = null;
       if (!profileSnapshot.empty && profileSnapshot.docs.length > 0) {
         profileData = profileSnapshot.docs[0].data() as {
@@ -747,6 +763,7 @@ export default function BrowseBoard() {
           certifications?: string[];
           schedule?: string;
           status?: string;
+          isVerified?: boolean;
         };
         console.log('✅ 치료사 프로필 데이터:', profileData);
       } else {
@@ -803,7 +820,7 @@ export default function BrowseBoard() {
         postAdditionalInfo: teacher.postAdditionalInfo,
         
         // 인증 상태 업데이트
-        isVerified: profileData?.status === 'approved',
+        isVerified: profileData?.isVerified === true, // ✅ 명시적으로 true인 경우만
         hasCertification: profileData?.certifications && profileData.certifications.length > 0,
         hasExperienceProof: !!profileData?.career,
         hasIdVerification: !!profileData?.status,
@@ -923,7 +940,44 @@ export default function BrowseBoard() {
         });
       }
 
-      console.log('✅ 프로필 수정 완료');
+      // therapistProfiles 업데이트 (승인된 프로필)
+      const profileRef = doc(db, 'therapistProfiles', currentUser.uid);
+      const profileSnap = await getDoc(profileRef);
+      
+      if (profileSnap.exists()) {
+        await updateDoc(profileRef, {
+          hourlyRate: updatedData.hourlyRate,
+          location: updatedData.region,
+          schedule: updatedData.availableTime,
+          updatedAt: serverTimestamp()
+        });
+      }
+
+      // posts 컬렉션 업데이트 (선생님 둘러보기 게시글) - ⭐ 가장 중요!
+      const postsQuery = query(
+        collection(db, 'posts'),
+        where('authorId', '==', currentUser.uid),
+        where('type', '==', 'teacher-offer'),
+        limit(1)
+      );
+      const postsSnap = await getDocs(postsQuery);
+      
+      if (!postsSnap.empty) {
+        const postDoc = postsSnap.docs[0];
+        await updateDoc(doc(db, 'posts', postDoc.id), {
+          price: updatedData.hourlyRate,
+          region: updatedData.region,
+          category: updatedData.region,
+          timeDetails: updatedData.availableTime,
+          details: updatedData.availableTime,
+          availableDays: updatedData.availableDays, // ✅ 치료 가능 요일
+          availableTime: updatedData.availableTime, // ✅ 치료 가능 시간
+          treatmentRegion: updatedData.treatmentRegion, // ✅ 치료 지역
+          updatedAt: serverTimestamp()
+        });
+      }
+
+      console.log('✅ 프로필 수정 완료 (4개 컬렉션 동기화)');
     } catch (error) {
       console.error('❌ 프로필 수정 실패:', error);
       throw error;
@@ -997,21 +1051,21 @@ export default function BrowseBoard() {
 
   // 상세 프로필 모달 닫기
   const closeProfileModal = () => {
-    setIsProfileModalClosing(true);
-    setTimeout(() => {
-      setShowProfileModal(false);
-      setIsProfileModalClosing(false);
-      setSelectedProfile(null);
-    }, 300);
+    setShowProfileModal(false);
+    setSelectedProfile(null);
   };
 
   // 안전 모달은 사용하지 않고 바로 확인 모달로 이동
-  const openChatFlow = () => {
+  const openChatFlow = (teacher?: Teacher) => {
     if (!currentUser) {
       alert('로그인이 필요합니다.');
       return;
     }
       if (userData?.userType === 'parent') {
+      // teacher 정보가 전달되면 selectedProfile 설정
+      if (teacher) {
+        setSelectedProfile(teacher);
+      }
           setShowChatConfirmModal(true);
     } else {
       alert('학부모만 채팅을 시작할 수 있습니다.');
@@ -1039,7 +1093,31 @@ export default function BrowseBoard() {
       return;
     }
 
+    // 구독 활성 여부 우선 확인 → 활성 구독이면 토큰 없이 통과
+    let hasActiveSubscription = false;
+    try {
+      const subSnap = await getDoc(doc(db, 'user-subscription-status', currentUser.uid));
+      if (subSnap.exists()) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const subData: any = subSnap.data();
+        const expiryMs = subData?.expiryDate && typeof subData.expiryDate.toDate === 'function' ? subData.expiryDate.toDate().getTime() : 0;
+        hasActiveSubscription = !!subData?.hasActiveSubscription && expiryMs > Date.now();
+      }
+    } catch {/* ignore */}
+
+    if (!hasActiveSubscription) {
+      // 활성 구독이 없으면 인터뷰권 보유량 확인
+      const { getUserInterviewTokens } = await import('@/lib/interviewTokens');
+      const currentTokens = await getUserInterviewTokens(currentUser.uid);
+      if (currentTokens <= 0) {
+        alert('인터뷰권이 부족합니다. 인터뷰권을 구매해주세요.');
+        setShowChatConfirmModal(false);
+        return;
+      }
+    }
+
     setIsStartingChat(true);
+    setShowChatConfirmModal(false);
     
     try {
       // 치료사 정보 설정
@@ -1186,17 +1264,16 @@ export default function BrowseBoard() {
         }));
       }
 
-      // 채팅 상태 설정
-      setChatRoomId(roomId);
-      setChatOtherUserId(therapistId);
-      setChatOtherUserName(therapistName);
-      setChatOtherUserType('therapist');
+      // 채팅 상태 설정 - 현재 채팅 위젯 사용으로 비활성화
+      // setChatRoomId(roomId);
+      // setChatOtherUserId(therapistId);
+      // setChatOtherUserName(therapistName);
+      // setChatOtherUserType('therapist');
 
       // 모달들 닫고 채팅창 열기
       setShowChatConfirmModal(false);
       setIsChatConfirmModalClosing(false);
       setShowProfileModal(false);
-      setIsProfileModalClosing(false);
       
       // 위젯의 채팅 목록 닫기 (중복 방지)
       if (typeof window !== 'undefined' && (window as { closeChatList?: () => void }).closeChatList) {
@@ -1206,9 +1283,10 @@ export default function BrowseBoard() {
       // 채팅 시작 알림
       alert(`${therapistName} 치료사와의 1:1 채팅이 시작됩니다!\n치료사가 응답하면 알림을 받으실 수 있습니다.`);
       
-      setTimeout(() => {
-        setShowChat(true);
-      }, 100);
+      // 채팅 위젯에서 자동으로 표시되므로 여기서는 열지 않음
+      // setTimeout(() => {
+      //   setShowChat(true);
+      // }, 100);
 
     } catch (error) {
       console.error('채팅 시작 실패:', error);
@@ -1218,13 +1296,13 @@ export default function BrowseBoard() {
     }
   };
 
-  // 채팅창 닫기
-  const handleCloseChat = () => {
-    setShowChat(false);
-    setChatRoomId('');
-    setChatOtherUserId('');
-    setChatOtherUserName('');
-  };
+  // 채팅창 닫기 - 현재 채팅 위젯 사용으로 비활성화
+  // const handleCloseChat = () => {
+  //   setShowChat(false);
+  //   setChatRoomId('');
+  //   setChatOtherUserId('');
+  //   setChatOtherUserName('');
+  // };
 
   // 새 게시글 Firebase에 저장
   const addNewPost = async (postData: typeof newPost) => {
@@ -1596,8 +1674,8 @@ export default function BrowseBoard() {
                         <div className="flex-1">
                           <div className="flex items-center space-x-2 mb-1">
                             <h3 className="text-lg font-bold text-gray-900">
-                              {/* 성 + 00 + 치료사 [년차 전문분야] 형태로 표시 */}
-                              {getLastName(teacher.userName || teacher.name)}00 치료사 <span className="text-gray-600">[{teacher.experience || 0}년차 {teacher.specialty}]</span>
+                              {/* (성)0(마지막글자) + 치료사 [년차 전문분야] 형태로 표시 */}
+                              {getLastName(teacher.userName || teacher.name)} 치료사 <span className="text-gray-600">[{teacher.experience || 0}년차 {teacher.specialty}]</span>
                             </h3>
                           </div>
                           
@@ -1677,7 +1755,7 @@ export default function BrowseBoard() {
 						      alert('치료사는 1:1 채팅을 시작할 수 없습니다. 학부모의 채팅 요청을 기다려 주세요.'); 
 						      return; 
 						    }
-						    openChatFlow(); 
+						    openChatFlow(teacher); 
 						  }}
                           className={`${userData?.userType === 'therapist' ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-600 text-white'} px-6 py-3 rounded-2xl font-medium transition-colors shadow-sm`}
                           disabled={userData?.userType === 'therapist'}
@@ -2055,343 +2133,18 @@ export default function BrowseBoard() {
 			</div>
 		)}
 
-      {/* 상세 프로필 모달 */}
+      {/* 상세 프로필 모달 - 새 디자인 적용 */}
       {showProfileModal && selectedProfile && (
-        <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50">
-          <div className={`bg-white rounded-lg max-w-6xl w-[95vw] shadow-xl border-4 border-blue-500 max-h-[90vh] overflow-y-auto profile-modal ${isProfileModalClosing ? 'animate-slideOut' : 'animate-slideIn'}`}>
-            {/* 모달 헤더 */}
-            <div className="flex justify-between items-center p-6 pb-2">
-              <div></div>
-              <div className="flex items-center gap-2">
-				{(currentUser && userData && selectedProfile && ((selectedProfile.authorId || selectedProfile.id) === currentUser.uid || userData.userType === 'admin')) && (
-                  <button
-						onClick={openBumpConfirmModal}
-                    disabled={isBumpingProfile}
-                    className="inline-flex items-center bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-sm"
-                  >
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 16V4m0 0l-4 4m4-4l4 4M20 16v4H4v-4" />
-                    </svg>
-                    프로필 끌어올림
-                  </button>
-                )}
-              <button
-                onClick={closeProfileModal}
-                className="text-gray-400 hover:text-gray-600 text-2xl"
-              >
-                ✕
-              </button>
-              </div>
-            </div>
-            
-            {/* 모달 바디 */}
-            <div className="px-8 pb-8">
-              {/* 프로필 헤더 */}
-              <div className="flex items-center space-x-4 mb-6">
-                {/* 프로필 이미지 */}
-                <div className="w-20 h-20 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden relative">
-                  {selectedProfile?.profileImage ? (
-                    <Image 
-                      src={selectedProfile.profileImage} 
-                      alt={`${selectedProfile.name} 프로필`}
-                      width={80}
-                      height={80}
-                      className="w-full h-full object-cover rounded-full"
-                    />
-                  ) : (
-                    <div className="text-center">
-                      <span className="text-gray-500 text-xs font-medium block">프로필</span>
-                      <span className="text-gray-400 text-xs block">사진</span>
-                    </div>
-                  )}
-                </div>
-                
-                {/* 기본 정보 */}
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900 mb-1">
-                    {selectedProfile.name} 치료사 ({selectedProfile.experience ? `${selectedProfile.experience}년차` : '경력미상'} {selectedProfile.specialty}사)
-                  </h2>
-                  <div className="flex items-center mb-2">
-                    {selectedProfile.reviewCount && selectedProfile.reviewCount > 0 ? (
-                      <>
-                        <span className="text-orange-400 text-lg">★</span>
-                        <span className="text-sm font-medium ml-1">{selectedProfile.rating}</span>
-                        <span className="text-xs text-gray-500 ml-1">(후기 {selectedProfile.reviewCount}개)</span>
-                      </>
-                    ) : (
-                      <span className="text-xs text-gray-500">후기 없음</span>
-                    )}
-                  </div>
-                  <div className="text-2xl font-bold text-blue-600 mb-3">
-                    회기당 {(() => {
-                      if (!selectedProfile.price) return '협의';
-                      const priceStr = selectedProfile.price.toString();
-                      if (priceStr.includes('원')) return priceStr;
-                      const numericPrice = priceStr.replace(/[^0-9]/g, '');
-                      if (!numericPrice) return '협의';
-                      return numericPrice.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '원';
-                    })()}
-                  </div>
-
-                  {/* 회색줄 */}
-                  <hr className="border-gray-300 mb-4" />
-                </div>
-              </div>
-
-              {/* 인증 정보 - 회색줄 바로 밑에 */}
-              <div className="flex flex-wrap items-center gap-2 mb-3">
-                {/* 자격증 인증 */}
-                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 border-green-200 border`}>
-                  ✓ 자격증
-                </span>
-                
-                {/* 경력증명 */}
-                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 border-green-200 border`}>
-                  ✓ 경력증명
-                </span>
-                
-                {/* 성범죄경력증명서 */}
-                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 border-green-200 border`}>
-                  ✓ 성범죄경력증명서
-                </span>
-                {/* 보험가입 - 성범죄경력증명서 오른쪽에 표시 (관리자 확인 여부 반영) */}
-                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${selectedProfile.isVerified ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200'} border`}>
-                  {selectedProfile.isVerified ? '✓' : '×'} 보험가입
-                </span>
-                
-                {/* 모든별 인증 - 파란색 별과 함께 */}
-                {selectedProfile.isVerified && (
-                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 border border-blue-200">
-                    <span className="text-blue-500 mr-1">⭐</span> 모든별 인증
-                  </span>
-                )}
-              </div>
-
-              {/* 태그들 - 회색줄 바로 밑에 별도 줄 (숨김 처리) */}
-              <div className="hidden">
-                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-50 text-blue-700 border border-blue-200">
-                  #{selectedProfile.specialty}
-                </span>
-                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
-                  #{selectedProfile.region}
-                </span>
-                {selectedProfile.postAge && selectedProfile.postGender && (
-                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200">
-                    #{selectedProfile.postAge}/{selectedProfile.postGender}
-                  </span>
-                )}
-              </div>
-
-              {/* 선생님 소개 */}
-              <div className="mb-8">
-                <div className="flex items-center mb-4">
-                  <div className="text-blue-500 mr-2">
-                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-                    </svg>
-                  </div>
-                  <h3 className="text-lg font-semibold text-gray-900">선생님 소개</h3>
-                </div>
-                
-                {/* 회색줄 추가 */}
-                <hr className="border-gray-300 mb-4" />
-                
-                <div className="space-y-4">
-                    <div>
-                    <h4 className="font-semibold mb-2">치료 철학 및 강점</h4>
-                    <p className="text-gray-700 text-sm leading-relaxed">
-                      {selectedProfile.philosophy || selectedProfile.introduction || "치료 철학 및 강점이 등록되지 않았습니다."}
-                    </p>
-                  </div>
-                  
-                  <div>
-                    <h4 className="font-semibold mb-2">주요 치료경험/사례</h4>
-                    <p className="text-gray-700 text-sm leading-relaxed">
-                      {selectedProfile.services || selectedProfile.career || "주요 치료경험 및 사례가 등록되지 않았습니다."}
-                          </p>
-                        </div>
-                </div>
-              </div>
-
-              {/* 1분 자기소개 영상 - 별도 섹션으로 분리하고 새로로 더 넓게 */}
-              <div className="mb-8">
-                <div className="flex items-center mb-4">
-                  <div className="text-blue-500 mr-2">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
-                    </svg>
-                  </div>
-                  <h3 className="text-lg font-semibold text-gray-900">1분 자기소개 영상</h3>
-                </div>
-                
-                <div className="w-full bg-gray-100 rounded-lg overflow-hidden">
-                  {selectedProfile.videoUrl ? (
-                    <video 
-                      src={selectedProfile.videoUrl} 
-                      controls 
-                      autoPlay
-                      loop
-                      className="w-full h-auto rounded-lg" 
-                      poster="/placeholder-video.png"
-                      style={{ maxHeight: '400px' }}
-                      onError={(e) => {
-                        console.error('영상 재생 오류:', e);
-                      }}
-                    >
-                      영상을 재생할 수 없습니다.
-                    </video>
-                  ) : (
-                    <div className="text-center py-12 text-gray-500 text-sm">
-                      자기소개 영상이 등록되지 않았습니다.
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* 핵심 정보 한눈에 보기 */}
-              <div className="mb-8">
-                <div className="flex items-center mb-4">
-                  <div className="text-blue-500 mr-2">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                    </svg>
-                </div>
-                  <h3 className="text-lg font-semibold text-gray-900">핵심 정보 한눈에 보기</h3>
-                </div>
-                
-                {/* 회색줄 추가 */}
-                <hr className="border-gray-300 mb-4" />
-                
-                <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gray-50 rounded-lg p-4">
-                    <div className="text-sm font-medium text-gray-600 mb-1">학력 사항</div>
-                    <div className="text-sm text-gray-900">{selectedProfile.education || '등록되지 않음'}</div>
-                  </div>
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <div className="text-sm font-medium text-gray-600 mb-1">총 경력</div>
-                    <div className="text-sm text-gray-900">{selectedProfile.career || (selectedProfile.experience ? `${selectedProfile.experience}년 이상의 전문 경력` : '등록되지 않음')}</div>
-                  </div>
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <div className="text-sm font-medium text-gray-600 mb-1">활동 가능 지역</div>
-                    <div className="text-sm text-gray-900">
-                      {selectedProfile.regions?.join(', ') || selectedProfile.region || '등록되지 않음'}
-                    </div>
-                  </div>
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <div className="text-sm font-medium text-gray-600 mb-1">치료 가능 시간</div>
-                    <div className="text-sm text-gray-900">{selectedProfile.schedule || selectedProfile.postTimeDetails || '등록되지 않음'}</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* 전문 정보 */}
-              <div className="mb-8">
-                <div className="flex items-center mb-4">
-                  <div className="text-blue-500 mr-2">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
-                    </svg>
-                </div>
-                  <h3 className="text-lg font-semibold text-gray-900">전문 정보</h3>
-                </div>
-                
-                <div className="space-y-6">
-                  {/* 전문 분야 */}
-                  <div>
-                    <h4 className="font-semibold mb-3 text-gray-900">전문 분야</h4>
-                    {/* 회색줄 추가 */}
-                    <hr className="border-gray-300 mb-3" />
-                    <div className="flex flex-wrap gap-2">
-                      <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
-                        #{selectedProfile.specialty}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* 학력 및 경력 */}
-                  <div>
-                    <h4 className="font-semibold mb-3 text-gray-900">학력 및 경력</h4>
-                    <div className="space-y-2">
-                      <div className="flex items-start space-x-2">
-                        <span className="text-blue-500 text-sm">•</span>
-                        <div>
-                          <p className="text-sm text-gray-700">
-                            <span className="font-medium">학력:</span> {selectedProfile.education || '관련 학과 졸업'}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-start space-x-2">
-                        <span className="text-blue-500 text-sm">•</span>
-                        <div>
-                          <p className="text-sm text-gray-700">
-                            <span className="font-medium">경력:</span> {selectedProfile.career || (selectedProfile.experience ? `${selectedProfile.experience}년 이상의 전문 경력` : '등록되지 않음')}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 보유 자격증 */}
-                  <div>
-                    <h4 className="font-semibold mb-3 text-gray-900">보유 자격증</h4>
-                    <div className="space-y-2">
-                      {selectedProfile.certifications && selectedProfile.certifications.length > 0 ? (
-                        selectedProfile.certifications.map((cert, index) => (
-                          <div key={index} className="flex items-start space-x-2">
-                            <span className="text-blue-500 text-sm">•</span>
-                            <p className="text-sm text-gray-700">{cert}</p>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="flex items-start space-x-2">
-                          <span className="text-blue-500 text-sm">•</span>
-                          <p className="text-sm text-gray-700">자격증</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* 학부모 후기 */}
-              <div className="mb-8">
-                <div className="flex items-center mb-4">
-                  <div className="text-blue-500 mr-2">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
-                    </svg>
-                  </div>
-                  <h3 className="text-lg font-semibold text-gray-900">학부모 후기 ({selectedProfile.reviewCount || 0}건)</h3>
-                </div>
-                
-                <div className="text-center py-8 text-gray-500">
-                  <p>아직 작성된 후기가 없습니다.</p>
-                  <p className="text-sm mt-1">첫 번째 후기를 작성해보세요!</p>
-                </div>
-              </div>
-
-              {/* 1:1 채팅 버튼 */}
-              <div className="text-center">
-                <button 
-                  onClick={() => {
-                    if (userData?.userType === 'therapist') {
-                      alert('치료사는 1:1 채팅을 시작할 수 없습니다. 학부모의 채팅 요청을 기다려 주세요.');
-                      return;
-                    }
-                    openChatFlow();
-                  }}
-                  className={`${userData?.userType === 'therapist' ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-600 text-white'} px-8 py-4 rounded-lg font-medium transition-colors text-lg w-full max-w-md`}
-                  disabled={userData?.userType === 'therapist'}
-                >
-                  <svg className="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
-                  </svg>
-                  1:1 채팅으로 인터뷰 시작하기
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <TherapistRegistrationDetailModal
+          isOpen={showProfileModal}
+          onClose={closeProfileModal}
+          data={selectedProfile}
+          onBump={openBumpConfirmModal}
+          canBump={!!(currentUser && userData && ((selectedProfile.authorId || selectedProfile.id) === currentUser.uid || userData.userType === 'admin'))}
+          isBumping={isBumpingProfile}
+          onEdit={handleEditProfile}
+          canEdit={!!(currentUser && userData && ((selectedProfile.authorId || selectedProfile.id) === currentUser.uid || userData.userType === 'admin'))}
+        />
       )}
 
       {/* 치료사 신청페이지 상세 디자인 재사용 모달 (본인일 때) */}
@@ -2403,7 +2156,6 @@ export default function BrowseBoard() {
           onBump={openBumpConfirmModal}
           canBump={!!(currentUser && userData && ((regDetailData.authorId || regDetailData.id) === currentUser.uid || userData.userType === 'admin'))}
           isBumping={isBumpingProfile}
-          onEdit={handleEditProfile}
         />
       )}
 
@@ -2585,8 +2337,8 @@ export default function BrowseBoard() {
         </div>
       )}
 
-      {/* 1:1 채팅창 */}
-      {showChat && (
+      {/* 1:1 채팅창 - 채팅 위젯에서 표시되므로 여기서는 비활성화 */}
+      {/* {showChat && (
         <OneOnOneChat
           chatRoomId={chatRoomId}
           otherUserId={chatOtherUserId}
@@ -2594,7 +2346,7 @@ export default function BrowseBoard() {
           otherUserType={chatOtherUserType}
           onClose={handleCloseChat}
         />
-      )}
+      )} */}
 
     </section>
   );

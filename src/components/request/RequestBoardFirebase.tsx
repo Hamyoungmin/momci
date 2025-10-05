@@ -33,6 +33,7 @@ interface TherapistProfile {
   hasExperienceProof?: boolean;
   isVerified?: boolean;
   hasIdVerification?: boolean;
+  hasInsurance?: boolean; // 보험가입 여부
   region?: string;
   regions?: string[];
   philosophy?: string;
@@ -200,6 +201,7 @@ export default function RequestBoardFirebase() {
   const [showParentSafetyModal, setShowParentSafetyModal] = useState(false);
   const [showParentChatConfirmModal, setShowParentChatConfirmModal] = useState(false);
   const [currentTherapistId, setCurrentTherapistId] = useState<string | null>(null);
+  const [currentPostAuthorId, setCurrentPostAuthorId] = useState<string | null>(null);
   
 
   const tabs = ['전체', '서울', '인천/경기북부', '경기남부', '충청,강원,대전', '전라,경상,부산'];
@@ -863,7 +865,7 @@ export default function RequestBoardFirebase() {
   };
 
   // 학부모용 치료사 상세 프로필 보기 함수
-  const handleViewProfile = async (therapistId: string) => {
+  const handleViewProfile = async (therapistId: string, postAuthorId: string) => {
     console.log('👤 학부모용 치료사 상세 프로필 보기 - 치료사 ID:', therapistId);
     
     try {
@@ -900,6 +902,7 @@ export default function RequestBoardFirebase() {
         
         setSelectedTherapistProfile(profileWithImage as TherapistProfile);
         setCurrentTherapistId(therapistId);
+        setCurrentPostAuthorId(postAuthorId);
         setShowTherapistProfileModal(true);
       } else {
         alert('치료사 프로필 정보를 찾을 수 없습니다.');
@@ -1681,7 +1684,7 @@ export default function RequestBoardFirebase() {
   return (
     <div>
       <section className="bg-gray-50 min-h-screen">
-        <div className="flex max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="flex max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           {/* 사이드바 */}
         <div className="w-64 bg-white shadow-lg rounded-lg mr-8 h-fit">
           <div className="p-4">
@@ -1969,7 +1972,9 @@ export default function RequestBoardFirebase() {
                       <div className="col-span-2 text-center font-medium">분야</div>
                       <div className="col-span-2 text-center font-medium">지역</div>
                       <div className="col-span-2 text-center font-medium">나이 / 성별</div>
-                      <div className="col-span-2 text-center font-medium">주당횟수/희망시간</div>
+                      <div className="col-span-2 text-center font-medium">
+                        주당횟수/<br />희망시간
+                      </div>
                       <div className="col-span-2 text-center font-medium">희망금액(회당)</div>
                       <div className="col-span-1 text-center font-medium">진행</div>
                     </div>
@@ -2637,7 +2642,7 @@ export default function RequestBoardFirebase() {
                         <TherapistApplicationCard
                           key={application.id}
                           application={application}
-                          disableChat={userData?.userType === 'therapist'}
+                          disableChat={userData?.userType === 'therapist' || application.postAuthorId !== currentUser?.uid}
                           onChatStart={handleChatStart}
                           onViewProfile={handleViewProfile}
                         />
@@ -2677,7 +2682,8 @@ export default function RequestBoardFirebase() {
                       alert('치료사만 게시글에 지원할 수 있습니다.');
                     }
                   }}
-                  className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-4 rounded-lg font-medium transition-colors text-lg w-full max-w-md inline-flex items-center justify-center"
+                  className={`${userData?.userType === 'parent' ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-600 text-white'} px-8 py-4 rounded-lg font-medium transition-colors text-lg w-full max-w-md inline-flex items-center justify-center`}
+                  disabled={userData?.userType === 'parent'}
                 >
                   <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
@@ -2907,30 +2913,30 @@ export default function RequestBoardFirebase() {
               </div>
 
               {/* 인증 정보 - 회색줄 바로 밑에 */}
-              <div className="flex flex-wrap items-center gap-2 mb-3">
+              <div className="flex flex-wrap items-center gap-3 mb-3">
                 {/* 자격증 인증 - 항상 체크/연초록 배지로 표시 */}
-                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 border-green-200 border`}>
+                <span className={`inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium bg-green-50 text-green-700`}>
                   ✓ 자격증
                 </span>
                 
                 {/* 경력증명 - 항상 체크/연초록 배지로 표시 */}
-                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 border-green-200 border`}>
+                <span className={`inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium bg-green-50 text-green-700`}>
                   ✓ 경력증명
                 </span>
 
                 {/* 성범죄경력증명서 - 항상 체크/연초록 배지로 표시 */}
-                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 border-green-200 border`}>
+                <span className={`inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium bg-green-50 text-green-700`}>
                   ✓ 성범죄경력증명서
                 </span>
 
                 {/* 보험가입 */}
-                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${selectedTherapistProfile.isVerified ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200'} border`}>
-                  {selectedTherapistProfile.isVerified ? '✓' : '×'} 보험가입
+                <span className={`inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium ${selectedTherapistProfile.hasInsurance ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-400'}`}>
+                  {selectedTherapistProfile.hasInsurance ? '✓' : '✗'} 보험가입
                 </span>
                 
                 {/* 모든별 인증 - 파란색 별과 함께 */}
-                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${selectedTherapistProfile.isVerified ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-gray-100 text-gray-600 border-gray-200'} border`}>
-                  {selectedTherapistProfile.isVerified ? '⭐' : '☆'} 모든별 인증
+                <span className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium ${selectedTherapistProfile.isVerified ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-400'}`}>
+                  <span className={selectedTherapistProfile.isVerified ? 'text-blue-500' : 'text-gray-400'}>★</span> 모든별 인증
                 </span>
               </div>
 
@@ -3132,9 +3138,14 @@ export default function RequestBoardFirebase() {
                 <button 
                   onClick={(e) => {
                     e.stopPropagation();
+                    if (currentPostAuthorId !== currentUser?.uid) {
+                      alert('본인이 작성한 게시글의 지원자에게만 1:1 채팅을 시작할 수 있습니다.');
+                      return;
+                    }
                     handleProfileChatStart();
                   }}
-                  className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-4 rounded-lg font-medium transition-colors text-lg w-full max-w-md"
+                  className={`${currentPostAuthorId !== currentUser?.uid ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-600 text-white'} px-8 py-4 rounded-lg font-medium transition-colors text-lg w-full max-w-md`}
+                  disabled={currentPostAuthorId !== currentUser?.uid}
                 >
                   <svg className="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>

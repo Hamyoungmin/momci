@@ -31,7 +31,7 @@ interface TherapistApplicationCardProps {
   application: TherapistApplication;
   disableChat?: boolean;
   onChatStart: (therapistId: string) => void;
-  onViewProfile: (therapistId: string) => void;
+  onViewProfile: (therapistId: string, postAuthorId: string) => void;
 }
 
 export default function TherapistApplicationCard({ 
@@ -40,10 +40,13 @@ export default function TherapistApplicationCard({
   onChatStart,
   onViewProfile
 }: TherapistApplicationCardProps) {
-  // 이름에서 성만 추출하는 함수 (선생님 둘러보기와 동일)
+  // 이름을 마스킹하는 함수: (성)0(마지막글자) 형식
   const getLastName = (fullName: string | undefined): string => {
     if (!fullName) return '익명';
-    return fullName.charAt(0);
+    if (fullName.length === 1) return fullName; // 1글자면 그대로
+    if (fullName.length === 2) return fullName.charAt(0) + '0' + fullName.charAt(1); // 2글자: 첫+0+마지막
+    // 3글자 이상: 첫글자 + 0 + 마지막글자
+    return fullName.charAt(0) + '0' + fullName.charAt(fullName.length - 1);
   };
 
   return (
@@ -73,8 +76,8 @@ export default function TherapistApplicationCard({
           <div className="flex-1">
             <div className="flex items-center space-x-2 mb-1">
               <h3 className="text-lg font-bold text-gray-900">
-                {/* 성 + 00 + 치료사 [년차 전문분야] 형태로 표시 */}
-                {getLastName(application.therapistName)}00 치료사 <span className="text-gray-600">[{application.therapistExperience || 0}년차 {application.therapistSpecialty}]</span>
+                {/* (성)0(마지막글자) + 치료사 [년차 전문분야] 형태로 표시 */}
+                {getLastName(application.therapistName)} 치료사 <span className="text-gray-600">[{application.therapistExperience || 0}년차 {application.therapistSpecialty}]</span>
               </h3>
             </div>
             
@@ -159,7 +162,7 @@ export default function TherapistApplicationCard({
           <button
             onClick={() => {
               if (disableChat) {
-                alert('치료사는 1:1 채팅을 시작할 수 없습니다. 학부모의 채팅 요청을 기다려 주세요.');
+                alert('본인이 작성한 게시글의 지원자에게만 1:1 채팅을 시작할 수 있습니다.');
                 return;
               }
               onChatStart(application.applicantId);
@@ -170,7 +173,7 @@ export default function TherapistApplicationCard({
             💬 1:1 채팅
           </button>
           <button
-            onClick={() => onViewProfile(application.applicantId)}
+            onClick={() => onViewProfile(application.applicantId, application.postAuthorId)}
             className="text-xs text-gray-500 hover:text-blue-600 mb-1 cursor-pointer transition-colors block text-right"
           >
             상세 프로필 보기 &gt;

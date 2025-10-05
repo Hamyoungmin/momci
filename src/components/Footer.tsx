@@ -11,8 +11,8 @@ export default function Footer() {
   };
 
   return (
-    <footer className="bg-gray-900 text-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <footer className="bg-slate-800 text-white">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-28">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* 브랜드 정보 */}
           <div className="col-span-1 md:col-span-2">
@@ -185,7 +185,7 @@ export default function Footer() {
         </div>
 
         {/* 하단 구분선 및 정책 링크 */}
-        <div className="border-t border-gray-800 mt-8 pt-8">
+        <div className="border-t border-slate-700 mt-8 pt-8">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="flex flex-wrap gap-4 text-sm text-gray-400 mb-4 md:mb-0">
               <Link href="/terms" className="hover:text-white transition-colors">

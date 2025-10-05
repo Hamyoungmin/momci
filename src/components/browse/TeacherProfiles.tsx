@@ -38,10 +38,13 @@ export default function TeacherProfiles() {
   const [loading, setLoading] = useState(true);
   
   // 이름에서 성만 추출하는 함수
+  // 이름을 마스킹하는 함수: (성)0(마지막글자) 형식
   const getLastName = (fullName: string | undefined): string => {
     if (!fullName) return '익명';
-    // 한글 이름인 경우 첫 글자가 성
-    return fullName.charAt(0);
+    if (fullName.length === 1) return fullName; // 1글자면 그대로
+    if (fullName.length === 2) return fullName.charAt(0) + '0' + fullName.charAt(1); // 2글자: 첫+0+마지막
+    // 3글자 이상: 첫글자 + 0 + 마지막글자
+    return fullName.charAt(0) + '0' + fullName.charAt(fullName.length - 1);
   };
 
   // 선생님에게 요청하기 모달 상태
@@ -122,7 +125,7 @@ export default function TeacherProfiles() {
           responseTime: data.responseTime || '평균 2시간 이내',
           availability: data.availability || '평일/주말 상담 가능',
           createdAt: data.createdAt,
-          certified: data.isVerified === true || data.certificationBadge === 'certified',
+          certified: data.isVerified === true, // ✅ 명시적으로 true인 경우만 인증 표시
           insured: data.insured === true || data.hasInsurance === true
         });
       }
@@ -285,7 +288,7 @@ export default function TeacherProfiles() {
                 <div className="flex-1">
                   {/* 제목 */}
                   <h3 className="text-lg font-bold text-gray-900 mb-2">
-                    {getLastName(teacher.name)}00 치료사 <span className="text-gray-600">[{teacher.experience || 0}년차 {teacher.specialties[0]}]</span>
+                    {getLastName(teacher.name)} 치료사 <span className="text-gray-600">[{teacher.experience || 0}년차 {teacher.specialties[0]}]</span>
                   </h3>
                   
                   {/* 메타 정보 */}

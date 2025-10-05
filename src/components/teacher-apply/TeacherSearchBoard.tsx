@@ -86,8 +86,17 @@ export default function TeacherSearchBoard() {
   const [isRegistrationEdit, setIsRegistrationEdit] = useState(false);
   const [editDocId, setEditDocId] = useState<string | null>(null);
 
+  // 페이지네이션 상태
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+
   // 등록된 치료사 목록 상태
   const [registeredTeachers, setRegisteredTeachers] = useState<Teacher[]>([]);
+  
+  // 필터나 검색이 변경되면 1페이지로 리셋
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchKeyword, selectedTherapyField, selectedDetailStatus, selectedGender]);
   const registeredTeachersRef = useRef<Teacher[]>([]);
 
   // registeredTeachers가 변경될 때 ref 업데이트
@@ -113,7 +122,6 @@ export default function TeacherSearchBoard() {
   useEffect(() => {
     const publicQ = query(
       collection(db, 'therapist-registrations-feed'),
-      // updatedAt 기준으로 정렬 (createdAt 누락 문서 대비)
       orderBy('updatedAt', 'desc')
     );
     const unPublic = onSnapshot(publicQ, (snapshot) => {
@@ -163,7 +171,6 @@ export default function TeacherSearchBoard() {
       const mineQ = query(
         collection(db, 'therapist-registrations'),
         where('userId', '==', currentUser.uid),
-        // updatedAt 우선 정렬 (createdAt 없어도 목록에 나타나도록)
         orderBy('updatedAt', 'desc')
       );
       unMine = onSnapshot(mineQ, (snapshot) => {
@@ -416,7 +423,7 @@ export default function TeacherSearchBoard() {
     if (!formData.phone?.trim()) { alert('연락처는 필수 사항입니다. 입력해주세요.'); return; }
     if (!formData.email?.trim()) { alert('이메일(ID)은 필수 사항입니다. 입력해주세요.'); return; }
     if (!formData.address?.trim()) { alert('주소는 필수 사항입니다. 입력해주세요.'); return; }
-    if (!formData.qualification?.trim()) { alert('자격구분은 필수 사항입니다. 선택해주세요.'); return; }
+    if (!formData.qualification?.trim()) { alert('자차보유는 필수 사항입니다. 선택해주세요.'); return; }
     
     // 프로필 정보
     if (!formData.therapyActivity?.trim()) { alert('치료 철학 및 강점은 필수 사항입니다. 입력해주세요.'); return; }
@@ -1233,8 +1240,14 @@ export default function TeacherSearchBoard() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredTeachers.length > 0 ? (
-                      filteredTeachers.map((teacher, index) => (
+                    {(() => {
+                      // 페이지네이션 적용
+                      const indexOfLastItem = currentPage * itemsPerPage;
+                      const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+                      const currentItems = filteredTeachers.slice(indexOfFirstItem, indexOfLastItem);
+                      
+                      return currentItems.length > 0 ? (
+                        currentItems.map((teacher, index) => (
                         <tr key={teacher?.id || `teacher-${index}`} className="hover:bg-gray-50">
                           <td className="px-4 py-4 w-32">
                             <div className="text-sm font-medium text-gray-900">
@@ -1328,36 +1341,105 @@ export default function TeacherSearchBoard() {
                           </div>
                         </td>
                       </tr>
-                    )}
+                    );
+                    })()}
                   </tbody>
                 </table>
               </div>
 
               {/* 페이지네이션 - 데이터가 있을 때만 표시 */}
-              {filteredTeachers.length > 0 && (
-                <div className="flex justify-center mt-8">
-                  <div className="flex items-center space-x-2">
-                    <button className="px-3 py-2 text-gray-500 hover:text-gray-700">
-                      이전
-                    </button>
-                    {[1, 2, 3, 4, 5].map((page) => (
-                      <button
-                        key={page}
-                        className={`px-3 py-2 text-sm ${
-                          page === 1
-                            ? 'text-blue-600 font-bold'
-                            : 'text-gray-500 hover:text-gray-700'
-                        }`}
+              {filteredTeachers.length > 0 && (() => {
+                const totalPages = Math.ceil(filteredTeachers.length / itemsPerPage);
+                
+                // 페이지 번호 배열 생성 (최대 5개씩)
+                const getPageNumbers = () => {
+                  const pages: number[] = [];
+                  const maxPagesToShow = 5;
+                  let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+                  const endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+                  
+                  if (endPage - startPage + 1 < maxPagesToShow) {
+                    startPage = Math.max(1, endPage - maxPagesToShow + 1);
+                  }
+                  
+                  for (let i = startPage; i <= endPage; i++) {
+                    pages.push(i);
+                  }
+                  return pages;
+                };
+
+                const handleFirstPage = () => {
+                  setCurrentPage(1);
+                };
+
+                const handlePrevPage = () => {
+                  if (currentPage > 1) {
+                    setCurrentPage(currentPage - 1);
+                  }
+                };
+
+                const handleNextPage = () => {
+                  if (currentPage < totalPages) {
+                    setCurrentPage(currentPage + 1);
+                  }
+                };
+
+                const handleLastPage = () => {
+                  setCurrentPage(totalPages);
+                };
+
+                const handlePageClick = (page: number) => {
+                  setCurrentPage(page);
+                };
+
+                return (
+                  <div className="flex justify-center mt-8">
+                    <div className="flex items-center space-x-2">
+                      <button 
+                        onClick={handleFirstPage}
+                        disabled={currentPage === 1}
+                        className={`px-3 py-2 ${currentPage === 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:text-gray-700'}`}
                       >
-                        {page}
+                        &laquo;
                       </button>
-                    ))}
-                    <button className="px-3 py-2 text-gray-500 hover:text-gray-700">
-                      다음
-                    </button>
+                      <button 
+                        onClick={handlePrevPage}
+                        disabled={currentPage === 1}
+                        className={`px-3 py-2 ${currentPage === 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:text-gray-700'}`}
+                      >
+                        &lsaquo;
+                      </button>
+                      {getPageNumbers().map((page) => (
+                        <button
+                          key={page}
+                          onClick={() => handlePageClick(page)}
+                          className={`px-3 py-2 text-sm ${
+                            page === currentPage
+                              ? 'text-blue-600 font-bold'
+                              : 'text-gray-500 hover:text-gray-700'
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      ))}
+                      <button 
+                        onClick={handleNextPage}
+                        disabled={currentPage === totalPages}
+                        className={`px-3 py-2 ${currentPage === totalPages ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:text-gray-700'}`}
+                      >
+                        &rsaquo;
+                      </button>
+                      <button 
+                        onClick={handleLastPage}
+                        disabled={currentPage === totalPages}
+                        className={`px-3 py-2 ${currentPage === totalPages ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:text-gray-700'}`}
+                      >
+                        &raquo;
+                      </button>
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
             </>
           )}
 
@@ -1512,9 +1594,9 @@ export default function TeacherSearchBoard() {
                     />
                   </div>
                   
-                  {/* 자격구분 */}
+                  {/* 자차보유 */}
                   <div className="mt-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">자격구분 *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">자차보유 *</label>
                     <div className="space-x-4">
                       <label className="inline-flex items-center">
                         <input 
@@ -1983,8 +2065,7 @@ export default function TeacherSearchBoard() {
                         onChange={(e) => handleFileUpload(e, setCertificateFiles)}
                         className="absolute inset-0 opacity-0 cursor-pointer"
                       />
-                      <p className="text-base text-gray-500">영상 파일을 여기에 드래그하거나 클릭하여 업로드하세요.</p>
-                      <p className="text-xs text-green-600 mt-1">✅ MP4, MOV, WebM 형식 권장</p>
+                      <p className="text-sm text-gray-600">동영상 길이는 1분 이내, 용량 100MB 이하</p>
                     </div>
                     {/* 기존 파일 표시 */}
                     {existingIntroVideoUrls.length > 0 && certificateFiles.length === 0 && (
@@ -2314,7 +2395,7 @@ export default function TeacherSearchBoard() {
                         <input value={activeTeacher.residence || ''} disabled className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50" />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">자격구분</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">자차보유</label>
                         <input value={activeTeacher.qualification || ''} disabled className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50" />
                       </div>
                     </div>
